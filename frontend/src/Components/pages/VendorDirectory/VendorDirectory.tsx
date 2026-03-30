@@ -14,6 +14,7 @@ import "../../../styles/page_tabs.css";
 import "./VendorDirectory.css";
 import "../ProductProfile/product_profile.css";
 import GeneratedProductProfileCards from "../ProductProfile/GeneratedProductProfileCards";
+import ClickTooltip from "../../UI/ClickTooltip";
 import type { GeneratedProductProfileReport } from "../../../types/generatedProductProfile";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
@@ -128,7 +129,7 @@ function productInitials(name: string): string {
 
 const SECTOR_KEYS_ORDER = ["public_sector", "private_sector", "non_profit_sector"] as const;
 
-const MAX_SECTORS_ON_CARD = 3;
+const MAX_SECTORS_ON_CARD = 2;
 
 type SectorParts =
   | { kind: "empty" }
@@ -659,12 +660,15 @@ const VendorDirectory = () => {
                     <span className="product_profile_product_card_trust_label">Trust score</span>
                     <span className="product_profile_product_card_trust_value">{dp.trustScore != null ? `${dp.trustScore}%` : "—"}</span>
                   </div>
-                  <span
-                    className="vendor_directory_card_sector"
-                    title={formatSector(dp.sector ?? dp.vendor.sector) || undefined}
+                  <ClickTooltip
+                    content={formatSector(dp.sector ?? dp.vendor.sector) || "—"}
+                    position="top"
+                    showOn="hover"
                   >
-                    {formatSectorCard(dp.sector ?? dp.vendor.sector) || "—"}
-                  </span>
+                    <span className="vendor_directory_card_sector">
+                      {formatSectorCard(dp.sector ?? dp.vendor.sector) || "—"}
+                    </span>
+                  </ClickTooltip>
                 </div>
               </div>
               <div className="vendor_directory_card_body">
@@ -752,12 +756,15 @@ const VendorDirectory = () => {
                     <span className="product_profile_product_card_trust_label">Trust score</span>
                     <span className="product_profile_product_card_trust_value">{dp.trustScore != null ? `${dp.trustScore}%` : "—"}</span>
                   </div>
-                  <span
-                    className="vendor_directory_card_sector"
-                    title={formatSector(dp.sector ?? dp.vendor.sector) || undefined}
+                  <ClickTooltip
+                    content={formatSector(dp.sector ?? dp.vendor.sector) || "—"}
+                    position="top"
+                    showOn="hover"
                   >
-                    {formatSectorCard(dp.sector ?? dp.vendor.sector) || "—"}
-                  </span>
+                    <span className="vendor_directory_card_sector">
+                      {formatSectorCard(dp.sector ?? dp.vendor.sector) || "—"}
+                    </span>
+                  </ClickTooltip>
                 </div>
               </div>
               <div className="vendor_directory_card_body">

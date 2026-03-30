@@ -92,6 +92,13 @@ export interface MatchedRiskSummary {
   summary_points: string[];
 }
 
+/** LLM-written short bullets per catalog mitigation (merged into report.dbTop5Risks.mitigationsByRiskId on save). */
+export interface MatchedMitigationSummary {
+  risk_id: string;
+  mitigation_action_name: string;
+  summary_points: string[];
+}
+
 export interface GeneratedVendorCotsReport {
   overallRiskScore: number;
   riskLevel: string;
@@ -103,6 +110,8 @@ export interface GeneratedVendorCotsReport {
   fullReport?: FullReportJson;
   /** Model-generated concise bullets for each DB top-5 risk (keyed by risk_id). */
   matchedRiskSummaries?: MatchedRiskSummary[];
+  /** Model-generated concise bullets per listed catalog mitigation (risk_id + exact action name). */
+  matchedMitigationSummaries?: MatchedMitigationSummary[];
   raw?: string;
 }
 
@@ -131,6 +140,7 @@ After the sections above, output a single JSON object in a fenced code block sta
 - roiAnalysis: object with timeSavedPerEmployee (string), timeSavedSource (string), annualHoursRecovered, productivityValue, annualCost, roiMultiple, paybackPeriod, paybackSource; comparisonAlternatives: array of { alternative, annualCost, roi, notes }
 - securityPosture: object with level (string), score (string e.g. "8/100"), risks (string array — each string ONE short bullet phrase, max ~25 words, not paragraphs), mitigations (string array of short actionable lines), residualRisk (string)
 - matchedRiskSummaries: array. If "Database-matched top risks" appears above, include exactly one object per listed catalog risk (same order, max 5). Each: { "risk_id": "<exact Risk [id] from that section>", "summary_points": ["2-4 concise bullets", "..."] } — bullets only from that risk's title/description; each bullet under 25 words; no generic filler. If no database-matched risks, use [].
+- matchedMitigationSummaries: array. For every "Mitigation:" line under those risks (same order), include { "risk_id": "<exact Risk [id]>", "mitigation_action_name": "<exact mitigation action name before '(' from that line>", "summary_points": ["1-3 complete sentences or short bullets", "..."] } — summarize only that mitigation's catalog meaning (name + definition text above); each bullet a full thought (not truncated mid-sentence); under 35 words each; no generic filler. If a risk has no mitigations, omit entries for it. If no database-matched risks, use [].
 - complianceAlignment: object with summary (string), requirements: array of { name, description, status: "Met"|"Pending"|"Deferred" }
 - frameworkMapping: object with rows: array of { framework, coverage, controls, notes }
 - implementationPlan: object with phases: array of { title, timeline, status: "Complete"|"In Progress"|"Planned", activities (string array), deliverables (string array) }
@@ -251,6 +261,7 @@ function parseReportSections(rawReply: string): GeneratedVendorCotsReport {
 
   let fullReport: FullReportJson | undefined;
   let matchedRiskSummaries: MatchedRiskSummary[] | undefined;
+  let matchedMitigationSummaries: MatchedMitigationSummary[] | undefined;
   const jsonBlock = rawReply.match(/```json\s*([\s\S]*?)```/)?.[1] ?? rawReply.match(/---REPORT_JSON---\s*([\s\S]*?)(?=\n---|$)/)?.[1];
   if (jsonBlock) {
     try {
@@ -265,6 +276,7 @@ function parseReportSections(rawReply: string): GeneratedVendorCotsReport {
         appendix: sanitizeAppendix(parsed.appendix),
       };
       matchedRiskSummaries = sanitizeMatchedRiskSummaries(parsed.matchedRiskSummaries);
+      matchedMitigationSummaries = sanitizeMatchedMitigationSummaries(parsed.matchedMitigationSummaries);
     } catch {
       // ignore invalid JSON
     }
@@ -280,6 +292,7 @@ function parseReportSections(rawReply: string): GeneratedVendorCotsReport {
     recommendationsWithPriority: recommendationsWithPriority.length > 0 ? recommendationsWithPriority : undefined,
     fullReport,
     matchedRiskSummaries,
+    matchedMitigationSummaries,
   };
 }
 
@@ -299,6 +312,27 @@ function sanitizeMatchedRiskSummaries(v: unknown): MatchedRiskSummary[] | undefi
       : [];
     if (summary_points.length === 0) continue;
     out.push({ risk_id, summary_points });
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+function sanitizeMatchedMitigationSummaries(v: unknown): MatchedMitigationSummary[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: MatchedMitigationSummary[] = [];
+  for (const x of v) {
+    if (x == null || typeof x !== "object") continue;
+    const o = x as Record<string, unknown>;
+    const risk_id = String(o.risk_id ?? "").trim();
+    const mitigation_action_name = String(o.mitigation_action_name ?? "").trim();
+    if (!risk_id || !mitigation_action_name) continue;
+    const summary_points = Array.isArray(o.summary_points)
+      ? (o.summary_points as unknown[])
+          .map((p) => String(p ?? "").trim())
+          .filter((s) => s.length > 1)
+          .slice(0, 6)
+      : [];
+    if (summary_points.length === 0) continue;
+    out.push({ risk_id, mitigation_action_name, summary_points });
   }
   return out.length > 0 ? out : undefined;
 }

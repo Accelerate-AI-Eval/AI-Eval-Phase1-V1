@@ -52,6 +52,7 @@ function mapAttestationRow(attestRow: Record<string, unknown>): Record<string, u
     audit_logs_available: attestRow.audit_logs ?? undefined,
     testing_results_available: attestRow.test_results ?? undefined,
     document_uploads: attestRow.document_uploads ?? undefined,
+    compliance_document_expiries: attestRow.compliance_document_expiries ?? undefined,
   };
 }
 

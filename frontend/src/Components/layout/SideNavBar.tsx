@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NAVIGATION } from "../../constants/navConfig"; // the list of side navigation bar
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useMatch } from "react-router-dom";
 import { Shield } from "lucide-react";
 import { normalizeSystemRole, isPathAllowedForUserRole } from "../../guards/rbacConfig";
 import type { SystemRole } from "../../guards/rbacConfig";
@@ -17,6 +17,11 @@ const isAttestationArea = (pathname: string) =>
 
 const SideNavBar = () => {
   const location = useLocation();
+  const reportsLibraryMatch = useMatch({ path: "/reports/*" });
+  const isReportsNavActive =
+    location.pathname === "/reports" ||
+    reportsLibraryMatch != null ||
+    location.pathname.startsWith("/buyer-vendor-risk-report/");
   const [, setProfileRefresh] = useState(0);
   useEffect(() => {
     const onProfileUpdated = () => setProfileRefresh((n) => n + 1);
@@ -101,9 +106,11 @@ const SideNavBar = () => {
           const Icon = item.icon;
           const isAssessmentsItem = item.path === "/assessments";
           const isAttestationItem = item.path === "/attestation_details";
+          const isReportsItem = item.path === "/reports";
           const showActive =
             (isAssessmentsItem && isAssessmentArea(location.pathname)) ||
-            (isAttestationItem && isAttestationArea(location.pathname));
+            (isAttestationItem && isAttestationArea(location.pathname)) ||
+            (isReportsItem && isReportsNavActive);
           return (
             <li key={item.path}>
               <NavLink

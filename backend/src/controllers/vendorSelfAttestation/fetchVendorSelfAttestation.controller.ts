@@ -214,6 +214,7 @@ function mapAttestationRow(attestRow: Record<string, unknown>, completedByName?:
     testing_results_available: attestRow.test_results ?? undefined,
     document_uploads: attestRow.document_uploads ?? undefined,
     certificates,
+    compliance_document_expiries: attestRow.compliance_document_expiries ?? undefined,
     generated_profile_report: attestRow.generated_profile_report ?? undefined,
   };
   if (completedByName != null && completedByName !== "") {

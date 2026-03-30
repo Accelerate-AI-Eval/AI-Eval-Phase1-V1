@@ -7,8 +7,10 @@ import {
   User,
   Download,
   Loader2,
+  CircleChevronLeft,
 } from "lucide-react";
 import LoadingMessage from "../../../UI/LoadingMessage";
+import "../../Reports/reports.css";
 import "./buyer_vendor_risk_report.css";
 
 const BASE_URL =
@@ -27,21 +29,23 @@ type RiskDomain = {
   domain: string;
   riskScore: number;
   summary: string;
-  /** From DB / report JSON; legacy rows omit → grouped under Both risks */
+  /** From DB / report JSON; legacy rows omit → grouped under Shared risk */
   riskScope?: RiskScope;
 };
 
-/** Buyer portal: Risk Analysis shows buyer-scoped and shared (both) domains only. */
-const RISK_ANALYSIS_DISPLAY_SECTIONS_BUYER: { scope: RiskScope; title: string }[] = [
-  { scope: "buyer", title: "Buyer risk" },
-  { scope: "both", title: "Both risks" },
+type RiskAnalysisSectionConfig = { scope: RiskScope; title: string; tagClass: string };
+
+/** Buyer portal: Risk Analysis shows buyer-scoped and shared domains only. */
+const RISK_ANALYSIS_DISPLAY_SECTIONS_BUYER: RiskAnalysisSectionConfig[] = [
+  { scope: "buyer", title: "Buyer risk", tagClass: "bvr_risk_tag_buyer" },
+  { scope: "both", title: "Shared risk", tagClass: "bvr_risk_tag_shared" },
 ];
 
-/** Vendor portal: show buyer-related, vendor-related, and both-related risk domains. */
-const RISK_ANALYSIS_DISPLAY_SECTIONS_VENDOR: { scope: RiskScope; title: string }[] = [
-  { scope: "buyer", title: "Buyer risk" },
-  { scope: "vendor", title: "Vendor risk" },
-  { scope: "both", title: "Both risks" },
+/** Vendor portal: buyer-, vendor-, and shared-scoped risk domains. */
+const RISK_ANALYSIS_DISPLAY_SECTIONS_VENDOR: RiskAnalysisSectionConfig[] = [
+  { scope: "buyer", title: "Buyer risk", tagClass: "bvr_risk_tag_buyer" },
+  { scope: "vendor", title: "Vendor risk", tagClass: "bvr_risk_tag_vendor" },
+  { scope: "both", title: "Shared risk", tagClass: "bvr_risk_tag_shared" },
 ];
 
 function groupRiskDomainsByScope(rows: RiskDomain[]): Record<RiskScope, RiskDomain[]> {
@@ -201,8 +205,12 @@ export default function BuyerVendorRiskReport() {
     return (
       <div className="bvr_page">
         <div className="bvr_error">{error}</div>
-        <Link to="/reports" className="bvr_back_link">
-          Back to Reports
+        <Link
+          to="/reports"
+          state={{ tab: "assessment" as const }}
+          className="report_assessment_back"
+        >
+          <CircleChevronLeft size={20} aria-hidden /> Back to Reports
         </Link>
       </div>
     );
@@ -221,8 +229,12 @@ export default function BuyerVendorRiskReport() {
   return (
     <div className="bvr_page">
       <header className="bvr_header no-print">
-        <Link to="/reports" className="bvr_back_link">
-          ← Back to Reports
+        <Link
+          to="/reports"
+          state={{ tab: "assessment" as const }}
+          className="report_assessment_back"
+        >
+          <CircleChevronLeft size={20} aria-hidden /> Back to Reports
         </Link>
         <button type="button" className="bvr_export_btn" onClick={handleExportPdf}>
           <Download size={18} aria-hidden />
@@ -292,12 +304,14 @@ export default function BuyerVendorRiskReport() {
 
         <section className="bvr_card">
           <h2 className="bvr_section_title">Risk Analysis</h2>
-          {riskAnalysisSections.map(({ scope, title }) => {
+          {riskAnalysisSections.map(({ scope, title, tagClass }) => {
             const list = riskByScope[scope];
             if (list.length === 0) return null;
             return (
               <div key={scope} className="bvr_risk_scope_block">
-                <h3 className="bvr_risk_subsection_title">{title}</h3>
+                <div className="bvr_risk_scope_banner">
+                  <span className={`bvr_risk_scope_tag ${tagClass}`}>{title}</span>
+                </div>
                 <div className="bvr_risk_grid">
                   {list.map((r, i) => (
                     <div key={`${scope}-${i}-${r.domain}`} className="bvr_risk_block">

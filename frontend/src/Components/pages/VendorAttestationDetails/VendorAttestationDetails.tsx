@@ -18,7 +18,9 @@ import {
 import Button from "../../UI/Button";
 import LoadingMessage from "../../UI/LoadingMessage";
 import ClickTooltip from "../../UI/ClickTooltip";
-import StepVendorSelfAttestationPrev from "../VendorAttestations/StepVendorSelfAttestationPrev";
+import StepVendorSelfAttestationPrev, {
+  type ComplianceDocumentExpiryMeta,
+} from "../VendorAttestations/StepVendorSelfAttestationPrev";
 import { ReportsPagination } from "../Reports/ReportsPagination";
 import type {
   VendorSelfAttestationPayload,
@@ -155,6 +157,9 @@ const VendorAttestationDetails = () => {
   const [previewFormState, setPreviewFormState] =
     useState<VendorSelfAttestationFormState | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewComplianceExpiries, setPreviewComplianceExpiries] = useState<
+    Record<string, ComplianceDocumentExpiryMeta> | null
+  >(null);
 
   const systemRole = (sessionStorage.getItem("systemRole") ?? "").toLowerCase().trim();
   const userRole = sessionStorage.getItem("userRole");
@@ -379,6 +384,7 @@ const VendorAttestationDetails = () => {
       setPreviewOpen(true);
       setPreviewLoading(true);
       setPreviewFormState(null);
+      setPreviewComplianceExpiries(null);
       try {
         const organizationId = sessionStorage.getItem("organizationId") ?? "";
         const params = new URLSearchParams();
@@ -412,6 +418,12 @@ const VendorAttestationDetails = () => {
           result.success &&
           (result.attestation || result.companyProfile)
         ) {
+          const rawExp = result.attestation?.compliance_document_expiries;
+          setPreviewComplianceExpiries(
+            rawExp != null && typeof rawExp === "object" && !Array.isArray(rawExp)
+              ? (rawExp as Record<string, ComplianceDocumentExpiryMeta>)
+              : null,
+          );
           setPreviewFormState(
             buildFormStateFromApi({
               companyProfile: result.companyProfile,
@@ -914,6 +926,7 @@ const VendorAttestationDetails = () => {
                   formState={previewFormState}
                   attestationId={previewAttestationId}
                   onOpenDocument={handleOpenDocument}
+                  complianceDocumentExpiries={previewComplianceExpiries}
                 />
               )}
             </div>

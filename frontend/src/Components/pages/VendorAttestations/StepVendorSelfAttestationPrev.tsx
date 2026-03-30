@@ -8,6 +8,7 @@ import type { VendorSelfAttestationFormState } from "../../../types/vendorSelfAt
 import { VENDOR_SELF_ATTESTATION } from "../../../constants/vendorAttestionData";
 import { ATTESTATION_SECTION_FIELDS } from "../../../constants/vendorAttestationFields";
 import { formatPreviewValueAsString } from "../../../utils/formatPreviewValue";
+import { formatDateDDMMMYYYY } from "../../../utils/formatDate.js";
 import "../VendorOnboarding/StepVendorOnboardingPreview.css";
 import "./vendor_attestation_preview.css";
 
@@ -15,6 +16,12 @@ import "./vendor_attestation_preview.css";
 const STEP_DOCUMENT_UPLOAD = 1;
 const STEP_COMPLIANCE_CERTIFICATIONS = 4;
 const STEP_EVIDENCE = 9;
+
+export type ComplianceDocumentExpiryMeta = {
+  category?: string;
+  expiryAt?: string | null;
+  error?: string;
+};
 
 interface StepVendorSelfAttestationPrevProps {
   formState: VendorSelfAttestationFormState;
@@ -24,6 +31,46 @@ interface StepVendorSelfAttestationPrevProps {
   attestationId?: string | null;
   /** Called when user clicks a document name; receives file name. Use to fetch with auth and open in new tab. */
   onOpenDocument?: (fileName: string) => void;
+  /** Parsed PDF expiry metadata keyed by file name (from compliance_document_expiries). */
+  complianceDocumentExpiries?: Record<string, ComplianceDocumentExpiryMeta> | null;
+}
+
+function lookupComplianceExpiry(
+  fileName: string,
+  map: Record<string, ComplianceDocumentExpiryMeta> | undefined | null,
+): ComplianceDocumentExpiryMeta | null {
+  if (!map || typeof map !== "object" || !fileName?.trim()) return null;
+  const key = fileName.trim();
+  const base = /[/\\]/.test(key) ? (key.split(/[/\\]/).pop() ?? key) : key;
+  const meta = map[key] ?? map[base];
+  return meta && typeof meta === "object" ? meta : null;
+}
+
+function ComplianceExpiryBesideView({ fileName, expiries }: { fileName: string; expiries?: Record<string, ComplianceDocumentExpiryMeta> | null }) {
+  const meta = lookupComplianceExpiry(fileName, expiries);
+  if (!meta) return null;
+  const exp = meta.expiryAt?.trim();
+  if (exp && !Number.isNaN(new Date(exp).getTime())) {
+    const d = new Date(exp);
+    const today = new Date();
+    d.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const past = d.getTime() < today.getTime();
+    return (
+      <span
+        className={`preview_regulatory_doc_expiry ${past ? "preview_regulatory_doc_expiry_past" : ""}`}
+        title="Certificate expiry from document"
+      >
+        Expires: {formatDateDDMMMYYYY(exp)}
+      </span>
+    );
+  }
+  const err = (meta.error ?? "").trim();
+  return (
+    <span className="preview_regulatory_doc_expiry preview_regulatory_doc_expiry_na" title={err || undefined}>
+      {err.toLowerCase().includes("not detected") ? "Expiry not detected" : err || "—"}
+    </span>
+  );
 }
 
 /** User-friendly preview: multi-select/industry/dependent dropdown as readable text, never raw array or JSON. */
@@ -31,7 +78,13 @@ function formatValue(val: unknown): string {
   return formatPreviewValueAsString(val);
 }
 
-function StepVendorSelfAttestationPrev({ formState, onNavigateToStep, attestationId, onOpenDocument }: StepVendorSelfAttestationPrevProps) {
+function StepVendorSelfAttestationPrev({
+  formState,
+  onNavigateToStep,
+  attestationId,
+  onOpenDocument,
+  complianceDocumentExpiries,
+}: StepVendorSelfAttestationPrevProps) {
   const { companyProfile, attestation, documentUpload } = formState;
 
   const canOpenDocument = Boolean(attestationId && onOpenDocument);
@@ -179,6 +232,9 @@ function StepVendorSelfAttestationPrev({ formState, onNavigateToStep, attestatio
                       <ShieldCheck size={14} aria-hidden />
                       <span>Verified</span>
                     </span>
+                    {fileName ? (
+                      <ComplianceExpiryBesideView fileName={fileName} expiries={complianceDocumentExpiries} />
+                    ) : null}
                     {canOpenDocument && fileName && (
                       <button
                         type="button"

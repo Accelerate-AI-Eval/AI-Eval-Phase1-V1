@@ -109,7 +109,8 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
+  /* visible so sector hover tooltips match report cards (ClickTooltip bubble not clipped) */
+  overflow: visible;
 }
 
 .vendor_directory_card_clickable {
@@ -145,7 +146,7 @@
 }
 
 .vendor_directory_card_header_text {
-  /* flex: 1; */
+  flex: 1;
   min-width: 0;
 }
 
@@ -153,8 +154,9 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.35rem;
+  gap: 0.25rem;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* Trust score badge uses product_profile_product_card_trust_* (product_profile.css) for same look as Product Profile */
@@ -168,6 +170,30 @@
   max-width: 14rem;
   display: block;
   word-break: break-word;
+}
+
+/* Sector line: same ClickTooltip look as general report title (general_reports.css .general_rpr_card) */
+.vendor_directory_card .click_tooltip_wrapper {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  align-self: flex-end;
+}
+
+.vendor_directory_card .click_tooltip_trigger {
+  display: block;
+  min-width: 0;
+  cursor: default;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  border-radius: 0;
+}
+
+.vendor_directory_card .click_tooltip_trigger:hover {
+  color: inherit;
 }
 
 .vendor_directory_card_name {

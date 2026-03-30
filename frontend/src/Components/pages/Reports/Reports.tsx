@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { FileText, Search, CircleX, Ban, Trash2 } from "lucide-react";
 import { formatDateDDMMMYYYY } from "../../../utils/formatDate.js";
 import Modal from "../../UI/Modal";
@@ -74,6 +74,7 @@ function getCompleteReportExpiryDate(report: CustomerRiskReportItem): string {
 
 function Reports() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabId>("assessment");
   const [reports, setReports] = useState<CustomerRiskReportItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +115,15 @@ function Reports() {
       document.title = "AI Eval";
     };
   }, []);
+
+  /** Open the correct tab when returning from a report detail (complete vs general). */
+  useEffect(() => {
+    const tab = (location.state as { tab?: TabId } | null)?.tab;
+    if (tab === "assessment" || tab === "general" || tab === "archived") {
+      setActiveTab(tab);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   const LOADER_MIN_MS = 2500; // same as Assessments page
 

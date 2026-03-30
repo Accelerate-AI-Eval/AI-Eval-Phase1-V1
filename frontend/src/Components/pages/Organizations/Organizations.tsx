@@ -9,7 +9,9 @@ import "../VendorAttestationDetails/vendor_attestation_details.css";
 import "../Assessments/assessments.css";
 import CreateOrganization from "./CreateOrganization";
 import OrganizationDataTable from "./OrganizationDataTable";
-import StepVendorSelfAttestationPrev from "../VendorAttestations/StepVendorSelfAttestationPrev";
+import StepVendorSelfAttestationPrev, {
+  type ComplianceDocumentExpiryMeta,
+} from "../VendorAttestations/StepVendorSelfAttestationPrev";
 import LoadingMessage from "../../UI/LoadingMessage";
 import { ReportsPagination } from "../Reports/ReportsPagination";
 // import { buildFormStateFromApi } from "../../utils/vendorAttestationState";
@@ -183,6 +185,9 @@ const Organizations = () => {
   const [previewFormState, setPreviewFormState] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewAttestationId, setPreviewAttestationId] = useState(null);
+  const [previewComplianceExpiries, setPreviewComplianceExpiries] = useState<
+    Record<string, ComplianceDocumentExpiryMeta> | null
+  >(null);
   const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5003/api/v1";
 
   const handleOpenDocument = useCallback(async (fileName) => {
@@ -391,6 +396,7 @@ const Organizations = () => {
       setPreviewOpen(true);
       setPreviewLoading(true);
       setPreviewFormState(null);
+      setPreviewComplianceExpiries(null);
       try {
         const token = sessionStorage.getItem("bearerToken");
         const url = `${BASE_URL.replace(/\/$/, "")}/orgAttestationPreview/${encodeURIComponent(orgIdForFetch)}/${encodeURIComponent(attestationId)}`;
@@ -403,6 +409,12 @@ const Organizations = () => {
         });
         const result = await response.json();
         if (response.ok && result.success && (result.attestation || result.companyProfile)) {
+          const rawExp = result.attestation?.compliance_document_expiries;
+          setPreviewComplianceExpiries(
+            rawExp != null && typeof rawExp === "object" && !Array.isArray(rawExp)
+              ? (rawExp as Record<string, ComplianceDocumentExpiryMeta>)
+              : null
+          );
           setPreviewFormState(
             buildFormStateFromApi({
               companyProfile: result.companyProfile,
@@ -644,10 +656,6 @@ const Organizations = () => {
                     <div className="ai_assessments_section">
                       <div className="assessment_list_header_row">
                         <p className="your_assessments_title">YOUR ATTESTATIONS</p>
-                        <p className="org_attestation_compliance_tab_hint">
-                          Compliance certificate PDFs are scanned for expiry after submit; refresh this page if dates
-                          are not shown yet.
-                        </p>
                         <div className="attestation_tabs_and_search_row">
                           <div className="assessment_search_wrap">
                             <Search
@@ -785,60 +793,6 @@ const Organizations = () => {
                                             {formatAttestationDate(isCompleted || isExpired ? a.created_at : (a.updated_at || a.created_at))}
                                           </span>
                                         </div>
-                                        {isCompleted &&
-                                          a.compliance_document_expiries &&
-                                          typeof a.compliance_document_expiries === "object" &&
-                                          Object.keys(a.compliance_document_expiries).length > 0 && (
-                                            <div className="org_attestation_compliance_docs">
-                                              <span className="general_rpr_card_date_label_expiry org_attestation_compliance_heading">
-                                                Compliance uploads (parsed expiry)
-                                              </span>
-                                              <ul className="org_attestation_compliance_list">
-                                                {Object.entries(
-                                                  a.compliance_document_expiries as Record<
-                                                    string,
-                                                    {
-                                                      category?: string;
-                                                      expiryAt?: string | null;
-                                                      error?: string;
-                                                    }
-                                                  >,
-                                                ).map(([fileName, meta]) => {
-                                                  const cat = meta?.category?.trim() || "Document";
-                                                  const exp = meta?.expiryAt?.trim();
-                                                  const expiredDoc =
-                                                    exp &&
-                                                    !Number.isNaN(new Date(exp).getTime()) &&
-                                                    new Date(exp).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
-                                                  return (
-                                                    <li key={fileName} className="org_attestation_compliance_item">
-                                                      <span className="org_attestation_compliance_cat">{cat}</span>
-                                                      <span className="org_attestation_compliance_fname" title={fileName}>
-                                                        {fileName}
-                                                      </span>
-                                                      {exp ? (
-                                                        <span
-                                                          className={
-                                                            expiredDoc
-                                                              ? "org_attestation_compliance_exp org_attestation_compliance_exp_past"
-                                                              : "org_attestation_compliance_exp"
-                                                          }
-                                                        >
-                                                          Expires: {formatDateDDMMMYYYY(exp)}
-                                                        </span>
-                                                      ) : (
-                                                        <span className="org_attestation_compliance_exp_na">
-                                                          {meta?.error?.includes?.("not detected")
-                                                            ? "Expiry not detected"
-                                                            : meta?.error || "—"}
-                                                        </span>
-                                                      )}
-                                                    </li>
-                                                  );
-                                                })}
-                                              </ul>
-                                            </div>
-                                          )}
                                       </div>
                                     </div>
                                   </article>
@@ -1067,6 +1021,7 @@ const Organizations = () => {
                       formState={previewFormState}
                       attestationId={previewAttestationId}
                       onOpenDocument={handleOpenDocument}
+                      complianceDocumentExpiries={previewComplianceExpiries}
                     />
                   )}
                 </div>

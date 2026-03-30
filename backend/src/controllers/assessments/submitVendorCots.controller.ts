@@ -195,6 +195,41 @@ async function createCustomerRiskReport(
       }
     }
 
+    if (
+      generated.matchedMitigationSummaries &&
+      generated.matchedMitigationSummaries.length > 0 &&
+      report.dbTop5Risks != null &&
+      typeof report.dbTop5Risks === "object"
+    ) {
+      const dbTop = report.dbTop5Risks as {
+        top5Risks?: Array<Record<string, unknown>>;
+        mitigationsByRiskId?: Record<string, Array<Record<string, unknown>>>;
+      };
+      const mitMap = dbTop.mitigationsByRiskId;
+      if (mitMap && typeof mitMap === "object") {
+        const normName = (s: string) =>
+          String(s ?? "")
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, " ");
+        for (const entry of generated.matchedMitigationSummaries) {
+          const rid = String(entry.risk_id ?? "").trim();
+          const wantName = String(entry.mitigation_action_name ?? "").trim();
+          const pts = entry.summary_points?.filter((p) => String(p ?? "").trim().length > 1) ?? [];
+          if (!rid || !wantName || pts.length === 0) continue;
+          const list = mitMap[rid];
+          if (!Array.isArray(list)) continue;
+          const idx = list.findIndex(
+            (m) => normName(String(m.mitigation_action_name ?? "")) === normName(wantName),
+          );
+          if (idx >= 0) {
+            list[idx] = { ...list[idx], mitigation_summary_points: pts };
+          }
+        }
+        dbTop.mitigationsByRiskId = mitMap;
+      }
+    }
+
     const fullReport = generated.fullReport as Record<string, unknown> | undefined;
     const appendix = (fullReport?.appendix && typeof fullReport.appendix === "object")
       ? (fullReport.appendix as Record<string, unknown>)

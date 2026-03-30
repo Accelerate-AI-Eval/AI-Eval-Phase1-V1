@@ -138,6 +138,22 @@
   margin-left: 0;
 }
 
+.vendor-attestation-preview .preview_regulatory_doc_expiry {
+  font-size: 0.8125rem;
+  color: #059669;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.vendor-attestation-preview .preview_regulatory_doc_expiry_past {
+  color: tomato;
+}
+
+.vendor-attestation-preview .preview_regulatory_doc_expiry_na {
+  color: #6b7280;
+  font-weight: 400;
+}
+
 .vendor-attestation-preview .vendor_preview_doc_uploaded_label {
   color: #6b7280;
   font-weight: 500;

@@ -17,7 +17,9 @@ import {
 import Modal from "../../UI/Modal";
 import { toast } from "react-toastify";
 import MultiStepTabs from "../../UI/MultiStepTabs";
-import StepVendorSelfAttestationPrev from "./StepVendorSelfAttestationPrev";
+import StepVendorSelfAttestationPrev, {
+  type ComplianceDocumentExpiryMeta,
+} from "./StepVendorSelfAttestationPrev";
 import { VENDOR_SELF_ATTESTATION } from "../../../constants/vendorAttestionData";
 import { ATTESTATION_SECTION_FIELDS } from "../../../constants/vendorAttestationFields";
 import type {
@@ -964,6 +966,13 @@ const VendorAttestationsMainForm = () => {
                 attestationId={attestationId}
                 onOpenDocument={handleOpenDocument}
                 onNavigateToStep={setCurrentStep}
+                complianceDocumentExpiries={(() => {
+                  const raw = (formState.attestation as unknown as Record<string, unknown>)
+                    ?.compliance_document_expiries;
+                  return raw != null && typeof raw === "object" && !Array.isArray(raw)
+                    ? (raw as Record<string, ComplianceDocumentExpiryMeta>)
+                    : null;
+                })()}
               />
             );
           })(),

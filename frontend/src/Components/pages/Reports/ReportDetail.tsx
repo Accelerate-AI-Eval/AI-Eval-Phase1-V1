@@ -36,6 +36,8 @@ type Mitigation = {
   mitigation_action_name: string
   mitigation_category: string
   mitigation_definition: string | null
+  /** LLM bullets merged at report generation (preferred over raw definition in UI). */
+  mitigation_summary_points?: string[]
 }
 
 type DeploymentOverview = {
@@ -140,7 +142,7 @@ function tabReportTitle(raw: string): string {
   return t.replace(/^Analysis Report:\s*/i, "").trim() || t
 }
 
-function ReportDetail() {
+export default function ReportDetail() {
   const { reportId } = useParams<{ reportId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
@@ -233,7 +235,7 @@ function ReportDetail() {
 
   const handleBack = (e: React.MouseEvent) => {
     e.preventDefault()
-    navigate("/reports")
+    navigate("/reports", { state: { tab: "assessment" as const } })
   }
 
   if (loading) {
@@ -250,8 +252,12 @@ function ReportDetail() {
         <div className="report_detail_empty">
           <h2 className="report_detail_empty_title">Report not found</h2>
           <p className="report_detail_empty_text">This report does not exist or has been removed.</p>
-          <a href="/reports" className="report_detail_back_link report_detail_empty_back" onClick={handleBack}>
-            <CircleChevronLeft size={18} /> Back to Reports
+          <a
+            href="/reports"
+            className="report_assessment_back report_detail_empty_back"
+            onClick={handleBack}
+          >
+            <CircleChevronLeft size={20} aria-hidden /> Back to Reports
           </a>
         </div>
       </div>
@@ -327,14 +333,22 @@ function ReportDetail() {
       const mitigList: string[] = []
       domainRisks.forEach((r) => {
         if (r.risk_id && mitigationsByRiskId[r.risk_id]) {
-          mitigationsByRiskId[r.risk_id].forEach((m) =>
+          mitigationsByRiskId[r.risk_id].forEach((m) => {
+            const bot = m.mitigation_summary_points
+            if (Array.isArray(bot) && bot.length > 0) {
+              for (const pt of bot) {
+                const line = String(pt ?? "").trim()
+                if (line.length > 1) mitigList.push(line)
+              }
+              return
+            }
             mitigList.push(
               m.mitigation_action_name +
                 (m.mitigation_definition
-                  ? ` — ${String(m.mitigation_definition).slice(0, 80)}`
+                  ? ` — ${String(m.mitigation_definition).trim()}`
                   : ""),
-            ),
-          )
+            )
+          })
         }
       })
       return (
@@ -385,7 +399,7 @@ function ReportDetail() {
       {/* Header */}
       <header className="report_assessment_header">
         <a href="/reports" className="report_assessment_back" onClick={handleBack}>
-          <CircleChevronLeft size={20} /> Back to Reports
+          <CircleChevronLeft size={20} aria-hidden /> Back to Reports
         </a>
         <div className="report_assessment_title_row">
           <h1 className="report_assessment_title">{title}</h1>
@@ -735,5 +749,3 @@ function ReportDetail() {
     </div>
   )
 }
-
-export default ReportDetail
