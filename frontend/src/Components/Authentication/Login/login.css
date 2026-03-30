@@ -1,0 +1,282 @@
+/* Auth pages layout (Login, Forgot Password, Reset Password, Sign Up) – single background only */
+body:has(.authPage) {
+  background-color: #f6f8fb;
+}
+
+.authPage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+  background: none; /* use body background only when on auth (sign-in, success, redirect) */
+}
+
+/* Avoid a second background: only .authPage/body have background; inner containers are transparent */
+.authPage .authContent,
+.authPage .loginData,
+.authPage .loginCred,
+.authPage .loginForm {
+  background: none;
+}
+
+.authPage .loginForm {
+  background-color: white;
+}
+
+.authContent {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.loginData {
+  display: flex;
+  gap: 2em;
+  border-radius: 5px;
+  width: 100%;
+}
+
+.loginImg {
+  /* min-height: 100vh; */
+  /* display: inline;
+  align-content: center;
+  margin: 10% auto;
+  border: 1px solid red; */
+  /* background-color: gray; */
+  padding: 10px;
+  width: 35vw;
+  margin: 0;
+  /* border-radius: 5px; */
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+  background: #2a7b9b;
+  background: linear-gradient(
+    346deg,
+    rgba(42, 123, 155, 1) 0%,
+    rgba(87, 199, 133, 1) 50%,
+    rgba(237, 221, 83, 1) 100%
+  );
+}
+
+.loginCred {
+  /* border: 1px solid black; */
+  /* padding: 10px; */
+  display: flex;
+  align-content: center;
+  align-items: center;
+  padding: 10px;
+  width: 100%;
+  flex-direction: column;
+}
+
+.loginForm {
+  width: 100%;
+  padding: 1.3em 1.5em 1.5em 1.5em;
+  border-radius: 5px;
+  /* Single background: use .authPage only; no card background here */
+}
+
+.emailData,
+.passwordData {
+  display: flex;
+  flex-direction: column;
+  margin: 0px 0px 10px 0px;
+}
+
+.passwordData {
+  position: relative;
+}
+
+.emailData label,
+.emailData input,
+.passwordData label,
+.passwordData input {
+  /* margin: 0; */
+  font-size: 1em;
+  /* margin: 0px 0px 8px 0px; */
+}
+
+.emailData label,
+.passwordData label {
+  margin: 10px 0px 5px 0px;
+  font-weight: 500;
+  display: flex;
+  justify-content: start;
+  align-content: center;
+  align-items: center;
+}
+
+.passwordData input,
+.emailData input {
+  height: 40px;
+  width: 100%;
+}
+
+.authPlatformTitle {
+  text-align: center;
+  font-size: 1.5em;
+  font-weight: 600;
+  color: var(--main-dark-color, #1e293b);
+  margin: 0 0 1em 0;
+}
+
+.loginHeading {
+  text-align: center;
+  margin: 0 0 0.2em 0;
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.loginCaption {
+  margin: 0 0 10px 0px;
+  text-align: center;
+  color: grey;
+  font-size: 0.6em;
+}
+
+.forgotPassword,
+.signinText {
+  text-align: center;
+  color: #7b7a7a;
+  font-size: 0.8em;
+  margin: 0.8em 0 0 0;
+}
+
+.forgotPassword a {
+  text-decoration: none;
+}
+.signinText{
+  text-decoration: none;
+}
+.forgotPassword span,
+.signinText span {
+/* font-size: 0.9em; */
+  text-align: center;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.forgotPassword span {
+  color: #7b7a7a;
+}
+
+.login-btn {
+  border: 1px solid var(--main-auth-button-color);
+  padding: 10px;
+  width: 8em;
+  background-color: var(--main-auth-button-color);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  color: white;
+  width: 100%;
+  border-radius: 5px;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+}
+
+.login-btn:disabled,
+.login-btn.disabled_css {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loginCred input:focus {
+  outline: 1px solid var(--main-auth-button-color);
+}
+
+/* Success/error message with icon (Login, Forgot Password, Reset Password, Confirm email) */
+.authMessage {
+  display: flex;
+  /* align-items: flex-start; */
+  gap: 0.4rem;
+  margin: 0.5em 0;
+  /* align-content: center; */
+  /* align-items: center; */
+}
+.authMessage__icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.authMessage--success .authMessage__icon {
+  color: #0f766e;
+
+}
+.authMessage--error .authMessage__icon {
+  color: #dc2626;
+  width: 14px;
+  height: 14px;
+}
+.authMessage p {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.loginSuccess {
+  font-size: 14px;
+  color: #0f766e;
+}
+
+.orgError {
+  font-size: 0.8em;
+  color: #dc2626;
+  /* color: #b91c1c; */
+}
+
+.loginBtn {
+  text-align: center;
+  margin: 15px 0px 0px 0px;
+}
+
+.emailData label span,
+.passwordData label span {
+  margin: 0 5px 0 0;
+  display: flex;
+}
+
+/* Icon color same as signup page (Mail, LockKeyhole, etc.) */
+.emailData label span svg,
+.passwordData label span svg {
+  color: #64748b;
+}
+
+.login-btn span {
+  margin: 0 0 0 5px;
+  display: flex;
+}
+
+.passwordVisible {
+  margin: 0;
+  display: inline;
+  position: absolute;
+  top: 63.6%;
+  /* left: 90%; */
+  right: 2%;
+  color: #64748b;
+}
+
+.passwordVisible svg {
+  color: inherit;
+}
+
+/* Loading indicator for auth buttons (login, signup, forgot, reset, logout) */
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.auth_btn_loading {
+  pointer-events: none;
+}
+
+.auth_btn_loading .auth_spinner {
+  animation: auth-spin 0.8s linear infinite;
+}

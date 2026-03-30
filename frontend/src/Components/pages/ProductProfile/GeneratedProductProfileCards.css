@@ -1,0 +1,323 @@
+/* Generated Product Profile – Trust Score on top, then section cards */
+
+.generated_profile_wrap {
+  margin-bottom: 2rem;
+}
+
+.generated_profile_trust_section {
+  margin-bottom: 1.5rem;
+}
+
+/* Large green number with "Trust Score" label below (reference style) */
+.generated_profile_trust_score_block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.generated_profile_trust_score_value {
+  display: block;
+  font-size: 3.25rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #059669;
+}
+
+.generated_profile_trust_score_label {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #059669;
+}
+
+.generated_profile_trust_heading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+}
+
+.generated_profile_trust_cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.generated_profile_trust_card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.generated_profile_trust_main {
+  min-width: 0;
+}
+
+.generated_profile_trust_summary {
+  font-size: 0.875rem;
+  color: #4b5563;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.generated_profile_trust_categories {
+  width: 100%;
+}
+
+.generated_profile_trust_cat_title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+}
+
+.generated_profile_trust_cat_empty {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.generated_profile_trust_cat_list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.5rem 1.5rem;
+}
+
+.generated_profile_trust_cat_item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  padding: 0.2rem 0;
+}
+
+.generated_profile_trust_cat_name {
+  color: #6b7280;
+}
+
+.generated_profile_trust_cat_value {
+  font-weight: 500;
+  color: #111827;
+}
+
+/* Section cards grid – Product Information full row, then 2 per row */
+.generated_profile_sections_grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.generated_profile_section_card_full_row {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .generated_profile_sections_grid {
+    grid-template-columns: 1fr;
+  }
+  .generated_profile_section_card_full_row {
+    grid-column: 1;
+  }
+}
+
+.generated_profile_section_card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.generated_profile_section_header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.generated_profile_section_toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 10px;
+  border-radius: 5px;
+  background-color: #f5f7fa;
+}
+
+.generated_profile_section_toggle_label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.generated_profile_section_icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.15rem;
+}
+
+.generated_profile_icon_blue {
+  color: #2563eb;
+}
+
+.generated_profile_icon_purple {
+  color: #7c3aed;
+}
+
+.generated_profile_icon_orange {
+  color: #ea580c;
+}
+
+.generated_profile_icon_green {
+  color: #16a34a;
+}
+
+.generated_profile_icon_teal {
+  color: #0d9488;
+}
+
+.generated_profile_icon_red {
+  color: #dc2626;
+}
+
+.generated_profile_icon_default {
+  color: #6b7280;
+}
+
+.generated_profile_section_header_text {
+  min-width: 0;
+}
+
+.generated_profile_section_title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.2rem 0;
+}
+
+.generated_profile_section_subtitle {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.generated_profile_section_list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.generated_profile_section_item {
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+  padding-left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.generated_profile_section_item::before {
+  content: "";
+  display: inline-block;
+  width: 0.35rem;
+  height: 0.35rem;
+  background: #9ca3af;
+  border-radius: 1px;
+  margin-right: 0.5rem;
+  margin-top: 0.5rem;
+  flex-shrink: 0;
+}
+
+.generated_profile_section_item:last-child {
+  margin-bottom: 0;
+}
+
+.generated_profile_section_item_label {
+  font-weight: 600;
+  color: #111827;
+}
+
+.generated_profile_section_item_value {
+  color: #4b5563;
+}
+
+/* Generate profile form */
+.generated_profile_form {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.generated_profile_form_title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.generated_profile_form_actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.generated_profile_form_error {
+  font-size: 0.875rem;
+  color: #dc2626;
+  margin-top: 0.5rem;
+}
+
+.generated_profile_form_textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.generated_profile_form_textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.generated_profile_loading {
+  padding: 2rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.attestation_visible_status {
+  display: flex;
+  justify-content: space-between;
+}
+
+.icon_header_product_data {
+  display: flex;
+  gap: 0.5em;
+}

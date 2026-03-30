@@ -1,0 +1,656 @@
+/* Assessments page - Buy AI Product (COTS) */
+.ai_assessments_page {
+  /* max-width: 1200px; */
+  /* margin: 0 auto; */
+  /* padding: 1.5rem 0; */
+}
+
+.ai_assessments_heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.ai_assessments_heading .headers h1 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.ai_assessments_heading .sub_title {
+  color: var(--light-gray-color, #64748b);
+  margin: 0;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.ai_assessments_two_col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+@media (max-width: 900px) {
+  .ai_assessments_two_col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ai_assessments_section {
+  background-color: white;
+  /* border: 1px solid #e2e8f0; */
+  border-radius: 5px;
+  padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+  /* padding: 1.5rem; */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin: 0 0 1em 0;
+}
+
+.ai_assessments_section h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  /* margin: 0 0 0.5rem 0; */
+  color: #0f172a;
+}
+
+.ai_assessments_section .section_desc {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin: 0 0 1rem 0;
+  line-height: 1.45;
+}
+
+.ai_assessments_checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0 0;
+  display: flex;
+  gap: 2em;
+}
+
+.ai_assessments_checklist li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+  margin-bottom: 0.35rem;
+  padding: 0 0 0.8em 0;
+  
+}
+
+.ai_assessments_checklist li svg {
+  flex-shrink: 0;
+  /* color: #22c55e; */
+  color: var(--main-auth-button-color);
+}
+
+/* 3 per row, 2 rows for "Each customer assessment covers" */
+.ai_assessments_checklist_3x2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.2em 2em;
+}
+
+@media (max-width: 768px) {
+  .ai_assessments_checklist_3x2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.header_cots {
+  display: flex;
+  gap: 0.5em;
+}
+
+.header_cots span {
+  background-color: #e9f2ff;
+  padding: 0.5em;
+  display: flex;
+  align-content: center;
+  align-items: center;
+  border-radius: 5px;
+}
+.header_cots span svg {
+  color: var(--main-auth-button-color);
+  /* width: 32px;
+  height: 32px; */
+}
+.your_assessments_title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #334155;
+  margin: 0 0 0.75rem 0;
+}
+
+/* Assessment cards – same design as vendor attestation cards */
+.assessment_cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.assessment_card {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.15s ease;
+}
+
+.assessment_card_header {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.assessment_card_center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--grey-color, #4b5563);
+  margin-bottom: 0.75rem;
+}
+
+.assessment_card_center .assessment_card_meta_label {
+  font-weight: 500;
+}
+
+.assessment_card_completed_details {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.assessment_card_title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  text-align: center;
+}
+
+.assessment_card_footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.assessment_card_submitted {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--grey-color, #4b5563);
+}
+
+.assessment_date_icon {
+  flex-shrink: 0;
+  color: var(--grey-color, #4b5563);
+}
+
+.assessment_card_meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--grey-color, #4b5563);
+}
+
+.assessment_card_meta_row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.assessment_card_meta_label {
+  font-weight: 500;
+  min-width: 6rem;
+}
+
+.assessment_status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.assessment_status_icon {
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.assessment_status_draft {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.assessment_status_draft .assessment_status_icon {
+  color: #92400e;
+}
+
+.assessment_status_completed {
+  background-color: var(--active-status-background, #d8f3dc);
+  color: #166534;
+}
+
+.assessment_status_completed .assessment_status_icon {
+  color: #166534;
+}
+
+.assessment_card_actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.assessment_card_btn {
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  background-color: transparent;
+  color: inherit;
+  font-family: inherit;
+}
+
+.assessment_card_btn_primary {
+  background-color: var(--main-auth-button-color, #1e3a8a);
+  color: white;
+  border-color: var(--main-auth-button-color, #1e3a8a);
+}
+
+.assessment_card_btn_primary:hover {
+  opacity: 0.9;
+}
+
+.assessment_card_btn_secondary {
+  background-color: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #374151;
+}
+
+.assessment_card_btn_secondary:hover {
+  background-color: #e5e7eb;
+}
+
+.assessment_card_btn_danger {
+  background-color: #dc2626;
+  border-color: #dc2626;
+  color: white;
+}
+
+.assessment_card_btn_danger:hover {
+  opacity: 0.9;
+}
+
+.assessment_card_progress {
+  margin: 0;
+}
+
+.assessment_card_progress_label {
+  font-size: 0.875rem;
+  color: var(--grey-color, #4b5563);
+  margin: 0 0 0.25rem 0;
+}
+
+.assessment_card_progress_bar {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.assessment_card_progress_fill {
+  height: 100%;
+  background: var(--main-auth-button-color, #1e3a8a);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.btn_start_assessment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.btn_start_assessment:hover {
+  background: #1d4ed8;
+}
+
+/* Tabs for system users (Vendor | Buyer) */
+.assessment_tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+.assessment_tab {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.assessment_tab:hover {
+  color: #334155;
+}
+
+.assessment_tab.active {
+  color: var(--main-auth-button-color, #1e3a8a);
+  border-bottom-color: var(--main-auth-button-color, #1e3a8a);
+  border-radius: 0 !important;
+}
+
+/* YOUR ASSESSMENTS header row: title + search */
+.assessment_list_header_row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  justify-content: space-between;
+}
+.assessment_list_header_row .your_assessments_title {
+  margin: 0;
+}
+.assessment_search_wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 400px;
+}
+.assessment_search_icon {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+.assessment_search_input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  color: #111827;
+}
+.assessment_search_input::placeholder {
+  color: #9ca3af;
+}
+.assessment_search_input:focus {
+  outline: none;
+  border-color: var(--main-auth-button-color, #1e3a8a);
+  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.2);
+}
+.assessment_search_no_results {
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* YOUR ASSESSMENTS – row layout (same as vendor dashboard attestation rows) */
+.assessment_list_rows .vendor_overview_attestation_row {
+  display: flex;
+  align-items: start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+.assessment_list_rows .vendor_overview_attestation_row:last-child {
+  margin-bottom: 0;
+}
+.assessment_list_rows .vendor_overview_attestation_icon {
+  color: #7c3aed;
+  flex-shrink: 0;
+}
+.assessment_list_rows .vendor_overview_attestation_icon_check {
+  color: #16a34a;
+}
+.assessment_list_rows .vendor_overview_attestation_icon_draft {
+  color: #6b7280;
+}
+.assessment_list_rows .vendor_overview_attestation_content {
+  flex: 1;
+  min-width: 0;
+}
+.assessment_list_rows .vendor_overview_attestation_name {
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+}
+.assessment_list_rows .vendor_overview_attestation_product {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0 0 0.25rem 0;
+}
+.assessment_list_rows .vendor_overview_attestation_status_label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #16a34a;
+  margin: 0 0 0.25rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.assessment_list_rows .vendor_overview_attestation_status_label_draft {
+  color: #6b7280;
+}
+.assessment_list_rows .vendor_overview_attestation_status_label_expired {
+  color: tomato;
+}
+.assessment_list_rows .vendor_overview_attestation_icon_expired {
+  color: tomato;
+}
+
+/* Assessment card header status (COMPLETED / Draft / Expired) – same colors as previous status labels */
+.assessment_list_rows .general_rpr_card .general_report_card_header p.assessment_card_status_completed,
+.assessment_list_rows .general_rpr_card .general_report_card_header p.assessment_card_status_completed .general_rpr_card_report_type_icon {
+  color: #16a34a;
+  font-weight: 600;
+}
+.assessment_list_rows .general_rpr_card .general_report_card_header p.assessment_card_status_draft,
+.assessment_list_rows .general_rpr_card .general_report_card_header p.assessment_card_status_draft .general_rpr_card_report_type_icon {
+  color: #6b7280;
+  font-weight: 600;
+}
+.assessment_list_rows .general_rpr_card .general_report_card_header p.assessment_card_status_expired,
+.assessment_list_rows .general_rpr_card .general_report_card_header p.assessment_card_status_expired .general_rpr_card_report_type_icon {
+  color: tomato;
+  font-weight: 600;
+}
+.assessment_list_rows .general_rpr_card .general_report_card_header p.assessment_card_status_rejected,
+.assessment_list_rows .general_rpr_card .general_report_card_header p.assessment_card_status_rejected .general_rpr_card_report_type_icon {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* Assessment cards: 3 per row (reports use 4) */
+.assessment_list_rows .general_rpr_cards_sec {
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 1200px) {
+  .assessment_list_rows .general_rpr_cards_sec {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .assessment_list_rows .general_rpr_cards_sec {
+    grid-template-columns: 1fr;
+  }
+}
+
+.assessment_list_rows .general_rpr_card .general_rpr_card_dates {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.assessment_list_rows .general_rpr_card .assessment_card_header_left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.assessment_list_rows .general_rpr_card .assessment_card_header_expiry {
+  display: block;
+  font-size: 0.8em;
+  font-weight: 400;
+  color: tomato;
+  margin: 0;
+}
+
+.assessment_list_rows .vendor_overview_attestation_by {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0 0 0.15rem 0;
+}
+.assessment_list_rows .vendor_overview_attestation_date_row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+  margin: 0;
+  margin-top: 10px;
+}
+.assessment_list_rows .vendor_overview_attestation_date_row .vendor_overview_attestation_date {
+  margin: 0;
+}
+.assessment_list_rows .vendor_overview_attestation_date {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0;
+  margin-top: 10px;
+}
+.vendor_overview_attestation_date.vendor_overview_attestation_date_expiry,
+.assessment_list_rows .vendor_overview_attestation_date.vendor_overview_attestation_date_expiry {
+  color: tomato;
+}
+.vendor_preview_value_expiry {
+  color: tomato;
+}
+.assessment_list_rows .vendor_overview_attestation_points {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0.25rem 0 0 0;
+}
+.assessment_list_rows .vendor_overview_attestation_actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  align-self: center;
+}
+/* Edit and View – same colour and width */
+.assessment_list_rows .vendor_overview_btn_view,
+.assessment_list_rows .vendor_overview_btn_update {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  min-width: 5.5rem;
+  width: 5.5rem;
+  justify-content: center;
+  box-sizing: border-box;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  font-weight: 500;
+background: var(--main-auth-button-color, #2463eb);
+  color: white;
+  border-color: var(--main-auth-button-color, #2463eb);
+  /* color: #374151; */
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+}
+.assessment_list_rows .vendor_overview_btn_view:hover,
+.assessment_list_rows .vendor_overview_btn_update:hover {
+  background: #f9fafb;
+  color: var(--main-auth-button-color);
+  border: 1px solid var(--main-auth-button-color);
+}
+.assessment_list_rows .vendor_overview_btn_danger {
+  background: tomato;
+  color: white;
+  border-color: tomato;
+}
+.assessment_list_rows .vendor_overview_btn_danger:hover {
+  background: tomato;
+  color: white;
+  border-color: tomato;
+}
+
+/* Delete assessment modal – uses settings UI (profile_modal_*, settings_form_*); only overrides below */
+.assessment_delete_modal_content.profile_modal_content {
+  min-width: 380px;
+}
+.assessment_delete_modal_subtitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: black;
+  margin: 0 0 0.5rem 0;
+}
+.assessment_delete_modal_message {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  margin: 0 0 1rem 0;
+  line-height: 1.45;
+}
+.assessment_delete_required {
+  color: #dc2626;
+}
+.assessment_delete_modal_content .settings_form_actions .assessment_delete_confirm_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.assessment_delete_modal_content .assessment_delete_confirm_btn {
+  background: tomato;
+  color: white;
+  border: none;
+}
+.assessment_delete_modal_content .assessment_delete_confirm_btn:hover:not(:disabled) {
+  background: tomato;
+  color: white;
+}

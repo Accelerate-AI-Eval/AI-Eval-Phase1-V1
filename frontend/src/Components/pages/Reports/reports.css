@@ -1,0 +1,1546 @@
+/* Reports Library – layout matches Attestation (sec_user_page, org_settings_page) */
+
+.reports_tabs_section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-height: 3rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.reports_tabs_search {
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 20rem;
+  width: 100%;
+}
+
+.reports_tabs_search .reports_search_icon {
+  flex-shrink: 0;
+}
+
+
+.reports_tabs_search .reports_search_input {
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  box-sizing: border-box;
+  font-size: 0.875rem;
+}
+
+
+/* Tabs */
+.reports_tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.reports_tab {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  border-radius: 5px 5px 0 0;
+}
+
+.reports_tab:hover {
+  color: #374151;
+}
+
+.reports_tab_active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 1px 0 0 #fff;
+  border-radius: 0 !important;
+}
+
+/* Search (UI only – no functionality) */
+.reports_search_wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  max-width: 320px;
+}
+.reports_search_icon {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+.reports_search_input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  /* border: 1px solid #d1d5db; */
+  border-radius: 5px;
+  font-size: 0.875rem;
+  color: #111827;
+}
+.reports_search_input::placeholder {
+  color: #9ca3af;
+}
+.reports_search_input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+/* Report list */
+.reports_list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 10px;
+}
+
+/* Pagination for reports cards – same UI as DataTable pagination (react-data-table-component) */
+.reports_pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  padding: 0.75rem 0;
+  margin-top: 0.5rem;
+  min-height: 2.5rem;
+  font-size: 13px;
+  color: #6b7280;
+  justify-content: end;
+}
+.reports_pagination > * {
+  display: inline-flex;
+  align-items: center;
+  gap: 2em;
+}
+.reports_pagination_rows_label {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+.reports_pagination_select {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  vertical-align: middle;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  min-height: 2rem;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+}
+.reports_pagination_select:hover,
+.reports_pagination_select:focus {
+  border-color: #94a3b8;
+  outline: none;
+}
+.reports_pagination_range,
+.reports_pagination_page {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+.reports_pagination_buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+/* Match DataTable pagination buttons: circular, 40px, transparent, hover background */
+.reports_pagination_btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.4s, color 0.4s;
+}
+.reports_pagination_btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  color: #111827;
+}
+.reports_pagination_btn:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+.reports_pagination_btn svg {
+  flex-shrink: 0;
+}
+
+.report_card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  text-align: left;
+}
+
+.report_card:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.report_card_icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 5px;
+  background: #ede9fe;
+  color: #7c3aed;
+  flex-shrink: 0;
+}
+
+.report_card_content {
+  flex: 1;
+  min-width: 0;
+}
+
+.report_card_title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+  line-height: 1.4;
+}
+
+.report_card_meta {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.report_card_expiry {
+  font-size: 0.8125rem;
+  color: tomato;
+  margin: 0.25rem 0 0 0;
+}
+
+.report_card_actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.report_card_status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #fff;
+  background: #2563eb;
+  border-radius: 5px;
+}
+
+.report_card_status_archived {
+  background: #6b7280;
+  color: #fff;
+}
+
+.report_card.report_card_archived {
+  cursor: not-allowed;
+}
+
+.report_card_delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: tomato;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.report_card_delete.report_card_delete_icon_only {
+  padding: 0.4em;
+  min-width: 18px;
+  min-height: 18px;
+}
+
+.report_card_delete:hover {
+  background: tomato;
+  color: white;
+}
+
+/* Report delete confirmation modal */
+.report_delete_modal_content.profile_modal_content {
+  min-width: 380px;
+}
+.report_delete_modal_subtitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: black;
+  margin: 0 0 0.5rem 0;
+}
+.report_delete_modal_message {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  margin: 0 0 1rem 0;
+  line-height: 1.45;
+}
+.report_delete_modal_content .settings_form_actions .report_delete_confirm_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.report_delete_modal_content .report_delete_confirm_btn {
+  background: tomato;
+  color: white;
+  border: none;
+}
+.report_delete_modal_content .report_delete_confirm_btn:hover:not(:disabled) {
+  background: tomato;
+  color: white;
+}
+
+.report_delete_modal_content .settings_form_actions .orgCancelBtn,
+.report_delete_modal_content .settings_form_actions .orgCancelBtn:hover {
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  cursor: pointer;
+}
+
+.report_card_download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.report_card_download:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* ---- Report Detail page ---- */
+.report_detail_page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.report_detail_page.report_detail_full {
+  max-width: 960px;
+}
+
+.report_detail_breadcrumb {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0.25rem 0 0 0;
+}
+
+.report_detail_breadcrumb a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.report_detail_breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.report_detail_breadcrumb_sep {
+  margin: 0 0.25rem;
+  color: #9ca3af;
+}
+
+/* Section cards (all sections) – same look as report_risk_category_block */
+.report_section_card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.report_section_card:last-child { margin-bottom: 0; }
+
+.report_section_heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.report_section_heading svg {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.report_detail_info_grid {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 0.5rem 1.5rem;
+}
+
+.report_status_badge {
+  display: inline-flex;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.report_status_completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* Tables */
+.report_table_wrap {
+  overflow-x: auto;
+}
+
+.report_table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.report_table th,
+.report_table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.report_table th {
+  font-weight: 600;
+  color: #374151;
+  background: #f3f4f6;
+}
+
+.report_table td {
+  color: #111827;
+}
+
+.report_table_empty {
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Risk level badges */
+.report_risk_badge {
+  display: inline-flex;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+}
+
+.report_risk_badge.risk_low {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.report_risk_badge.risk_medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.report_risk_badge.risk_high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Risk category sections */
+.report_risk_section .report_risk_intro {
+  font-size: 0.9375rem;
+  color: #4b5563;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+}
+
+.report_risk_list {
+  list-style: none;
+  margin: 0 0 0.75rem 0;
+  padding: 0;
+}
+
+.report_risk_list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  gap: 0.5rem;
+}
+
+.report_risk_item_text {
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.report_risk_icon_ok {
+  color: #16a34a;
+  flex-shrink: 0;
+}
+
+.report_risk_icon_warn {
+  color: #d97706;
+  flex-shrink: 0;
+}
+
+.report_show_details_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: #2563eb;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+
+.report_show_details_btn:hover {
+  text-decoration: underline;
+}
+
+.report_show_details_btn .report_chevron_open {
+  transform: rotate(180deg);
+}
+
+.report_risk_expanded {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.report_attachment_empty,
+.report_comments_placeholder {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  font-style: italic;
+  margin: 0;
+}
+
+.report_detail_header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.report_detail_back_title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.report_detail_back_link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: #2563eb;
+  text-decoration: none;
+  margin-bottom: 0.25rem;
+}
+
+.report_detail_back_link:hover {
+  text-decoration: underline;
+}
+
+.report_detail_title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.report_detail_subtitle {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0.25rem 0 0 0;
+}
+
+.report_detail_export_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  background: #2563eb;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.report_detail_export_btn:hover {
+  background: #1d4ed8;
+}
+
+/* Assessment Recommendation – green card */
+.report_recommendation_card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 5px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.report_recommendation_card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #16a34a;
+  border-radius: 5px 0 0 5px;
+}
+
+.report_recommendation_heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+}
+
+.report_recommendation_heading_icon {
+  color: #16a34a;
+}
+
+.report_recommendation_text {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.5;
+  margin: 0 0 0.5rem 0;
+}
+
+.report_recommendation_score {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Executive Summary – white card */
+.report_summary_card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.report_summary_heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+}
+
+.report_summary_body {
+  font-size: 0.9375rem;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-line;
+}
+
+/* Executive Stakeholder Brief – parsed sections */
+.report_exec_brief_body {
+  white-space: normal;
+}
+.report_exec_brief_section {
+  margin-bottom: 1em;
+}
+.report_exec_brief_section:last-child {
+  margin-bottom: 0;
+}
+.report_exec_brief_section_title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.report_exec_brief_section_title .report_exec_brief_section_icon {
+  flex-shrink: 0;
+  color: #2563eb;
+}
+.report_exec_brief_section_body {
+  font-size: 0.9375rem;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+}
+.report_exec_brief_para {
+  margin: 0 0 0.5rem 0;
+}
+.report_exec_brief_list {
+  margin: 0.25rem 0 0.75rem 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+.report_exec_brief_bullet {
+  margin-bottom: 0.25rem;
+}
+.report_blocker_list {
+  list-style: none;
+  padding-left: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+.report_blocker_item {
+  margin-bottom: 0;
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+@media (max-width: 900px) {
+  .report_blocker_list {
+    grid-template-columns: 1fr;
+  }
+}
+.report_blocker_main {
+  color: #111827;
+}
+.report_blocker_meta {
+  margin-top: 0.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5em;
+  font-size: 0.84rem;
+  flex-direction: row;
+  align-items: center;
+}
+.report_blocker_metric {
+  color: #4b5563;
+}
+.report_blocker_metric_value {
+  font-weight: 700;
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+.report_severity_high {
+  color: #991b1b;
+  background: #fee2e2;
+}
+.report_severity_medium {
+  color: #9a3412;
+  background: #ffedd5;
+}
+.report_severity_low {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+.report_severity_unknown {
+  color: #374151;
+  background: #e5e7eb;
+}
+.report_blocker_evidence {
+  color: #4b5563;
+}
+
+/* Assessment details key-value list */
+.report_detail_dl {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.report_detail_row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 0.75rem 1.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  align-items: flex-start;
+}
+.report_detail_row:last-child {
+  border-bottom: none;
+}
+.report_detail_dt {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0;
+}
+.report_detail_dd {
+  font-size: 0.9375rem;
+  color: #111827;
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Report not found / Report not completed */
+.report_detail_empty {
+  background: #fff;
+  border: 1px dashed var(--light-gray-color);
+  /* border: 1px dashed #e5e7eb; */
+  border-radius: 5px;
+  padding: 2rem;
+  text-align: center;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.report_detail_empty_title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.report_detail_empty_text {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  line-height: 1.5;
+  /* margin: 0 0 1.25rem 0; */
+}
+
+.report_detail_empty_back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+/* ---- Contract Information layout (report detail aligned with reference UI) ---- */
+.report_detail_page.report_detail_contract {
+  max-width: 960px;
+}
+
+.report_contract_header {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.report_contract_header_inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.report_contract_home {
+  font-size: 0.875rem;
+  color: #2563eb;
+  text-decoration: none;
+}
+.report_contract_home:hover {
+  text-decoration: underline;
+}
+
+.report_contract_title_block {
+  flex: 1;
+  min-width: 0;
+}
+
+.report_contract_main_title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+}
+
+.report_contract_subtitle {
+  font-size: 1rem;
+  color: #374151;
+  margin: 0;
+}
+
+.report_contract_id {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0.25rem 0 0 0;
+}
+
+/* Assessment info 2x3 grid with icons */
+.report_assessment_grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.report_assessment_item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: #f3f4f6;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  position: relative;
+  padding-right: 2.25rem;
+}
+
+.report_assessment_value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.report_assessment_label {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.report_assessment_icon {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  flex-shrink: 0;
+}
+
+.report_icon_ok {
+  color: #16a34a;
+}
+
+.report_icon_warn {
+  color: #d97706;
+}
+
+.report_icon_error {
+  color: #dc2626;
+}
+
+.report_section_subheading {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.75rem 0;
+}
+
+.report_detail_row_full {
+  grid-column: 1 / -1;
+}
+
+/* Risk assessment result by domain */
+.report_risk_domain_block {
+  margin-bottom: 1.5rem;
+}
+.report_risk_domain_block:last-child {
+  margin-bottom: 0;
+}
+
+.report_risk_domain_title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+}
+
+.report_risk_card {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.report_risk_card:last-child {
+  margin-bottom: 0;
+}
+
+.report_risk_card_title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.report_risk_card_dl,
+.report_risk_card_row {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.report_risk_card_row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+.report_risk_card_row dt {
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0;
+}
+
+.report_risk_card_row dd {
+  margin: 0;
+  color: #111827;
+}
+
+.report_risk_card_status dd.report_risk_status_cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.report_risk_card_desc {
+  font-size: 0.875rem;
+  color: #4b5563;
+  line-height: 1.5;
+  margin: 0.5rem 0 0.75rem 0;
+}
+
+.report_risk_details_btn {
+  font-size: 0.8125rem;
+  color: #2563eb;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  margin-top: 0.5rem;
+}
+.report_risk_details_btn:hover {
+  text-decoration: underline;
+}
+
+.report_risk_related {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+
+.report_risk_related_label {
+  font-weight: 600;
+  margin-right: 0.35rem;
+}
+
+.report_risk_expanded {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.report_policy_list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.9375rem;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.report_policy_list li {
+  margin-bottom: 0.35rem;
+}
+
+.report_history_list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.9375rem;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.report_no_risks,
+.report_attachment_empty {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.report_risk_analysis_intro {
+  font-size: 0.9375rem;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+/* ---- Analysis Report layout (full report from vendorCotsReportAgent) ---- */
+.report_detail_page.report_assessment_layout {
+  max-width: 960px;
+}
+
+.report_assessment_header {
+  margin-bottom: 1.5rem;
+}
+
+.report_assessment_back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: #2563eb;
+  text-decoration: none;
+  margin-bottom: 0.5rem;
+}
+.report_assessment_back:hover { text-decoration: none; }
+
+.report_assessment_title_row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.25rem 0;
+}
+
+.report_assessment_title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  line-height: 1.3;
+  flex: 1;
+  min-width: 0;
+}
+
+.report_assessment_subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0 0 1rem 0;
+}
+
+
+/* Vendor-Side Context Panel – same card color as report_section_card */
+.report_context_panel {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.report_context_pill {
+  display: inline-block;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  margin-bottom: 1rem;
+}
+
+.report_context_inner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2rem;
+  align-items: start;
+}
+
+.report_context_entity {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+}
+
+.report_context_meta {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0 0 0.75rem 0;
+}
+
+.report_context_desc {
+  font-size: 0.9375rem;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.report_context_right {
+  text-align: right;
+}
+
+.report_context_vendor {
+  font-size: 0.875rem;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+}
+
+.report_context_rating {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+}
+
+.report_context_grade {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.report_context_score {
+  font-size: 0.875rem;
+  color: #166534;
+}
+
+/* Executive Summary */
+.report_exec_summary p { margin: 0 0 0.75rem 0; }
+.report_exec_summary p:last-child { margin-bottom: 0; }
+
+/* Deployment Overview grid */
+.report_deployment_grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.report_deployment_item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: #f3f4f6;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.report_deployment_label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.report_deployment_value {
+  font-size: 0.9375rem;
+  color: #111827;
+}
+
+/* ROI Analysis */
+.report_roi_heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 1rem 0;
+}
+
+.report_roi_grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.report_roi_card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem;
+  background: #f3f4f6;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.report_roi_value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.report_roi_label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.report_roi_sub {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.report_subheading {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.75rem 0;
+}
+
+/* Risk Assessment category blocks */
+.report_overall_risk {
+  font-size: 1rem;
+  margin: 0 0 1rem 0;
+}
+
+/* Risk Assessment: vendor / buyer / shared scope groups */
+.report_risk_scope_group {
+  margin-bottom: 1.35rem;
+}
+
+.report_risk_scope_group:last-of-type {
+  margin-bottom: 0;
+}
+
+.report_risk_scope_banner {
+  margin-bottom: 0.65rem;
+}
+
+.report_risk_scope_tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+}
+
+.report_risk_tag_vendor {
+  background: #dbeafe;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+
+.report_risk_tag_buyer {
+  background: #ede9fe;
+  color: #5b21b6;
+  border-color: #ddd6fe;
+}
+
+.report_risk_tag_shared {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+/* Inner cards – platform gray variant for contrast inside section cards */
+.report_risk_category_block {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.report_risk_category_block:last-child { margin-bottom: 0; }
+
+.report_risk_category_header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.report_risk_category_title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.report_risk_category_score {
+  margin-left: auto;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.report_risks_list h4,
+.report_mitigations_list h4 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin: 0 0 0.35rem 0;
+}
+
+.report_risks_list ul,
+.report_mitigations_list ul {
+  margin: 0 0 0.75rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.5;
+}
+
+/* Summarized risk bullets: short, scannable lines */
+.report_risk_summary_list li {
+  line-height: 1.45;
+  margin-bottom: 0.4rem;
+}
+
+.report_risks_list li,
+.report_mitigations_list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.report_residual_risk {
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0 0;
+}
+
+/* Compliance */
+.report_compliance_summary {
+  font-size: 0.9375rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.report_compliance_list { margin: 0; }
+
+.report_compliance_row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.875rem;
+}
+
+.report_pill {
+  display: inline-flex;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+}
+
+.report_pill_met { background: #d1fae5; color: #065f46; }
+.report_pill_pending { background: #fef3c7; color: #92400e; }
+.report_pill_deferred { background: #f3f4f6; color: #4b5563; }
+.report_pill_complete { background: #d1fae5; color: #065f46; }
+.report_pill_progress { background: #dbeafe; color: #1d4ed8; }
+.report_pill_planned { background: #f3f4f6; color: #4b5563; }
+.report_pill_priority_high { background: #fee2e2; color: #991b1b; }
+.report_pill_priority_medium { background: #fed7aa; color: #9a3412; }
+.report_pill_priority_low { background: #dbeafe; color: #1d4ed8; }
+
+/* Implementation Plan phases */
+.report_phase_list { display: flex; flex-direction: column; gap: 1rem; }
+
+.report_phase_card {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+
+.report_phase_header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.report_phase_header h3 { font-size: 1rem; margin: 0; }
+
+.report_phase_timeline {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.report_phase_card h4 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin: 0.75rem 0 0.25rem 0;
+}
+
+.report_phase_card ul { margin: 0; padding-left: 1.25rem; font-size: 0.875rem; }
+.report_tags { font-size: 0.875rem; color: #6b7280; }
+
+/* Recommendations with priority */
+.report_recommendations_list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.report_rec_item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.report_rec_item:last-child { border-bottom: none; }
+
+.report_rec_item strong { display: block; margin-bottom: 0.25rem; }
+.report_rec_item p { margin: 0 0 0.25rem 0; font-size: 0.875rem; color: #4b5563; line-height: 1.5; }
+.report_rec_timeline { font-size: 0.8125rem; color: #6b7280; }
+
+/* Appendix */
+.report_appendix .report_appendix_line { margin: 0 0 0.35rem 0; font-size: 0.9375rem; }
+.report_appendix_sources { margin: 0.5rem 0 0 1.25rem; padding: 0; font-size: 0.875rem; color: #6b7280; }

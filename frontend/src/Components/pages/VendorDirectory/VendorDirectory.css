@@ -1,0 +1,446 @@
+/* Page and header spacing match User Management (org_settings_page, org_settings_header.page_header_align) */
+.vendor_directory_page {
+  padding: 1.5em 1em 0 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.vendor_directory_header.page_header_align {
+  margin: 0.9em 0 1.5rem 0;
+}
+
+/* Tabs: All Vendors | My Vendors (buyer in vendor portal) */
+.vendor_directory_tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+.vendor_directory_tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #64748b;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+
+.vendor_directory_tab:hover {
+  color: #334155;
+}
+
+.vendor_directory_tab_active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  border-radius: 0 !important;
+}
+
+.vendor_directory_loading,
+.vendor_directory_error,
+.vendor_directory_empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.vendor_directory_error {
+  color: #dc2626;
+}
+
+.vendor_directory_empty {
+  background: #f9fafb;
+  border: 1px dashed #e5e7eb;
+  border-radius: 5px;
+}
+
+/* Search: product name and organization – full width */
+.vendor_directory_search_wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.vendor_directory_search_icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+.vendor_directory_search_input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9375rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  outline: none;
+  box-sizing: border-box;
+}
+.vendor_directory_search_input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+.vendor_directory_search_input::placeholder {
+  color: #9ca3af;
+}
+
+.vendor_directory_grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.vendor_directory_card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.vendor_directory_card_clickable {
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.vendor_directory_card_clickable:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.vendor_directory_card_header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 0.75rem;
+}
+
+.vendor_directory_card_avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #166534;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.vendor_directory_card_header_text {
+  /* flex: 1; */
+  min-width: 0;
+}
+
+.vendor_directory_card_trust_sector_wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+/* Trust score badge uses product_profile_product_card_trust_* (product_profile.css) for same look as Product Profile */
+
+.vendor_directory_card_sector {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #059669;
+  line-height: 1.3;
+  text-align: right;
+  max-width: 14rem;
+  display: block;
+  word-break: break-word;
+}
+
+.vendor_directory_card_name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.2rem 0;
+  line-height: 1.3;
+}
+
+.vendor_directory_card_products {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.vendor_directory_card_body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 1.25rem 1rem;
+}
+
+.vendor_directory_card_type {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0 0 0.5rem 0;
+}
+
+.vendor_directory_card_desc {
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.5;
+  margin: 0 0 0.75rem 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vendor_directory_card_footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem 1.25rem;
+  border-top: 1px solid #f3f4f6;
+  margin-top: auto;
+}
+
+.vendor_directory_card_location {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.vendor_directory_card_action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.vendor_directory_card_action_btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.vendor_directory_card_action_btn:hover {
+  text-decoration: none;
+  color: #1d4ed8;
+}
+
+.vendor_directory_card_action_btn svg {
+  color: currentColor;
+}
+
+.vendor_directory_card_action_btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Vendor detail modal – centered like Invite User popup (modal.css), same overlay background */
+.vendor_directory_modal_overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1rem;
+  z-index: 10000;
+  overflow-y: auto;
+}
+
+.vendor_directory_modal_overlay_second {
+  z-index: 10001;
+}
+
+.vendor_directory_modal {
+  background-color: white;
+  border-radius: 5px;
+  width: 100%;
+  max-width: 36rem;
+  max-height: calc(100vh - 4rem);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgb(148, 163, 184);
+}
+
+.vendor_directory_modal_large {
+  max-width: 88rem;
+}
+
+.vendor_directory_modal_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.vendor_directory_modal_title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.vendor_directory_modal_body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.vendor_directory_product_description {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.vendor_directory_product_description_heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.vendor_directory_product_description_text {
+  font-size: 0.9375rem;
+  color: #374151;
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.vendor_directory_empty_products {
+  color: #6b7280;
+  font-size: 0.9375rem;
+  margin: 0;
+}
+
+.vendor_directory_products_grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.vendor_directory_product_card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.vendor_directory_product_card:hover {
+  background: #f9fafb;
+  border-color: #2563eb;
+}
+
+.vendor_directory_product_card_icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 5px;
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.vendor_directory_product_card_content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.vendor_directory_product_card_name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.vendor_directory_product_card_status {
+  font-size: 0.75rem;
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.vendor_directory_product_card_sector {
+  font-size: 0.75rem;
+  color: #059669;
+  font-weight: 500;
+  line-height: 1.2;
+  margin-top: 0.15rem;
+}
+
+.vendor_directory_product_card_trust_badge {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.vendor_directory_product_card_trust_label {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #059669;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.vendor_directory_product_card_trust_value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #059669;
+  line-height: 1.1;
+}
+
+.vendor_directory_product_card_arrow {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
