@@ -150,6 +150,11 @@
   grid-template-columns: repeat(4, 1fr);
 }
 
+/* Buyer dashboard top metrics should be 3-up */
+.governance_overview .vendor_overview_metrics.vendor_overview_metrics_four {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 @media (max-width: 1024px) {
   .vendor_overview_metrics.vendor_overview_metrics_four {
     grid-template-columns: repeat(2, 1fr);
@@ -947,7 +952,7 @@
 /* ========== Bottom row: Risks by Intent, Risk Domains, Recent Assessments ========== */
 .governance_bottom_row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   margin-top: 1.5rem;
 }
@@ -964,6 +969,303 @@
   border-radius: 5px;
   padding: 1.25rem 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.governance_panel {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 1.15rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  margin-top: 1rem;
+}
+
+.governance_top_risk_grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+}
+
+.governance_top_risk_rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.governance_top_risk_row_meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #374151;
+  margin-bottom: 0.35rem;
+}
+
+.governance_top_risk_track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.governance_top_risk_fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #1d4ed8;
+}
+
+.governance_domain_panel {
+  text-align: left;
+  position: relative;
+}
+
+/* Buyer dashboard: hide any floating helper/agent icon in Risk Domains card */
+.governance_domain_panel .governance_agent_icon,
+.governance_domain_panel .agent_icon,
+.governance_domain_panel .agent-fab,
+.governance_domain_panel .chat-fab,
+.governance_domain_panel > button {
+  display: none !important;
+}
+
+.governance_domain_rings {
+  width: 210px;
+  height: 210px;
+  margin: 0.25rem auto 0.85rem;
+  position: relative;
+}
+
+.governance_domain_rings_svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.governance_domain_rings .ring {
+  position: absolute;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: #EDEEF0;
+}
+
+.governance_domain_rings .ring_outer {
+  inset: 0;
+  border-width: 14px;
+  border-top-color: #0049C4;
+  border-right-color: #0049C4;
+  border-bottom-color: #0049C4;
+  transform: rotate(-22deg);
+}
+
+.governance_domain_rings .ring_mid {
+  inset: 24px;
+  border-width: 11px;
+  border-top-color: #00298F;
+  border-right-color: #00298F;
+  border-left-color: #00298F;
+  transform: rotate(18deg);
+}
+
+.governance_domain_rings .ring_inner {
+  inset: 54px;
+  border-width: 10px;
+  border-right-color: #C9D3E0;
+  border-top-color: #C9D3E0;
+  border-left-color: #C9D3E0;
+  transform: rotate(36deg);
+}
+
+.governance_domain_tiles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.governance_domain_tile {
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #0049C4;
+  border-radius: 10px;
+  background: #f3f4f6;
+  padding: 0.55rem 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.governance_domain_tiles .governance_domain_tile:nth-child(2) {
+  border-left-color: #00298F;
+}
+
+.governance_domain_tiles .governance_domain_tile:nth-child(3) {
+  border-left-color: #C9D3E0;
+}
+
+.governance_domain_tile .tile_label {
+  margin: 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.governance_domain_tile .tile_text {
+  margin: 0.1rem 0 0;
+  font-size: 0.8rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.governance_domain_tile .tile_value {
+  margin: 0;
+  font-size: 1.9rem;
+  color: #1d4ed8;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.governance_section_title_row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.governance_chip_row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.governance_chip {
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 0.16rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.governance_table_wrap {
+  margin-top: 0.6rem;
+  overflow-x: auto;
+}
+
+.governance_table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.governance_table th,
+.governance_table td {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 0.7rem 0.55rem;
+  text-align: left;
+}
+
+.governance_table th {
+  color: #6b7280;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status_ok { color: #15803d; font-weight: 600; }
+.status_warn { color: #a16207; font-weight: 600; }
+.status_bad { color: #b91c1c; font-weight: 600; }
+
+.governance_view_link {
+  font-size: 0.8rem;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+  align-content: center;
+  align-items: center;
+  display: flex;
+  gap: 0.3em;
+}
+
+.governance_mit_chip_list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.governance_mit_chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid #d9e3ff;
+  background: #eef3ff;
+  color: #324ea8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.governance_summary_block {
+  margin-top: 0.25rem;
+}
+
+.governance_summary_text {
+  margin: 0.5rem 0 0.85rem 0;
+  color: #374151;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 1024px) {
+  .governance_top_risk_grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.governance_completed_section {
+  margin-top: 1.25rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 1.1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.governance_completed_grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.governance_completed_card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  background: #f8fafc;
+}
+
+.governance_completed_card_main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .governance_completed_grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .governance_bottom_card_title {
@@ -1203,6 +1505,11 @@ font-size: 1em;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1rem;
+}
+
+/* Buyer dashboard quick actions should be 4-up */
+.governance_overview .vendor_portal_action_cards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 @media (max-width: 1200px) {

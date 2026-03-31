@@ -74,6 +74,8 @@ export interface Appendix {
   reviewedBy?: string;
   confidentiality?: string;
   dataSources?: string[];
+  salesRiskFormula?: Record<string, unknown>;
+  salesRiskBreakdown?: Record<string, unknown>;
 }
 
 export interface FullReportJson {
@@ -439,6 +441,872 @@ function sanitizeAppendix(v: unknown): Appendix | undefined {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 1 – CUSTOMER FRICTION RISK
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 2.2.2  Regulatory Complexity
+ *
+ * @param {{
+ *   customerRegulatoryRequirements: string[],
+ *   sector: string
+ * }} p
+ */
+function calcRegulatoryComplexity(p: any) {
+  const sectorMultiplierMap: Record<string, number> = {
+    Healthcare:          6,
+    Financial_Services:  5,
+    Government:          5,
+    Autonomous_Systems:  7,
+    E_Commerce:          3,
+    Technology:          2,
+  };
+
+  const multiplier = sectorMultiplierMap[p.sector] ?? 2;
+  const count      = Array.isArray(p.customerRegulatoryRequirements)
+    ? p.customerRegulatoryRequirements.length
+    : 0;
+  const value = count * multiplier;
+
+  return {
+    regulatory_requirement_count: count,
+    regulatory_requirements:      p.customerRegulatoryRequirements ?? [],
+    sector_complexity_multiplier: multiplier,
+    value,
+  };
+}
+
+/**
+ * 2.2.3  Data Sensitivity Friction
+ *
+ * @param {{
+ *   customerDataSensitivity: string,
+ *   sector: string,
+ *   customerRegulatoryRequirements: string[]
+ * }} p
+ */
+function calcDataSensitivityFriction(p: any) {
+  const sensitivityMap: Record<string, number> = {
+    'Critical (Life-safety, National security)': 30,
+    'High (PHI, Financial data, PII)':           20,
+    'Medium (Business confidential)':            10,
+    'Low (Public or anonymized)':                 5,
+  };
+
+  const basePoints = sensitivityMap[p.customerDataSensitivity];
+  if (basePoints === undefined) {
+    throw new Error(`Unknown customerDataSensitivity: ${p.customerDataSensitivity}`);
+  }
+
+  const regCount    = Array.isArray(p.customerRegulatoryRequirements)
+    ? p.customerRegulatoryRequirements.length : 0;
+  const burdenRate  = ['Healthcare', 'Financial_Services'].includes(p.sector) ? 3 : 2;
+  const docBurden   = regCount * burdenRate;
+
+  return {
+    data_sensitivity_base_points:   basePoints,
+    regulatory_count:               regCount,
+    compliance_burden_rate:         burdenRate,
+    compliance_documentation_burden: docBurden,
+    value: basePoints + docBurden,
+  };
+}
+
+/**
+ * 2.2.4  Risk Tolerance Friction
+ *
+ * @param {{
+ *   customerRiskTolerance: string,
+ *   customerSpecificRiskCount: number,
+ *   customerRegulatoryRequirements: string[]
+ * }} p
+ */
+function calcRiskToleranceFriction(p: any) {
+  const toleranceMap: Record<string, number> = {
+    Aggressive:   3,
+    Moderate:     8,
+    Conservative: 15,
+    Risk_averse:  20,
+  };
+
+  const base = toleranceMap[p.customerRiskTolerance];
+  if (base === undefined) {
+    throw new Error(`Unknown customerRiskTolerance: ${p.customerRiskTolerance}`);
+  }
+
+  const regCount    = Array.isArray(p.customerRegulatoryRequirements)
+    ? p.customerRegulatoryRequirements.length : 0;
+  const isConservative = ['Conservative', 'Risk_averse'].includes(p.customerRiskTolerance);
+  const proofBurden    = isConservative
+    ? (p.customerSpecificRiskCount * 2) + regCount
+    : p.customerSpecificRiskCount;
+
+  return {
+    tolerance_base_points:    base,
+    is_conservative_or_averse: isConservative,
+    customer_specific_risk_count: p.customerSpecificRiskCount,
+    regulatory_count:         regCount,
+    proof_requirement_burden: proofBurden,
+    value: base + proofBurden,
+  };
+}
+
+/**
+ * 2.2.5  Customer-Specific Risk Friction
+ *
+ * @param {{
+ *   customerSpecificRiskCount: number,
+ *   customerType: string,
+ *   customerHasUniqueRequirements: boolean,
+ *   uniqueRequirementsList?: string[]
+ * }} p
+ */
+function calcCustomerSpecificRiskFriction(p: any) {
+  const riskWeightMap: Record<string, number> = {
+    Enterprise: 12,
+    Mid_market: 10,
+    SMB:         7,
+  };
+
+  const riskWeight = riskWeightMap[p.customerType];
+  if (riskWeight === undefined) {
+    throw new Error(`Unknown customerType: ${p.customerType}`);
+  }
+
+  const baseContribution  = p.customerSpecificRiskCount * riskWeight;
+  const uniquePenalty     = p.customerHasUniqueRequirements
+    ? p.customerSpecificRiskCount * 5
+    : 0;
+
+  return {
+    customer_specific_risk_count: p.customerSpecificRiskCount,
+    customer_type:                p.customerType,
+    risk_weight:                  riskWeight,
+    base_contribution:            baseContribution,
+    has_unique_requirements:      p.customerHasUniqueRequirements,
+    unique_requirements_list:     p.uniqueRequirementsList ?? [],
+    unique_requirement_penalty:   uniquePenalty,
+    value: baseContribution + uniquePenalty,
+  };
+}
+
+/**
+ * 2.2.6  Total Customer Friction Risk
+ *
+ * @param {Object} p  Combined input for all CFR sub-components
+ */
+function calculateCustomerFrictionRisk(p: any) {
+  const regulatory = calcRegulatoryComplexity(p);
+  const dataSens   = calcDataSensitivityFriction(p);
+  const riskTol    = calcRiskToleranceFriction(p);
+  const specific   = calcCustomerSpecificRiskFriction(p);
+
+  const raw   = regulatory.value + dataSens.value + riskTol.value + specific.value;
+  const value = Math.min(100, raw);
+
+  return {
+    regulatory_complexity:        regulatory,
+    data_sensitivity_friction:    dataSens,
+    risk_tolerance_friction:      riskTol,
+    customer_specific_risk_friction: specific,
+    raw_total:                    raw,
+    is_capped:                    raw > 100,
+    value,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 2 – IMPLEMENTATION RISK
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 2.3.2  Integration Complexity
+ *
+ * @param {{
+ *   integrationPoints: { systemType: string }[],
+ * }} p
+ */
+function calcIntegrationComplexity(p: any) {
+  const complexityMap: Record<string, number> = {
+    Legacy_mainframe:       35,
+    Legacy_client_server:   28,
+    Modern_monolith:        20,
+    Microservices:          15,
+    Cloud_native_API:       10,
+    SaaS_standard_connector: 5,
+  };
+
+  if (!p.integrationPoints || p.integrationPoints.length === 0) {
+    return {
+      integration_points: [],
+      integration_point_count: 0,
+      per_point_scores:   [],
+      average_complexity: 0,
+      system_count_penalty: 0,
+      value: 0,
+    };
+  }
+
+  const perPointScores = p.integrationPoints.map((pt: any) => {
+    const score = complexityMap[pt.systemType];
+    if (score === undefined) throw new Error(`Unknown systemType: ${pt.systemType}`);
+    return { system_type: pt.systemType, complexity_score: score };
+  });
+
+  const avg         = perPointScores.reduce((s: number, pt: any) => s + pt.complexity_score, 0) / perPointScores.length;
+  const countPenalty = p.integrationPoints.length > 3
+    ? (p.integrationPoints.length - 3) * 5
+    : 0;
+
+  return {
+    integration_points:      perPointScores,
+    integration_point_count: p.integrationPoints.length,
+    average_complexity:      parseFloat(avg.toFixed(4)),
+    system_count_penalty:    countPenalty,
+    value:                   parseFloat((avg + countPenalty).toFixed(4)),
+  };
+}
+
+/**
+ * 2.3.3  Customization Required
+ *
+ * @param {{
+ *   customizationLevel: string,
+ *   sector: string,
+ *   customerRequiresIndustryWorkflows: boolean,
+ *   businessProcessChangesRequired: number
+ * }} p
+ */
+function calcCustomizationRequired(p: any) {
+  const custMap: Record<string, number> = {
+    'None (use as-is)':              0,
+    'Minimal (configuration only)':  5,
+    'Moderate (config + light dev)': 15,
+    'Extensive (significant dev)':   25,
+    Custom_build:                    40,
+  };
+  const industryPenaltyMap: Record<string, number> = {
+    Healthcare:        12,
+    Financial_Services: 10,
+    Government:         8,
+    Other:              5,
+  };
+
+  const base = custMap[p.customizationLevel];
+  if (base === undefined) throw new Error(`Unknown customizationLevel: ${p.customizationLevel}`);
+
+  const industryPenalty = p.customerRequiresIndustryWorkflows
+    ? (industryPenaltyMap[p.sector] ?? industryPenaltyMap.Other)
+    : 0;
+  const workflowPenalty = (p.businessProcessChangesRequired ?? 0) * 3;
+
+  return {
+    base_customization_effort:   base,
+    customer_requires_industry_workflows: p.customerRequiresIndustryWorkflows,
+    industry_specific_penalty:   industryPenalty,
+    business_process_changes:    p.businessProcessChangesRequired ?? 0,
+    workflow_modification_penalty: workflowPenalty,
+    value: base + industryPenalty + workflowPenalty,
+  };
+}
+
+/**
+ * 2.3.4  Timeline Pressure
+ *
+ * @param {{
+ *   implementationTimelineMonths: number,
+ *   regulatoryDeadlineExists: boolean,
+ *   monthsUntilDeadline?: number
+ * }} p
+ */
+function calcTimelinePressure(p: any) {
+  let baseRisk;
+  const months = p.implementationTimelineMonths;
+  if      (months < 2)  baseRisk = 30;
+  else if (months < 3)  baseRisk = 20;
+  else if (months < 6)  baseRisk = 10;
+  else if (months < 12) baseRisk = 5;
+  else                   baseRisk = 2;
+
+  let deadlineCriticality = 0;
+  if (p.regulatoryDeadlineExists && p.monthsUntilDeadline !== undefined) {
+    deadlineCriticality = Math.min(15, (p.monthsUntilDeadline * -3) + 20);
+    deadlineCriticality = Math.max(0, deadlineCriticality); // floor at 0
+  }
+
+  return {
+    implementation_timeline_months: months,
+    base_timeline_risk:             baseRisk,
+    regulatory_deadline_exists:     p.regulatoryDeadlineExists,
+    months_until_deadline:          p.monthsUntilDeadline ?? null,
+    deadline_criticality_bonus:     deadlineCriticality,
+    value: baseRisk + deadlineCriticality,
+  };
+}
+
+/**
+ * 2.3.5  Feature Gap
+ *
+ * @param {{
+ *   productFeatureMatchPct: number,
+ *   missingCriticalFeatures: string[]
+ * }} p
+ */
+function calcFeatureGap(p: any) {
+  const baseGap        = (100 - p.productFeatureMatchPct) / 2;
+  const criticalCount  = Array.isArray(p.missingCriticalFeatures)
+    ? p.missingCriticalFeatures.length : 0;
+  const criticalPenalty = criticalCount * 8;
+
+  return {
+    product_feature_match_pct:   p.productFeatureMatchPct,
+    feature_gap_base:            parseFloat(baseGap.toFixed(4)),
+    missing_critical_features:   p.missingCriticalFeatures ?? [],
+    missing_critical_count:      criticalCount,
+    critical_feature_penalty:    criticalPenalty,
+    value: parseFloat((baseGap + criticalPenalty).toFixed(4)),
+  };
+}
+
+/**
+ * 2.3.6  Mitigation Gap
+ *
+ * @param {{
+ *   customerSpecificRiskCount: number,
+ *   proposedMitigationsCount: number,
+ *   avgMitigationsPerRisk?: number   // defaults to 4 per spec
+ * }} p
+ */
+function calcMitigationGap(p: any) {
+  const avgPerRisk        = p.avgMitigationsPerRisk ?? 4;
+  const requiredMit       = p.customerSpecificRiskCount * avgPerRisk;
+  const proposedMit       = p.proposedMitigationsCount;
+  const MAX_PENALTY       = 40;
+
+  const gap     = Math.max(0, requiredMit - proposedMit);
+  const gapRatio = requiredMit > 0 ? gap / requiredMit : 0;
+  const value    = parseFloat((gapRatio * MAX_PENALTY).toFixed(4));
+
+  return {
+    customer_specific_risk_count: p.customerSpecificRiskCount,
+    avg_mitigations_per_risk:     avgPerRisk,
+    required_mitigations:         requiredMit,
+    proposed_mitigations:         proposedMit,
+    mitigation_gap_count:         gap,
+    gap_ratio:                    parseFloat(gapRatio.toFixed(4)),
+    max_penalty:                  MAX_PENALTY,
+    value,
+  };
+}
+
+/**
+ * 2.3.7  Total Implementation Risk
+ *
+ * @param {Object} p  Combined input for all IR sub-components
+ */
+function calculateImplementationRisk(p: any) {
+  const integration   = calcIntegrationComplexity(p);
+  const customization = calcCustomizationRequired(p);
+  const timeline      = calcTimelinePressure(p);
+  const featureGap    = calcFeatureGap(p);
+  const mitigationGap = calcMitigationGap(p);
+
+  const raw   = integration.value + customization.value + timeline.value
+              + featureGap.value   + mitigationGap.value;
+  const value = parseFloat(Math.min(100, raw).toFixed(4));
+
+  return {
+    integration_complexity:  integration,
+    customization_required:  customization,
+    timeline_pressure:       timeline,
+    feature_gap:             featureGap,
+    mitigation_gap:          mitigationGap,
+    raw_total:               parseFloat(raw.toFixed(4)),
+    is_capped:               raw > 100,
+    value,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 3 – COMPETITIVE RISK
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 2.4.2  Competitive Alternatives
+ *
+ * @param {{
+ *   competitorCount: string,
+ *   customerConsideringBuildVsBuy: boolean,
+ *   customerTechnicalCapability?: string
+ * }} p
+ */
+function calcCompetitiveAlternatives(p: any) {
+  const competitorMap: Record<string, number> = {
+    '0 (sole source)':   0,
+    '1 competitor':     10,
+    '2-3 competitors':  20,
+    '4+ competitors':   25,
+  };
+
+  const baseCompetition = competitorMap[p.competitorCount];
+  if (baseCompetition === undefined) {
+    throw new Error(`Unknown competitorCount: ${p.competitorCount}`);
+  }
+
+  const buildCapabilityMap: Record<string, number> = {
+    'Strong (can build)':        20,
+    'Moderate (difficult build)':10,
+    'Weak (unlikely to build)':   5,
+  };
+
+  let buildPenalty = 0;
+  if (p.customerConsideringBuildVsBuy) {
+    const cap = buildCapabilityMap[p.customerTechnicalCapability];
+    if (cap === undefined) throw new Error(`Unknown customerTechnicalCapability: ${p.customerTechnicalCapability}`);
+    buildPenalty = cap;
+  }
+
+  return {
+    competitor_count_label:            p.competitorCount,
+    base_competition_points:           baseCompetition,
+    customer_considering_build_vs_buy: p.customerConsideringBuildVsBuy,
+    customer_technical_capability:     p.customerTechnicalCapability ?? null,
+    build_option_penalty:              buildPenalty,
+    value: baseCompetition + buildPenalty,
+  };
+}
+
+/**
+ * 2.4.3  Budget Constraint
+ *
+ * @param {{
+ *   budgetMidpoint: string,
+ *   approvalLevels: string
+ * }} p
+ */
+function calcBudgetConstraint(p: any) {
+  const budgetMap: Record<string, number> = {
+    '< $100K':      35,
+    '$100K-$250K':  25,
+    '$250K-$500K':  15,
+    '$500K-$1M':    10,
+    '$1M-$5M':       5,
+    '> $5M':         0,
+  };
+  const approvalMap: Record<string, number> = {
+    VP_and_below:       0,
+    C_suite_single:     3,
+    C_suite_multiple:   8,
+    Board_approval:    15,
+  };
+
+  const budgetPts   = budgetMap[p.budgetMidpoint];
+  if (budgetPts === undefined) throw new Error(`Unknown budgetMidpoint: ${p.budgetMidpoint}`);
+  const approvalPts = approvalMap[p.approvalLevels];
+  if (approvalPts === undefined) throw new Error(`Unknown approvalLevels: ${p.approvalLevels}`);
+
+  return {
+    budget_midpoint:            p.budgetMidpoint,
+    budget_base_points:         budgetPts,
+    approval_levels:            p.approvalLevels,
+    budget_approval_complexity: approvalPts,
+    value: budgetPts + approvalPts,
+  };
+}
+
+/**
+ * 2.4.4  Competitive Advantage  (negative points = better for vendor)
+ *
+ * @param {{
+ *   uniqueDifferentiators: { advantageType: string }[],
+ *   yearsInCustomerSector: number
+ * }} p
+ */
+function calcCompetitiveAdvantage(p: any) {
+  const differentiatorValueMap: Record<string, number> = {
+    Regulatory_certification:  10,
+    Proven_customer_in_sector:  8,
+    Faster_deployment:          5,
+    Lower_TCO:                  7,
+    Superior_feature_set:       6,
+    Domain_expertise:           8,
+    Technology_leadership:      5,
+  };
+
+  const differentiatorBreakdown = (p.uniqueDifferentiators ?? []).map((d: any) => {
+    const val = differentiatorValueMap[d.advantageType];
+    if (val === undefined) throw new Error(`Unknown advantageType: ${d.advantageType}`);
+    return { advantage_type: d.advantageType, value: val };
+  });
+
+  const differentiatorTotal = differentiatorBreakdown.reduce((s: number, d: any) => s + d.value, 0);
+  const industryBonus       = (p.yearsInCustomerSector ?? 0) >= 5 ? -10 : 0;
+
+  const value = -(differentiatorTotal) + industryBonus;
+
+  return {
+    unique_differentiators:       differentiatorBreakdown,
+    differentiator_total:         differentiatorTotal,
+    years_in_customer_sector:     p.yearsInCustomerSector ?? 0,
+    industry_expertise_bonus:     industryBonus,
+    note:                         'Negative value = competitive advantage (reduces risk)',
+    value: parseFloat(value.toFixed(4)),
+  };
+}
+
+/**
+ * 2.4.5  Vendor-Buyer Maturity Gap
+ *
+ * @param {{
+ *   vendorStage: string,
+ *   customerType: string,
+ *   customerExpectsLargerVendorFeatures: boolean,
+ *   customerEmployeeCount?: number,
+ *   vendorEmployeeCount?: number
+ * }} p
+ */
+function calcVendorBuyerMaturityGap(p: any) {
+  // Lookup table: [vendorStage][customerType]
+  const gapTable: Record<string, Record<string, number>> = {
+    startup:     { Enterprise: 25, Mid_market: 15, SMB: 5 },
+    growth:      { Enterprise: 15, Mid_market:  5, SMB: 0 },
+    established: { Enterprise:  5, Mid_market:  0, SMB: 0 },
+    mature:      { Enterprise:  0, Mid_market:  0, SMB: 0 },
+  };
+
+  const stageRow = gapTable[p.vendorStage];
+  if (!stageRow) throw new Error(`Unknown vendorStage: ${p.vendorStage}`);
+  const baseGap = stageRow[p.customerType] ?? 0;
+
+  let mismatchPenalty = 0;
+  if (p.customerExpectsLargerVendorFeatures) {
+    const custEmp  = p.customerEmployeeCount ?? 0;
+    const vendEmp  = p.vendorEmployeeCount   ?? 1; // avoid div by zero
+    mismatchPenalty = Math.min(15, (custEmp / vendEmp) * 3);
+    mismatchPenalty = parseFloat(mismatchPenalty.toFixed(4));
+  }
+
+  return {
+    vendor_stage:                              p.vendorStage,
+    customer_type:                             p.customerType,
+    base_maturity_gap:                         baseGap,
+    customer_expects_larger_vendor_features:   p.customerExpectsLargerVendorFeatures,
+    customer_employee_count:                   p.customerEmployeeCount ?? null,
+    vendor_employee_count:                     p.vendorEmployeeCount ?? null,
+    expectation_mismatch_penalty:              mismatchPenalty,
+    value: parseFloat((baseGap + mismatchPenalty).toFixed(4)),
+  };
+}
+
+/**
+ * 2.4.6  Total Competitive Risk
+ *
+ * @param {Object} p  Combined input for all CR sub-components
+ */
+function calculateCompetitiveRisk(p: any) {
+  const alternatives  = calcCompetitiveAlternatives(p);
+  const budget        = calcBudgetConstraint(p);
+  const advantage     = calcCompetitiveAdvantage(p);
+  const maturityGap   = calcVendorBuyerMaturityGap(p);
+
+  const raw   = alternatives.value + budget.value + advantage.value + maturityGap.value;
+  const value = parseFloat(Math.max(0, raw).toFixed(4));
+
+  return {
+    competitive_alternatives: alternatives,
+    budget_constraint:        budget,
+    competitive_advantage:    advantage,
+    vendor_buyer_maturity_gap: maturityGap,
+    raw_total:                parseFloat(raw.toFixed(4)),
+    is_floored:               raw < 0,
+    value,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 4 – FINAL SALES RISK SCORE
+// ─────────────────────────────────────────────────────────────────────────────
+
+function interpretSalesRiskScore(srs: number) {
+  if (srs <= 25) return {
+    classification:       'Easy Deal',
+    deal_characteristics: 'Low friction; strong fit; weak competition',
+    recommended_actions:  'Standard sales process; focus on value demonstration',
+  };
+  if (srs <= 50) return {
+    classification:       'Moderate Deal',
+    deal_characteristics: 'Some friction; good fit; manageable competition',
+    recommended_actions:  'Extended sales cycle; executive sponsorship helpful',
+  };
+  if (srs <= 75) return {
+    classification:       'Difficult Deal',
+    deal_characteristics: 'High friction; gaps exist; strong competition',
+    recommended_actions:  'Custom proposal; mitigation roadmap; executive engagement required',
+  };
+  return {
+    classification:       'Very Difficult Deal',
+    deal_characteristics: 'Critical friction; major gaps; intense competition',
+    recommended_actions:  'Transformational effort; consider pass; only pursue if strategic',
+  };
+}
+
+function calculateSalesRiskScore(userInput: any) {
+  // ── Customer Friction Risk ────────────────────────────────────────────────
+  const CFR = calculateCustomerFrictionRisk(userInput);
+
+  // ── Implementation Risk ───────────────────────────────────────────────────
+  const IR  = calculateImplementationRisk(userInput);
+
+  // ── Competitive Risk ──────────────────────────────────────────────────────
+  const CR  = calculateCompetitiveRisk(userInput);
+
+  // ── Final SRS ─────────────────────────────────────────────────────────────
+  const weightedScore = (CFR.value * 0.35) + (IR.value * 0.35) + (CR.value * 0.30);
+  const srs           = parseFloat(Math.min(100, Math.max(0, weightedScore)).toFixed(2));
+  const dealProbability = parseFloat(Math.max(0, 100 - srs).toFixed(2));
+  const interpretation  = interpretSalesRiskScore(srs);
+
+  console.log("weightedScore",weightedScore)
+  console.log("srs",srs)
+  console.log("dealProbability",dealProbability)
+  console.log("interpretation",interpretation)
+
+  // ── DB-ready result ───────────────────────────────────────────────────────
+  return {
+    // ── Primary columns ──────────────────────────────────────────────────────
+    sales_risk_score:          srs,
+    deal_probability_pct:      dealProbability,
+    customer_friction_risk:    CFR.value,
+    implementation_risk:       IR.value,
+    competitive_risk:          CR.value,
+    classification:            interpretation.classification,
+    deal_characteristics:      interpretation.deal_characteristics,
+    recommended_actions:       interpretation.recommended_actions,
+
+    // ── Full breakdown (store as JSONB) ───────────────────────────────────
+    detail: {
+      customer_friction_risk: CFR,
+      implementation_risk:    IR,
+      competitive_risk:       CR,
+      final_formula: {
+        expression:                           'SRS = (CFR × 0.35) + (IR × 0.35) + (CR × 0.30)',
+        customer_friction_contribution:       parseFloat((CFR.value * 0.35).toFixed(4)),
+        implementation_risk_contribution:     parseFloat((IR.value  * 0.35).toFixed(4)),
+        competitive_risk_contribution:        parseFloat((CR.value  * 0.30).toFixed(4)),
+        weighted_sum:                         parseFloat(weightedScore.toFixed(4)),
+      },
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPORTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  // Main entry point
+  calculateSalesRiskScore,
+
+  // Customer Friction Risk sub-calculators
+  calcRegulatoryComplexity,
+  calcDataSensitivityFriction,
+  calcRiskToleranceFriction,
+  calcCustomerSpecificRiskFriction,
+  calculateCustomerFrictionRisk,
+
+  // Implementation Risk sub-calculators
+  calcIntegrationComplexity,
+  calcCustomizationRequired,
+  calcTimelinePressure,
+  calcFeatureGap,
+  calcMitigationGap,
+  calculateImplementationRisk,
+
+  // Competitive Risk sub-calculators
+  calcCompetitiveAlternatives,
+  calcBudgetConstraint,
+  calcCompetitiveAdvantage,
+  calcVendorBuyerMaturityGap,
+  calculateCompetitiveRisk,
+};
+
+type SalesRiskFormulaResult = {
+  sales_risk_score: number;
+  deal_probability_pct: number;
+  customer_friction_risk: number;
+  implementation_risk: number;
+  competitive_risk: number;
+  classification: string;
+  deal_characteristics: string;
+  recommended_actions: string;
+  detail?: {
+    final_formula?: Record<string, unknown>;
+  };
+};
+
+function toStringValue(v: unknown): string {
+  return String(v ?? "").trim();
+}
+
+function toStringList(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map((x) => String(x ?? "").trim()).filter(Boolean);
+  const s = toStringValue(v);
+  if (!s) return [];
+  return s.split(",").map((x) => x.trim()).filter(Boolean);
+}
+
+function normalizeSectorForFormula(raw: string): "Healthcare" | "Financial_Services" | "Government" | "E_Commerce" | "Technology" {
+  const s = raw.toLowerCase();
+  if (s.includes("healthcare") || s.includes("hospital") || s.includes("medical") || s.includes("pharma")) return "Healthcare";
+  if (s.includes("financial") || s.includes("bank") || s.includes("insurance")) return "Financial_Services";
+  if (s.includes("government") || s.includes("federal") || s.includes("state") || s.includes("local")) return "Government";
+  if (s.includes("retail") || s.includes("e-commerce") || s.includes("ecommerce")) return "E_Commerce";
+  return "Technology";
+}
+
+function normalizeRiskToleranceForFormula(raw: string): "Aggressive" | "Moderate" | "Conservative" | "Risk_averse" {
+  const s = raw.toLowerCase();
+  if (s.includes("very low") || s.includes("risk-averse") || s.includes("zero tolerance")) return "Risk_averse";
+  if (s.includes("low")) return "Conservative";
+  if (s.includes("high") || s.includes("very high")) return "Aggressive";
+  return "Moderate";
+}
+
+function normalizeDataSensitivityForFormula(raw: string):
+  "Critical (Life-safety, National security)" | "High (PHI, Financial data, PII)" | "Medium (Business confidential)" | "Low (Public or anonymized)" {
+  const s = raw.toLowerCase();
+  if (s.includes("extremely sensitive") || s.includes("national security") || s.includes("itar") || s.includes("cui")) {
+    return "Critical (Life-safety, National security)";
+  }
+  if (s.includes("highly sensitive") || s.includes("sensitive") || s.includes("phi") || s.includes("financial") || s.includes("pii")) {
+    return "High (PHI, Financial data, PII)";
+  }
+  if (s.includes("internal") || s.includes("business confidential")) return "Medium (Business confidential)";
+  return "Low (Public or anonymized)";
+}
+
+function normalizeCustomizationForFormula(raw: string):
+  "None (use as-is)" | "Minimal (configuration only)" | "Moderate (config + light dev)" | "Extensive (significant dev)" | "Custom_build" {
+  const s = raw.toLowerCase();
+  if (s.includes("none") || s.includes("as-is")) return "None (use as-is)";
+  if (s.includes("minimal") || s.includes("no code")) return "Minimal (configuration only)";
+  if (s.includes("moderate") || s.includes("workflow") || s.includes("integration")) return "Moderate (config + light dev)";
+  if (s.includes("significant") || s.includes("extensive") || s.includes("major")) return "Extensive (significant dev)";
+  return "Custom_build";
+}
+
+function buildIntegrationPointsForFormula(raw: string): Array<{ systemType: string }> {
+  const s = raw.toLowerCase();
+  if (s.includes("standalone")) return [{ systemType: "SaaS_standard_connector" }];
+  if (s.includes("simple")) return [{ systemType: "Cloud_native_API" }];
+  if (s.includes("moderate")) return [{ systemType: "Microservices" }, { systemType: "Modern_monolith" }];
+  if (s.includes("complex") && !s.includes("very")) {
+    return [
+      { systemType: "Legacy_client_server" },
+      { systemType: "Modern_monolith" },
+      { systemType: "Microservices" },
+      { systemType: "Cloud_native_API" },
+    ];
+  }
+  return [
+    { systemType: "Legacy_mainframe" },
+    { systemType: "Legacy_client_server" },
+    { systemType: "Modern_monolith" },
+    { systemType: "Microservices" },
+    { systemType: "Cloud_native_API" },
+  ];
+}
+
+function timelineMonthsForFormula(raw: string): number {
+  const s = raw.toLowerCase();
+  if (s.includes("immediate")) return 1;
+  if (s.includes("1-3")) return 2;
+  if (s.includes("3-6")) return 5;
+  if (s.includes("6-12")) return 9;
+  if (s.includes("12-18")) return 15;
+  if (s.includes("18+")) return 20;
+  return 6;
+}
+
+function budgetForFormula(raw: string): "< $100K" | "$100K-$250K" | "$250K-$500K" | "$500K-$1M" | "$1M-$5M" | "> $5M" {
+  const s = raw.toLowerCase();
+  if (s.includes("under $50") || s.includes("$50k - $100k") || s.includes("$50k-$100k")) return "< $100K";
+  if (s.includes("$100k - $250k") || s.includes("$100k-$250k")) return "$100K-$250K";
+  if (s.includes("$250k - $500k") || s.includes("$250k-$500k")) return "$250K-$500K";
+  if (s.includes("$500k - $1m") || s.includes("$500k-$1m")) return "$500K-$1M";
+  if (s.includes("$1m - $5m") || s.includes("$1m-$5m")) return "$1M-$5M";
+  return "> $5M";
+}
+
+function customerTypeForFormula(budgetMidpoint: string): "Enterprise" | "Mid_market" | "SMB" {
+  if (budgetMidpoint === "$1M-$5M" || budgetMidpoint === "> $5M") return "Enterprise";
+  if (budgetMidpoint === "$250K-$500K" || budgetMidpoint === "$500K-$1M") return "Mid_market";
+  return "SMB";
+}
+
+function riskLevelFromFormulaScore(score: number): "Low" | "Moderate" | "High" {
+  if (score <= 33) return "Low";
+  if (score <= 66) return "Moderate";
+  return "High";
+}
+
+function buildFormulaInputFromPayload(payload: Record<string, unknown>) {
+  const sector = normalizeSectorForFormula(toStringValue(payload.customer_sector ?? payload.customerSector));
+  const regulatory = toStringList(payload.regulatory_requirements ?? payload.regulatoryRequirements);
+  const customerSpecificRisks = toStringList(payload.customer_specific_risks ?? payload.customerSpecificRisks);
+  const riskMitigations = toStringList(payload.risk_mitigation ?? payload.riskMitigation);
+  const budgetMidpoint = budgetForFormula(toStringValue(payload.customer_budget_range ?? payload.customerBudgetRange));
+  const customerType = customerTypeForFormula(budgetMidpoint);
+  const alternatives = toStringValue(payload.alternatives_considered ?? payload.alternativesConsidered);
+  const keyAdvantages = toStringList(payload.key_advantages ?? payload.keyAdvantages);
+
+  return {
+    customerRegulatoryRequirements: regulatory,
+    sector,
+    customerDataSensitivity: normalizeDataSensitivityForFormula(
+      toStringValue(payload.data_sensitivity ?? payload.dataSensitivity),
+    ),
+    customerRiskTolerance: normalizeRiskToleranceForFormula(
+      toStringValue(payload.customer_risk_tolerance ?? payload.customerRiskTolerance),
+    ),
+    customerSpecificRiskCount: customerSpecificRisks.length,
+    customerType,
+    customerHasUniqueRequirements: Boolean(toStringValue(payload.customer_specific_risks_other ?? payload.customerSpecificRisksOther)),
+    uniqueRequirementsList: toStringList(payload.customer_specific_risks_other ?? payload.customerSpecificRisksOther),
+    integrationPoints: buildIntegrationPointsForFormula(
+      toStringValue(payload.integration_complexity ?? payload.integrationComplexity),
+    ),
+    customizationLevel: normalizeCustomizationForFormula(
+      toStringValue(payload.customization_level ?? payload.customizationLevel),
+    ),
+    customerRequiresIndustryWorkflows: customerType !== "SMB",
+    businessProcessChangesRequired: Math.min(4, Math.max(0, customerSpecificRisks.length)),
+    implementationTimelineMonths: timelineMonthsForFormula(
+      toStringValue(payload.implementation_timeline ?? payload.implementationTimeline),
+    ),
+    regulatoryDeadlineExists: false,
+    monthsUntilDeadline: undefined,
+    productFeatureMatchPct: 80,
+    missingCriticalFeatures: [],
+    proposedMitigationsCount: riskMitigations.length,
+    avgMitigationsPerRisk: 4,
+    competitorCount: alternatives ? "2-3 competitors" : "1 competitor",
+    customerConsideringBuildVsBuy: alternatives.toLowerCase().includes("build"),
+    customerTechnicalCapability: "Moderate (difficult build)",
+    budgetMidpoint,
+    approvalLevels: "C_suite_single",
+    uniqueDifferentiators: keyAdvantages.length
+      ? keyAdvantages.slice(0, 3).map(() => ({ advantageType: "Domain_expertise" }))
+      : [{ advantageType: "Faster_deployment" }],
+    yearsInCustomerSector: 5,
+    vendorStage: "growth",
+    customerExpectsLargerVendorFeatures: customerType === "Enterprise",
+    customerEmployeeCount: customerType === "Enterprise" ? 2000 : customerType === "Mid_market" ? 500 : 100,
+    vendorEmployeeCount: 250,
+  };
+}
+
 async function invokeModel(userInput: string): Promise<string> {
   const body = JSON.stringify({
     anthropic_version: "bedrock-2023-05-31",
@@ -480,7 +1348,42 @@ export async function generateVendorCotsReport(
     const rawReply = await invokeModel(userInput);
     if (!rawReply.trim()) return null;
     const parsed = parseReportSections(rawReply);
-    return { ...parsed, raw: rawReply };
+
+    let formulaResult: SalesRiskFormulaResult | null = null;
+    try {
+      formulaResult = calculateSalesRiskScore(buildFormulaInputFromPayload(payload)) as SalesRiskFormulaResult;
+    } catch (scoreErr) {
+      console.error("calculateSalesRiskScore failed; falling back to model score:", scoreErr);
+    }
+
+    if (!formulaResult) return { ...parsed, raw: rawReply };
+
+    const score = Math.min(100, Math.max(0, Math.round(formulaResult.sales_risk_score)));
+    const riskLevel = riskLevelFromFormulaScore(score);
+    const appendix = (parsed.fullReport?.appendix && typeof parsed.fullReport.appendix === "object")
+      ? (parsed.fullReport.appendix as Record<string, unknown>)
+      : {};
+
+    return {
+      ...parsed,
+      overallRiskScore: score,
+      riskLevel,
+      fullReport: {
+        ...(parsed.fullReport ?? {}),
+        appendix: {
+          ...appendix,
+          salesRiskFormula: formulaResult.detail?.final_formula ?? undefined,
+          salesRiskBreakdown: {
+            customer_friction_risk: formulaResult.customer_friction_risk,
+            implementation_risk: formulaResult.implementation_risk,
+            competitive_risk: formulaResult.competitive_risk,
+            deal_probability_pct: formulaResult.deal_probability_pct,
+            classification: formulaResult.classification,
+          },
+        },
+      },
+      raw: rawReply,
+    };
   } catch (err) {
     console.error("generateVendorCotsReport error:", err);
     return null;

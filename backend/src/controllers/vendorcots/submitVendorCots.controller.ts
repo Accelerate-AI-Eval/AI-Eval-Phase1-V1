@@ -140,18 +140,14 @@ async function createCustomerRiskReport(
   if (top5RisksWithMitigations) {
     report.dbTop5Risks = {
       top5Risks: top5RisksWithMitigations.top5Risks.map((r) => ({
-        risk_mapping_id: r.risk_mapping_id,
         risk_id: r.risk_id,
-        risk_title: r.risk_title,
-        domains: r.domains,
-        intent: r.intent,
-        timing: r.timing,
-        risk_type_detected: r.risk_type_detected,
-        primary_risk: r.primary_risk,
-        description: r.description,
-        executive_summary: r.executive_summary,
       })),
-      mitigationsByRiskId: top5RisksWithMitigations.mitigationsByRiskId,
+      mitigationsByRiskId: Object.fromEntries(
+        Object.entries(top5RisksWithMitigations.mitigationsByRiskId).map(([rid, list]) => [
+          rid,
+          list.map((m) => ({ mitigation_action_id: m.mitigation_action_id })),
+        ]),
+      ),
     };
   }
 
@@ -207,6 +203,15 @@ async function createCustomerRiskReport(
       };
       const mitMap = dbTop.mitigationsByRiskId;
       if (mitMap && typeof mitMap === "object") {
+        const mitigationIdByRiskAndName = new Map<string, string>();
+        if (top5RisksWithMitigations?.mitigationsByRiskId) {
+          for (const [rid, mids] of Object.entries(top5RisksWithMitigations.mitigationsByRiskId)) {
+            for (const m of mids) {
+              const key = `${rid}::${String(m.mitigation_action_name ?? "").trim().toLowerCase().replace(/\s+/g, " ")}`;
+              mitigationIdByRiskAndName.set(key, String(m.mitigation_action_id ?? "").trim());
+            }
+          }
+        }
         const normName = (s: string) =>
           String(s ?? "")
             .trim()
@@ -217,10 +222,12 @@ async function createCustomerRiskReport(
           const wantName = String(entry.mitigation_action_name ?? "").trim();
           const pts = entry.summary_points?.filter((p) => String(p ?? "").trim().length > 1) ?? [];
           if (!rid || !wantName || pts.length === 0) continue;
+          const mitigationId = mitigationIdByRiskAndName.get(`${rid}::${normName(wantName)}`) ?? "";
+          if (!mitigationId) continue;
           const list = mitMap[rid];
           if (!Array.isArray(list)) continue;
           const idx = list.findIndex(
-            (m) => normName(String(m.mitigation_action_name ?? "")) === normName(wantName),
+            (m) => String(m.mitigation_action_id ?? "").trim() === mitigationId,
           );
           if (idx >= 0) {
             list[idx] = { ...list[idx], mitigation_summary_points: pts };
