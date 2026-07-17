@@ -16,6 +16,11 @@ import {
   type Top5RisksWithMitigations,
 } from "../../services/getTop5RisksFromAssessmentContext.js";
 import type { FrameworkMappingTableRow } from "../../services/frameworkMappingFromCompliance.js";
+import { invokePythonLlmWithVector } from "../../services/pythonAssessmentLlmClient.js";
+import {
+  scoreCotsVendorWithPython,
+  type PythonCotsVendorScoreResult,
+} from "../../services/pythonScoringClient.js";
 
 export interface RecommendationWithPriority {
   priority: "High" | "Medium" | "Low";
@@ -128,6 +133,9 @@ export interface GeneratedVendorCotsReport {
   recommendations: string[];
   recommendationsWithPriority?: RecommendationWithPriority[];
   fullReport?: FullReportJson;
+  /** Python-generated SALES RISK SCORE (Type 2) - EXPLAINED block. */
+  scoreRationale?: string;
+  scoreRationaleType?: "SCS" | "SRS" | "IRS";
   /** Model-generated concise bullets for each DB top-5 risk (keyed by risk_id). */
   matchedRiskSummaries?: MatchedRiskSummary[];
   /** Model-generated concise bullets per listed catalog mitigation (risk_id + exact action name). */
@@ -1264,6 +1272,11 @@ function interpretSalesRiskScore(dealProbability: number) {
   };
 }
 
+/**
+ * LEGACY — Sales Risk Score formula now runs in Python
+ * (`python/services/sales_risk_formula.py` via POST /assessment/cots-vendor/score).
+ * Kept for reference; runtime uses scoreCotsVendorWithPython.
+ */
 function calculateSalesRiskScore(userInput: any) {
   // ── Customer Friction Risk ────────────────────────────────────────────────
   const CFR = calculateCustomerFrictionRisk(userInput);
@@ -1322,8 +1335,8 @@ function calculateSalesRiskScore(userInput: any) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export {
-  // Main entry point
-  calculateSalesRiskScore,
+  // Main entry point — disabled; SRS computed in Python scoring service
+  // calculateSalesRiskScore,
 
   // Customer Friction Risk sub-calculators
   calcRegulatoryComplexity,
@@ -1708,7 +1721,7 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>) {
   };
 }
 
-async function invokeModel(userInput: string): Promise<string> {
+async function invokeModelLocal(userInput: string): Promise<string> {
   const body = JSON.stringify({
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: 8192,
@@ -1726,6 +1739,32 @@ async function invokeModel(userInput: string): Promise<string> {
   const response = await client.send(command);
   const result = JSON.parse(new TextDecoder().decode(response.body));
   return result.content?.[0]?.text ?? "";
+}
+
+/** Type 2 (cots_vendor): prefer Python LLM + pgvector formulas; fall back to local Bedrock. */
+async function invokeModel(userInput: string): Promise<string> {
+  try {
+    const result = await invokePythonLlmWithVector({
+      assessmentType: "cots_vendor",
+      userPrompt: userInput,
+      queryText: userInput.slice(0, 2000),
+      maxTokens: 8192,
+      temperature: 0.3,
+    });
+    console.log(
+      "[cots_vendor] LLM+vector source=",
+      result.scoring_source,
+      "chunks=",
+      result.vector?.chunks?.length ?? 0,
+    );
+    return result.text;
+  } catch (err) {
+    console.error(
+      "[cots_vendor] Python LLM+vector failed; falling back to local Bedrock:",
+      err instanceof Error ? err.message : err,
+    );
+    return invokeModelLocal(userInput);
+  }
 }
 
 /**
@@ -1756,14 +1795,28 @@ export async function generateVendorCotsReport(
     if (!rawReply.trim()) return null;
     const parsed = parseReportSections(rawReply);
 
-    let formulaResult: SalesRiskFormulaResult | null = null;
+    // Sales Risk Score formula runs in Python (same ownership as VTS).
+    // Local calculateSalesRiskScore / buildFormulaInputFromPayload are unused.
+    let formulaResult: PythonCotsVendorScoreResult | null = null;
     try {
-      formulaResult = calculateSalesRiskScore(
-        buildFormulaInputFromPayload(payload),
-      ) as SalesRiskFormulaResult;
+      formulaResult = await scoreCotsVendorWithPython(payload);
+      console.log("srs", formulaResult.sales_risk_score);
+      if (formulaResult.rationale?.trim()) {
+        console.log(formulaResult.rationale);
+      } else {
+        console.log(
+          "[cots_vendor] SRS",
+          formulaResult.sales_risk_score,
+          "| deal ~",
+          Math.round(formulaResult.deal_probability_pct),
+          "% |",
+          formulaResult.grade,
+          formulaResult.classification,
+        );
+      }
     } catch (scoreErr) {
       console.error(
-        "calculateSalesRiskScore failed; falling back to model score:",
+        "Python sales-risk formula failed; falling back to model score:",
         scoreErr,
       );
     }
@@ -1780,23 +1833,33 @@ export async function generateVendorCotsReport(
       typeof parsed.fullReport.appendix === "object"
         ? (parsed.fullReport.appendix as Record<string, unknown>)
         : {};
+    const finalFormula =
+      formulaResult.detail?.final_formula &&
+      typeof formulaResult.detail.final_formula === "object"
+        ? (formulaResult.detail.final_formula as Record<string, unknown>)
+        : undefined;
 
     return {
       ...parsed,
       overallRiskScore: score,
       riskLevel,
+      scoreRationale: formulaResult.rationale?.trim() || undefined,
+      scoreRationaleType: "SCS" as const,
       fullReport: {
         ...(parsed.fullReport ?? {}),
         appendix: {
           ...appendix,
-          salesRiskFormula: formulaResult.detail?.final_formula ?? undefined,
+          salesRiskFormula: finalFormula,
           salesRiskBreakdown: {
+            sales_risk_score: formulaResult.sales_risk_score,
             customer_friction_risk: formulaResult.customer_friction_risk,
             implementation_risk: formulaResult.implementation_risk,
             competitive_risk: formulaResult.competitive_risk,
             deal_probability_pct: formulaResult.deal_probability_pct,
             grade: formulaResult.grade,
             classification: formulaResult.classification,
+            deal_characteristics: formulaResult.deal_characteristics,
+            recommended_actions: formulaResult.recommended_actions,
           },
         },
       },

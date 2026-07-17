@@ -243,6 +243,14 @@ function mapAttestationRow(attestRow: Record<string, unknown>, completedByName?:
     compliance_document_expiries: attestRow.compliance_document_expiries ?? undefined,
     framework_mapping_rows: attestRow.framework_mapping_rows ?? undefined,
     generated_profile_report: attestRow.generated_profile_report ?? undefined,
+    latest_trust_score:
+      attestRow.latest_trust_score != null && Number.isFinite(Number(attestRow.latest_trust_score))
+        ? Number(attestRow.latest_trust_score)
+        : undefined,
+    latest_trust_grade:
+      typeof attestRow.latest_trust_grade === "string" && attestRow.latest_trust_grade.trim()
+        ? attestRow.latest_trust_grade.trim()
+        : undefined,
     userArchivedAt:
       attestRow.user_archived_at != null
         ? attestRow.user_archived_at instanceof Date
@@ -374,8 +382,7 @@ const fetchVendorSelfAttestation = async (req: Request, res: Response): Promise<
     const organizationId = typeof req.query?.organizationId === "string" ? req.query.organizationId.trim() : null;
     const attestationId = typeof req.query?.id === "string" ? req.query.id.trim() || null : null;
 
-    // Explicit select (exclude public_directory_listing): attestation API does not expose Public Directory Listing;
-    // vendors read that flag from GET /vendorOnboarding instead.
+    // Explicit select (exclude public_directory_listing) so this works when that column does not exist yet
     const vendorSelect = {
       userId: vendors.userId,
       organizationId: vendors.organizationId,
@@ -471,6 +478,8 @@ const fetchVendorSelfAttestation = async (req: Request, res: Response): Promise<
       compliance_document_expiries: vendorSelfAttestations.compliance_document_expiries,
       framework_mapping_rows: vendorSelfAttestations.framework_mapping_rows,
       generated_profile_report: vendorSelfAttestations.generated_profile_report,
+      latest_trust_score: vendorSelfAttestations.latest_trust_score,
+      latest_trust_grade: vendorSelfAttestations.latest_trust_grade,
       user_name: usersTable.user_name,
       user_first_name: usersTable.user_first_name,
       user_last_name: usersTable.user_last_name,
@@ -555,15 +564,40 @@ const fetchVendorSelfAttestation = async (req: Request, res: Response): Promise<
       });
       const attestation = mapAttestationRow(oneRow, completedByName);
       const [reportRow] = await db
-        .select({ report: generatedProfileReports.report, summary: generatedProfileReports.summary })
+        .select({
+          report: generatedProfileReports.report,
+          summary: generatedProfileReports.summary,
+          trust_score: generatedProfileReports.trust_score,
+        })
         .from(generatedProfileReports)
         .where(eq(generatedProfileReports.attestation_id, attestationId))
         .orderBy(desc(generatedProfileReports.created_at))
         .limit(1);
-      if (reportRow?.report != null) {
+      if (reportRow?.report != null || reportRow?.trust_score != null) {
         (attestation as Record<string, unknown>).generated_profile_report = mergeSummaryIntoReport(
           reportRow.report,
           reportRow.summary,
+          reportRow.trust_score,
+        );
+        if (
+          reportRow.trust_score != null &&
+          Number.isFinite(Number(reportRow.trust_score)) &&
+          Number(reportRow.trust_score) > 0 &&
+          ((attestation as Record<string, unknown>).latest_trust_score == null ||
+            !Number.isFinite(Number((attestation as Record<string, unknown>).latest_trust_score)) ||
+            Number((attestation as Record<string, unknown>).latest_trust_score) <= 0)
+        ) {
+          (attestation as Record<string, unknown>).latest_trust_score = Math.round(
+            Number(reportRow.trust_score),
+          );
+        }
+      } else if (
+        (attestation as Record<string, unknown>).latest_trust_score != null
+      ) {
+        (attestation as Record<string, unknown>).generated_profile_report = mergeSummaryIntoReport(
+          (attestation as Record<string, unknown>).generated_profile_report,
+          null,
+          Number((attestation as Record<string, unknown>).latest_trust_score),
         );
       }
       // When editing a draft: use company profile saved in the attestation (draft data), not onboarding.
@@ -603,12 +637,14 @@ const fetchVendorSelfAttestation = async (req: Request, res: Response): Promise<
       .orderBy(desc(vendorSelfAttestations.created_at));
     const attestationIds = attestRows.map((r) => (r as Record<string, unknown>).id as string).filter(Boolean);
     const reportByAttestationId = new Map<string, unknown>();
+    const trustColByAttestationId = new Map<string, number>();
     if (attestationIds.length > 0) {
       const reportRows = await db
         .select({
           attestation_id: generatedProfileReports.attestation_id,
           report: generatedProfileReports.report,
           summary: generatedProfileReports.summary,
+          trust_score: generatedProfileReports.trust_score,
         })
         .from(generatedProfileReports)
         .where(inArray(generatedProfileReports.attestation_id, attestationIds))
@@ -616,7 +652,13 @@ const fetchVendorSelfAttestation = async (req: Request, res: Response): Promise<
       for (const r of reportRows) {
         const aid = r.attestation_id;
         if (aid && !reportByAttestationId.has(aid)) {
-          reportByAttestationId.set(aid, mergeSummaryIntoReport(r.report, r.summary));
+          reportByAttestationId.set(
+            aid,
+            mergeSummaryIntoReport(r.report, r.summary, r.trust_score),
+          );
+          if (r.trust_score != null && Number.isFinite(Number(r.trust_score))) {
+            trustColByAttestationId.set(aid, Number(r.trust_score));
+          }
         }
       }
     }
@@ -629,8 +671,46 @@ const fetchVendorSelfAttestation = async (req: Request, res: Response): Promise<
         email: row.user_email ?? null,
       });
       const att = mapAttestationRow(rowRecord, completedByName);
-      const reportFromTable = rowRecord.id != null ? reportByAttestationId.get(String(rowRecord.id)) : undefined;
-      if (reportFromTable != null) (att as Record<string, unknown>).generated_profile_report = reportFromTable;
+      const aid = rowRecord.id != null ? String(rowRecord.id) : "";
+      const reportFromTable = aid ? reportByAttestationId.get(aid) : undefined;
+      const colTrust = aid && trustColByAttestationId.has(aid) ? trustColByAttestationId.get(aid) : undefined;
+
+      if (reportFromTable != null) {
+        (att as Record<string, unknown>).generated_profile_report = reportFromTable;
+      } else if ((att as Record<string, unknown>).latest_trust_score != null) {
+        (att as Record<string, unknown>).generated_profile_report = mergeSummaryIntoReport(
+          (att as Record<string, unknown>).generated_profile_report,
+          null,
+          Number((att as Record<string, unknown>).latest_trust_score),
+        );
+      } else if (colTrust != null) {
+        (att as Record<string, unknown>).generated_profile_report = mergeSummaryIntoReport(
+          (att as Record<string, unknown>).generated_profile_report,
+          null,
+          colTrust,
+        );
+      }
+
+      // Always surface a numeric score for product cards when reports table has one
+      const existingLatest = (att as Record<string, unknown>).latest_trust_score;
+      if (
+        (existingLatest == null || !Number.isFinite(Number(existingLatest)) || Number(existingLatest) <= 0) &&
+        colTrust != null
+      ) {
+        (att as Record<string, unknown>).latest_trust_score = colTrust;
+      } else if (
+        (existingLatest == null || !Number.isFinite(Number(existingLatest)) || Number(existingLatest) <= 0) &&
+        reportFromTable != null &&
+        typeof reportFromTable === "object"
+      ) {
+        const ts = (reportFromTable as Record<string, unknown>).trustScore;
+        if (ts != null && typeof ts === "object") {
+          const n = Number((ts as Record<string, unknown>).overallScore);
+          if (Number.isFinite(n) && n > 0) {
+            (att as Record<string, unknown>).latest_trust_score = Math.round(n);
+          }
+        }
+      }
       return att;
     });
     const attestation = attestations[0] ?? {};

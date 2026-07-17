@@ -1,8 +1,9 @@
 import "dotenv/config";
-import {
-  BedrockRuntimeClient,
-  InvokeModelCommand,
-} from "@aws-sdk/client-bedrock-runtime";
+// NODE VTS LLM agent disabled — scoring + trust score come from Python (`pythonScoringClient`).
+// import {
+//   BedrockRuntimeClient,
+//   InvokeModelCommand,
+// } from "@aws-sdk/client-bedrock-runtime";
 import {
   CERTIFICATIONS_SCORE_CAP,
   normalizeCertIndustrySegmentInput,
@@ -12,12 +13,16 @@ import {
   collectComplianceUploadFileNames,
   certificationFormTextFromGetter,
 } from "../../services/complianceCertBlobs.js";
+import {
+  scoreVendorAttestationWithPython,
+  type PythonScoreResult,
+} from "../../services/pythonScoringClient.js";
 
-const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
-// const MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
-const MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0";
-
-const client = new BedrockRuntimeClient({ region: REGION });
+// const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
+// // const MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
+// const MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0";
+//
+// const client = new BedrockRuntimeClient({ region: REGION });
 
 export interface TrustScoreBlock {
   overallScore: number;
@@ -39,6 +44,8 @@ export interface VendorAttestationReport {
   trustScore: TrustScoreBlock;
   sections: ReportSection[];
   raw?: string;
+  /** Structured VTS from Python (LLM Overall Trust Score + formula risk breakdown). */
+  scoringResult?: PythonScoreResult;
 }
 
 const SECTION_TITLES: Record<number, string> = {
@@ -64,8 +71,13 @@ Output the report in the following sections with clear headings and bullet point
 ## 0. Trust Score
 First, compute an overall **Trust Score** (0–100) for this vendor based on the provided data. Consider: security posture, compliance and certifications, data practices and privacy, AI governance and safety, operations and reliability, and company maturity. Output:
 - **Overall Trust Score:** [0-100] ([label: e.g. High / Moderate / Low])
-- **Score by category:** Security, Compliance, Data Practices, AI Governance, Operations, Company Maturity — output each as "CategoryName: score" where score is 0–100 or "Not enough data" (e.g. Security: 85, Compliance: 90, Data Practices: 78, AI Governance: 82, Operations: 88, Company Maturity: 75)
+- **Score by category:** Security, Compliance, Data Practices, AI Governance, Operations, Company Maturity — output each as "CategoryName: score" where score is an integer 0–100 computed from THIS vendor's data only, or "Not enough data" when grounds are weak (format: Security: <n>, Compliance: <n>, Data Practices: <n>, AI Governance: <n>, Operations: <n>, Company Maturity: <n>)
 - **Summary:** 2–3 sentences justifying the overall score and noting main strengths and any gaps or risks.
+
+Important scoring rules:
+- Do NOT reuse example numbers. Derive every score only from the vendor data below.
+- Similar products from the same vendor may differ when product stage, certifications, SLAs, autonomy, or data practices differ.
+- Spread scores across the full 0–100 range when evidence warrants it (do not cluster every vendor near the same mid-score).
 
 Then continue with the detailed sections below.
 
@@ -513,7 +525,12 @@ export function extractSummaryFromRawReply(rawReply: string): string {
 }
 
 export type ReportPayloadAndSummary = {
-  reportPayload: { trustScore: unknown; sections: ReportSection[] };
+  reportPayload: {
+    trustScore: unknown;
+    sections: ReportSection[];
+    scoreRationale?: string;
+    scoreRationaleType?: "VTS";
+  };
   trustScoreNum: number;
   summaryToStore: string | undefined;
 };
@@ -534,7 +551,17 @@ export function buildReportPayloadAndSummary(report: VendorAttestationReport): R
     trustScoreNum !== 0 && report.trustScore
       ? { ...report.trustScore, overallScore: trustScoreNum }
       : report.trustScore;
-  const reportPayload = { trustScore: trustScoreForPayload, sections: report.sections };
+  const scoreRationale =
+    typeof report.scoringResult?.rationale === "string"
+      ? report.scoringResult.rationale.trim()
+      : "";
+  const reportPayload: ReportPayloadAndSummary["reportPayload"] = {
+    trustScore: trustScoreForPayload,
+    sections: report.sections,
+    ...(scoreRationale
+      ? { scoreRationale, scoreRationaleType: "VTS" as const }
+      : {}),
+  };
 
   const summaryFromReport =
     report.trustScore && typeof report.trustScore === "object" && "summary" in report.trustScore
@@ -558,6 +585,7 @@ export function buildReportPayloadAndSummary(report: VendorAttestationReport): R
   return { reportPayload, trustScoreNum, summaryToStore };
 }
 
+/* NODE VTS LLM agent disabled — Python owns VTS scoring.
 async function chat(
   messages: { role: string; content: { type: string; text: string }[] }[],
   userInput: string,
@@ -589,64 +617,96 @@ async function chat(
   const reply = result.content?.[0]?.text ?? "";
   return reply;
 }
+*/
 
 /**
  * Generate a structured vendor attestation report from vendor data.
- * No file I/O; returns the parsed report for API/UI consumption.
+ * Python runs Bedrock LLM for Overall Trust Score (+ formula risk breakdown);
+ * Node only shapes the response for DB persistence.
  */
 export async function generateVendorAttestationReport(
   vendorData: string,
   formulaPayload?: Record<string, unknown>,
 ): Promise<VendorAttestationReport> {
-  if (formulaPayload && typeof formulaPayload === "object") {
-    const formulaInput = buildFormulaInputFromPayload(formulaPayload);
-    const formula = calculateVendorTrustScore(formulaInput);
-    const productScore = Math.max(0, Math.min(100, 100 - Number(formula.product_risk || 0)));
-    const governanceScore = Math.max(0, Math.min(100, 100 - Number(formula.governance_risk || 0)));
-    const operationalScore = Math.max(0, Math.min(100, 100 - Number(formula.operational_risk || 0)));
-    const companyProfile =
-      formulaPayload.companyProfile && typeof formulaPayload.companyProfile === "object"
-        ? (formulaPayload.companyProfile as Record<string, unknown>)
-        : {};
-    const summary = buildSummaryFromAssessmentData(formulaPayload);
-    const overallRounded = Math.round(Number(formula.vendor_trust_score ?? 0));
-    return {
-      trustScore: {
-        overallScore: overallRounded,
-        grade: String(formula.grade ?? "").trim() || undefined,
-        label: String(formula.classification ?? "Not specified"),
-        summary,
-        scoreByCategory: {
-          Product: Number(productScore.toFixed(2)),
-          Governance: Number(governanceScore.toFixed(2)),
-          Operational: Number(operationalScore.toFixed(2)),
-        },
-      },
-      sections: buildSectionsFromPayload(formulaPayload),
-      raw: vendorData || "",
-    };
+  if (!formulaPayload || typeof formulaPayload !== "object") {
+    throw new Error(
+      "formData/formulaPayload is required; Vendor Trust Score is calculated by the Python scoring service (LLM + formula)",
+    );
   }
 
+  const formula = await scoreVendorAttestationWithPython(formulaPayload, vendorData);
+  console.log("vts", formula.vendor_trust_score);
+  if (formula.rationale?.trim()) {
+    console.log(formula.rationale);
+  }
+
+  const llmTrust = formula.trust_score;
+  const overallRounded = Math.round(
+    Number(
+      llmTrust?.overallScore ??
+        formula.vendor_trust_score ??
+        0,
+    ),
+  );
+
+  const scoreByCategory =
+    llmTrust?.scoreByCategory && Object.keys(llmTrust.scoreByCategory).length > 0
+      ? llmTrust.scoreByCategory
+      : {
+          Product: Number(
+            Math.max(0, Math.min(100, 100 - Number(formula.product_risk || 0))).toFixed(2),
+          ),
+          Governance: Number(
+            Math.max(0, Math.min(100, 100 - Number(formula.governance_risk || 0))).toFixed(2),
+          ),
+          Operational: Number(
+            Math.max(0, Math.min(100, 100 - Number(formula.operational_risk || 0))).toFixed(2),
+          ),
+        };
+
+  const summaryFromLlm = String(llmTrust?.summary ?? "").trim();
+  const summary =
+    summaryFromLlm && !/^\*+$/.test(summaryFromLlm)
+      ? summaryFromLlm
+      : buildSummaryFromAssessmentData(formulaPayload);
+
+  const sections =
+    Array.isArray(formula.sections) && formula.sections.length > 0
+      ? (formula.sections as ReportSection[])
+      : buildSectionsFromPayload(formulaPayload);
+
+  return {
+    trustScore: {
+      overallScore: overallRounded,
+      grade: String(llmTrust?.grade ?? formula.grade ?? "").trim() || undefined,
+      label: String(llmTrust?.label ?? formula.classification ?? "Not specified"),
+      summary,
+      scoreByCategory,
+    },
+    sections,
+    raw: formula.raw || vendorData || "",
+    scoringResult: formula,
+  };
+
+  /* NODE LLM AGENT FALLBACK DISABLED — Bedrock trust score now runs in Python.
   const userInput = vendorAttestationPromptWithProductName(vendorData || "") + (vendorData || "");
   const messages: {
     role: string;
     content: { type: string; text: string }[];
   }[] = [];
   const reply = await chat(messages, userInput);
-  // console.log("[Summary] Step: generateVendorAttestationReport — raw reply length:", reply.length, "| complete content:", reply);
   const { trustScore, sections } = parseReportSections(reply);
   const parsedSummary = (trustScore.summary || "").trim();
   const summaryFromRaw = extractSummaryFromRawReply(reply);
   if ((parsedSummary.length === 0 || /^\*+$/.test(parsedSummary)) && summaryFromRaw.length > 0) {
     trustScore.summary = summaryFromRaw;
   }
-  const contentToLog = (trustScore.summary || "").trim();
-  // console.log("[Summary] Step: generateVendorAttestationReport — parsed trustScore.summary length:", contentToLog.length, "| complete content:", contentToLog || "(no summary extracted)");
   return {
     trustScore,
     sections,
     raw: reply,
   };
+  */
 }
 
 type LooseInput = Record<string, any>;
@@ -699,6 +759,8 @@ function buildSummaryFromAssessmentData(payload: Record<string, unknown>): strin
 }
 
 function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseInput {
+  // NODE LOCAL FORMULA MAPPING DISABLED for VTS — Python `build_formula_input_from_payload` owns this.
+  // Kept for reference / possible non-VTS helpers; not called by generateVendorAttestationReport.
   const cp =
     payload.companyProfile && typeof payload.companyProfile === "object"
       ? (payload.companyProfile as Record<string, unknown>)
@@ -1924,6 +1986,8 @@ function calculateOperationalRisk(p: LooseInput) {
   };
 }
 
+/* NODE LOCAL VTS FORMULA DISABLED — Vendor Trust Score is calculated in Python
+ * (`python/services/scoring_service.py` via POST /assessment/score). Node only stores the returned score.
 function interpretTrustScore(vts: number) {
   const s = Math.max(0, Math.min(100, Math.round(Number(vts))));
   if (s >= 90) return { grade:"A",classification: 'Exceptional Vendor', recommended_action: 'Fast-track procurement; minimal additional due diligence',vendor_profile:'Market leader; comprehensive controls; proven track record' };
@@ -1964,6 +2028,7 @@ function calculateVendorTrustScore(userInput: LooseInput) {
   // ── Final VTS ─────────────────────────────────────────────────────────────
   const weightedRisk = (PR_result.value * 0.40) + (GR_result.value * 0.30) + (OR_result.value * 0.30);
   const vts = parseFloat(Math.max(0, 100 - weightedRisk).toFixed(2));
+  console.log("vts", vts);
   const interpretation = interpretTrustScore(vts);
 
   // ── DB-ready result ───────────────────────────────────────────────────────\
@@ -2002,10 +2067,10 @@ function calculateVendorTrustScore(userInput: LooseInput) {
     },
   };
 }
+*/
 
 export {
-  // Main entry point
-  calculateVendorTrustScore,
+  // calculateVendorTrustScore, // disabled — VTS computed in Python scoring service
 
   // Individual calculators (useful for partial assessments / unit tests)
   calculateLikelihood,

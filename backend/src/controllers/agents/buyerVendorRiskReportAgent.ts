@@ -4,7 +4,8 @@ import {
   getTop5RisksWithMitigations,
   formatTop5RisksForPrompt,
 } from "../../services/getTop5RisksFromAssessmentContext.js";
-import { calculateBuyerImplementationRiskScore } from "../../services/buyerImplementationRiskScore.js";
+import { invokePythonLlmWithVector } from "../../services/pythonAssessmentLlmClient.js";
+import { scoreCotsBuyerWithPython } from "../../services/pythonScoringClient.js";
 
 const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
 const MODEL_ID = process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-sonnet-20240229-v1:0";
@@ -72,6 +73,14 @@ export type BuyerVendorRiskReport = {
   implementationRiskDecision?: string;
   implementationRiskRecommendedAction?: string;
   implementationRiskBreakdown?: Record<string, unknown>;
+  /** Human-readable readiness profile from IRS formula. */
+  readinessProfile?: string;
+  implementationRiskSource?: Record<string, unknown>;
+  vendorName?: string;
+  productName?: string;
+  /** Python-generated IMPLEMENTATION READINESS SCORE (Type 3) - EXPLAINED block. */
+  scoreRationale?: string;
+  scoreRationaleType?: "IRS";
   recommendationLabel: string;
   executiveSummary: string;
   keyStrengths: string[];
@@ -704,7 +713,7 @@ function normalizeReport(
   };
 }
 
-async function invokeModel(prompt: string): Promise<string> {
+async function invokeModelLocal(prompt: string): Promise<string> {
   const body = JSON.stringify({
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: 8192,
@@ -722,6 +731,32 @@ async function invokeModel(prompt: string): Promise<string> {
   return result.content?.[0]?.text ?? "";
 }
 
+/** Type 3 (cots_buyer): prefer Python LLM + pgvector formulas; fall back to local Bedrock. */
+async function invokeModel(prompt: string): Promise<string> {
+  try {
+    const result = await invokePythonLlmWithVector({
+      assessmentType: "cots_buyer",
+      userPrompt: prompt,
+      queryText: prompt.slice(0, 2000),
+      maxTokens: 8192,
+      temperature: 0.35,
+    });
+    console.log(
+      "[cots_buyer] LLM+vector source=",
+      result.scoring_source,
+      "chunks=",
+      result.vector?.chunks?.length ?? 0,
+    );
+    return result.text;
+  } catch (err) {
+    console.error(
+      "[cots_buyer] Python LLM+vector failed; falling back to local Bedrock:",
+      err instanceof Error ? err.message : err,
+    );
+    return invokeModelLocal(prompt);
+  }
+}
+
 /**
  * Generate Vendor Risk Assessment Report from buyer assessment payload + optional vendor attestation row.
  */
@@ -732,12 +767,28 @@ export async function generateBuyerVendorRiskReport(
   productName: string,
 ): Promise<BuyerVendorRiskReport> {
   const hasAttestation = attestationRow != null;
-  const implementationRisk = calculateBuyerImplementationRiskScore(
+  // Implementation Risk Score formula runs in Python (same ownership as VTS).
+  // Local buyerImplementationRiskScore.ts is unused at runtime.
+  const implementationRisk = await scoreCotsBuyerWithPython({
     buyerPayload,
     attestationRow,
     vendorName,
     productName,
-  );
+  });
+  console.log("irs", implementationRisk.implementationRiskScore);
+  if (implementationRisk.rationale?.trim()) {
+    console.log(implementationRisk.rationale);
+  } else {
+    console.log(
+      "[cots_buyer] IRS",
+      implementationRisk.implementationRiskScore,
+      "|",
+      implementationRisk.grade,
+      implementationRisk.classification,
+      "|",
+      implementationRisk.decision,
+    );
+  }
   const attestationSlice: Record<string, unknown> = attestationRow
     ? {
         product_name: attestationRow.product_name,
@@ -787,6 +838,12 @@ export async function generateBuyerVendorRiskReport(
         implementationRiskDecision: implementationRisk.decision,
         implementationRiskRecommendedAction: implementationRisk.recommendedAction,
         implementationRiskBreakdown: implementationRisk.breakdown,
+        readinessProfile: implementationRisk.readiness_profile,
+        implementationRiskSource: implementationRisk.source,
+        vendorName: vendorName || "Vendor",
+        productName: productName || "Product",
+        scoreRationale: implementationRisk.rationale?.trim() || undefined,
+        scoreRationaleType: "IRS" as const,
       };
     }
   } catch (e) {
@@ -801,6 +858,12 @@ export async function generateBuyerVendorRiskReport(
     implementationRiskDecision: implementationRisk.decision,
     implementationRiskRecommendedAction: implementationRisk.recommendedAction,
     implementationRiskBreakdown: implementationRisk.breakdown,
+    readinessProfile: implementationRisk.readiness_profile,
+    implementationRiskSource: implementationRisk.source,
+    vendorName: vendorName || "Vendor",
+    productName: productName || "Product",
+    scoreRationale: implementationRisk.rationale?.trim() || undefined,
+    scoreRationaleType: "IRS" as const,
   };
 }
 

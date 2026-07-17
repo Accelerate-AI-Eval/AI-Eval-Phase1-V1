@@ -14,6 +14,7 @@ import attestationRoutes from "./routes/attestation.routes.js";
 import buyerRoutes from "./routes/buyerOnboarding.routes.js";
 import assessmentRoutes from "./routes/assessment.routes.js";
 import lookupRoutes from "./routes/lookup.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 import healthRoute from "./routes/health.routes.js";
 import healthCheck from "./controllers/health/health.controller.js";
 import requestLogger from "./middlewares/requestLogger.js";
@@ -94,6 +95,8 @@ app.use("/api/v1", [
   assessmentRoutes,
   lookupRoutes,
 ]);
+
+app.use("/api/v1/admin", adminRoutes);
 
 
 console.log("Starting server…");

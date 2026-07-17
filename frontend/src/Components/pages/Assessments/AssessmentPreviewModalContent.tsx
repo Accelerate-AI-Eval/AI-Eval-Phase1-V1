@@ -298,6 +298,8 @@ export interface AssessmentPreviewModalContentProps {
   /** Full buyer COTS row from GET /buyerCotsAssessment/:id (includes formula grade/score when submitted). */
   buyerDetail?: Record<string, unknown> | null;
   buyerLoading?: boolean;
+  /** Organizations system-admin view: hide inline readiness; show in Reports section instead. */
+  hideBuyerReadinessFormula?: boolean;
 }
 
 function buyerFormulaReadinessRows(merged: Record<string, unknown>): React.ReactNode {
@@ -339,6 +341,7 @@ export default function AssessmentPreviewModalContent({
   vendorLoading = false,
   buyerDetail = null,
   buyerLoading = false,
+  hideBuyerReadinessFormula = false,
 }: AssessmentPreviewModalContentProps) {
   const isVendor = (previewRow?.type ?? "").toLowerCase() === "cots_vendor";
   const isDraft = (previewRow?.status ?? "").toLowerCase() === "draft";
@@ -464,7 +467,9 @@ export default function AssessmentPreviewModalContent({
                 </dl>
               </section>
             ))}
-            {!buyerLoading ? buyerFormulaReadinessRows(buyerMerged) : null}
+            {!buyerLoading && !hideBuyerReadinessFormula
+              ? buyerFormulaReadinessRows(buyerMerged)
+              : null}
           </>
         )}
       </div>

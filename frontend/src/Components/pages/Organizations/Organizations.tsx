@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import "../../../styles/page_tabs.css";
+import "../../../styles/popovers.css";
 import "./organization.css";
 import "../UserManagement/user_management.css";
 import "../VendorOnboarding/StepVendorOnboardingPreview.css";
@@ -23,9 +24,10 @@ import {
   formatPreviewValue,
 } from "../../../utils/orgOnboardingDisplay";
 import { getOrganizationTypeDisplay } from "../../../utils/organizationTypeDisplay";
-import { Landmark, Plus, User, FileCheck, ClipboardList, Eye, CircleX, Search, FileText } from "lucide-react";
+import { Landmark, Plus, User, FileCheck, ClipboardList, Eye, CircleX, Search, FileText, Info } from "lucide-react";
 import Button from "../../UI/Button";
 import Breadcrumbs from "../../UI/Breadcrumbs";
+import Modal from "../../UI/Modal";
 
 /** Helpers for org assessment cards (same logic as Assessments page). */
 function isOrgAssessmentExpired(row) {
@@ -86,6 +88,8 @@ const Organizations = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const systemRole = (sessionStorage.getItem("systemRole") ?? "").toLowerCase().trim();
+  const isSystemAdmin =
+    systemRole === "system admin" || systemRole === "system_admin";
   const isViewOnly =
     systemRole === "system manager" ||
     systemRole === "system_manager" ||
@@ -117,6 +121,12 @@ const Organizations = () => {
   const [previewComplianceExpiries, setPreviewComplianceExpiries] = useState<
     Record<string, ComplianceDocumentExpiryMeta> | null
   >(null);
+  const [scoreRationaleModal, setScoreRationaleModal] = useState<{
+    modalTitle: string;
+    itemTitle: string;
+    rationale: string | null;
+    emptyMessage: string;
+  } | null>(null);
   const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5003/api/v1";
 
   const handleOpenDocument = useCallback(async (fileName) => {
@@ -638,6 +648,14 @@ const Organizations = () => {
                                     : "assessment_card_status_draft";
                                 const title = a.product_name?.trim() || "Vendor Self-Attestation";
                                 const completedBy = a.completedBy?.name?.trim() || a.completedBy?.email?.trim() || "—";
+                                const trustScore =
+                                  a.trust_score != null && Number.isFinite(Number(a.trust_score))
+                                    ? Math.round(Number(a.trust_score))
+                                    : null;
+                                const vtsRationale =
+                                  typeof a.vts_rationale === "string" && a.vts_rationale.trim()
+                                    ? a.vts_rationale.trim()
+                                    : null;
                                 return (
                                   <article
                                     key={a.id}
@@ -662,7 +680,7 @@ const Organizations = () => {
                                           </span>
                                         </p>
                                       </div>
-                                      <span className="general_rpr_card_download_wrap">
+                                      <span className="general_rpr_card_download_wrap org_attestation_card_actions">
                                         <button
                                           type="button"
                                           className="general_rpr_card_download_btn assessment_card_header_action_btn"
@@ -672,15 +690,43 @@ const Organizations = () => {
                                         >
                                           <Eye size={14} aria-hidden />
                                         </button>
+                                        {isSystemAdmin && (vtsRationale || trustScore != null) && (
+                                          <button
+                                            type="button"
+                                            className="general_rpr_card_download_btn assessment_card_header_action_btn org_attestation_vts_info_btn"
+                                            onClick={() =>
+                                              setScoreRationaleModal({
+                                                modalTitle: "VTS Rationale",
+                                                itemTitle: title,
+                                                rationale: vtsRationale,
+                                                emptyMessage:
+                                                  "No rationale available for this attestation yet.",
+                                              })
+                                            }
+                                            aria-label={`VTS rationale for ${title}`}
+                                            title="VTS Rationale"
+                                          >
+                                            <Info size={14} aria-hidden />
+                                          </button>
+                                        )}
                                       </span>
                                     </div>
                                     <div className="general_rpr_title">
-                                      <div className="vendor_directory_card_header_text">
+                                      <div className="vendor_directory_card_header_text org_attestation_card_title_block">
                                         <span className="general_rpr_card_title_wrap">
                                           <h2 className="vendor_directory_card_name general_rpr_card_title_clamp">
                                             {title}
                                           </h2>
                                         </span>
+                                        {isSystemAdmin && trustScore != null && (
+                                          <p
+                                            className="org_attestation_card_trust_score"
+                                            aria-label={`Trust score ${trustScore} out of 100`}
+                                          >
+                                            <span className="org_attestation_card_trust_label">Trust score</span>
+                                            <span className="org_attestation_card_trust_value">{trustScore}</span>
+                                          </p>
+                                        )}
                                       </div>
                                     </div>
                                     <div className="general_rpr_card_footer">
@@ -769,7 +815,6 @@ const Organizations = () => {
                         }
                         const start = (orgAssessmentCardPage - 1) * orgAssessmentCardPageSize;
                         const paginated = filtered.slice(start, start + orgAssessmentCardPageSize);
-                        const isBuyerRow = (r) => (r.type ?? "").toLowerCase().includes("buyer");
                         return (
                           <>
                             <div className="attestation_list_rows assessment_list_rows">
@@ -787,6 +832,54 @@ const Organizations = () => {
                                         : "assessment_card_status_draft";
                                   const title = getOrgAssessmentDisplayTitle(row);
                                   const completedBy = getOrgAssessmentCompletedBy(row) || "—";
+                                  const assessmentType = (row.type ?? "").toLowerCase();
+                                  const isVendorCots = assessmentType === "cots_vendor";
+                                  const isBuyerCots = assessmentType === "cots_buyer";
+                                  // Match complete-report cards:
+                                  // - Vendor COTS: card score is Sales Confidence = alignment = 100 - SRS risk
+                                  // - Buyer COTS: card score is readiness (already stored as 0..100)
+                                  const rawScore =
+                                    row.reportRiskScore != null &&
+                                    Number.isFinite(Number(row.reportRiskScore))
+                                      ? Number(row.reportRiskScore)
+                                      : null;
+                                  const reportScore =
+                                    rawScore == null
+                                      ? null
+                                      : isVendorCots
+                                        ? Math.round(
+                                            Math.max(0, Math.min(100, 100 - rawScore)),
+                                          )
+                                        : Math.round(
+                                            Math.max(0, Math.min(100, rawScore)),
+                                          );
+                                  const scoreRationale =
+                                    typeof row.scoreRationale === "string" &&
+                                    row.scoreRationale.trim()
+                                      ? row.scoreRationale.trim()
+                                      : null;
+                                  const scoreRationaleTitle =
+                                    row.scoreRationaleType === "IRS"
+                                      ? "IRS Rationale"
+                                      : row.scoreRationaleType === "SCS" ||
+                                          row.scoreRationaleType === "SRS" ||
+                                          isVendorCots
+                                        ? "SCS Rationale"
+                                        : isBuyerCots
+                                          ? "IRS Rationale"
+                                          : "SCS Rationale";
+                                  const scoreLabel = isVendorCots
+                                    ? "Sales Confidence"
+                                    : isBuyerCots
+                                      ? "Readiness"
+                                      : "Score";
+                                  const showAdminScoreBlock =
+                                    isSystemAdmin &&
+                                    (isVendorCots || isBuyerCots) &&
+                                    statusLabel === "Completed";
+                                  const showAdminRationaleBtn =
+                                    showAdminScoreBlock &&
+                                    (scoreRationale || reportScore != null);
                                   return (
                                     <article
                                       key={row.assessmentId}
@@ -811,7 +904,7 @@ const Organizations = () => {
                                             </span>
                                           </p>
                                         </div>
-                                        <span className="general_rpr_card_download_wrap">
+                                        <span className="general_rpr_card_download_wrap org_attestation_card_actions">
                                           <button
                                             type="button"
                                             className="general_rpr_card_download_btn assessment_card_header_action_btn"
@@ -833,15 +926,47 @@ const Organizations = () => {
                                           >
                                             <Eye size={14} aria-hidden />
                                           </button>
+                                          {showAdminRationaleBtn ? (
+                                            <button
+                                              type="button"
+                                              className="general_rpr_card_download_btn assessment_card_header_action_btn org_attestation_vts_info_btn"
+                                              onClick={() =>
+                                                setScoreRationaleModal({
+                                                  modalTitle: scoreRationaleTitle,
+                                                  itemTitle: title,
+                                                  rationale: scoreRationale,
+                                                  emptyMessage:
+                                                    "No rationale available for this assessment yet.",
+                                                })
+                                              }
+                                              aria-label={`${scoreRationaleTitle} for ${title}`}
+                                              title={scoreRationaleTitle}
+                                            >
+                                              <Info size={14} aria-hidden />
+                                            </button>
+                                          ) : null}
                                         </span>
                                       </div>
                                       <div className="general_rpr_title">
-                                        <div className="vendor_directory_card_header_text">
+                                        <div className="vendor_directory_card_header_text org_attestation_card_title_block">
                                           <span className="general_rpr_card_title_wrap">
                                             <h2 className="vendor_directory_card_name general_rpr_card_title_clamp">
                                               {title}
                                             </h2>
                                           </span>
+                                          {showAdminScoreBlock && reportScore != null ? (
+                                            <p
+                                              className="org_attestation_card_trust_score"
+                                              aria-label={`${scoreLabel} ${reportScore} out of 100`}
+                                            >
+                                              <span className="org_attestation_card_trust_label">
+                                                {scoreLabel}
+                                              </span>
+                                              <span className="org_attestation_card_trust_value">
+                                                {reportScore}
+                                              </span>
+                                            </p>
+                                          ) : null}
                                         </div>
                                       </div>
                                       <div className="general_rpr_card_footer">
@@ -937,6 +1062,42 @@ const Organizations = () => {
               </div>
             </div>
           )}
+
+          <Modal
+            isOpen={scoreRationaleModal != null}
+            onClose={() => setScoreRationaleModal(null)}
+            overlayClassName="profile_modal_overlay"
+            popupClassName=""
+          >
+            <div className="profile_modal_content settings_modal_content org_vts_rationale_modal_content">
+              <div className="profile_modal_header">
+                <h2 id="org_score_rationale_modal_title" className="profile_modal_title">
+                  {scoreRationaleModal?.modalTitle ?? "Score Rationale"}
+                </h2>
+                <button
+                  type="button"
+                  className="modal_close_btn"
+                  onClick={() => setScoreRationaleModal(null)}
+                  aria-label="Close"
+                >
+                  <CircleX size={20} />
+                </button>
+              </div>
+              <div className="profile_modal_body">
+                {scoreRationaleModal?.itemTitle ? (
+                  <p className="org_vts_rationale_product_name">
+                    {scoreRationaleModal.itemTitle}
+                  </p>
+                ) : null}
+                <p className="org_vts_rationale_body">
+                  {scoreRationaleModal?.rationale?.trim()
+                    ? scoreRationaleModal.rationale.trim()
+                    : scoreRationaleModal?.emptyMessage ??
+                      "No rationale available yet."}
+                </p>
+              </div>
+            </div>
+          </Modal>
           
         </div>
         

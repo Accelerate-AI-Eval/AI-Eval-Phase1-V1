@@ -75,6 +75,7 @@
 /* Directory Listing Requirements - three columns */
 .attestation_directory_requirements {
   margin-top: 1rem;
+  padding-bottom: 1.5rem;
 }
 
 .attestation_requirements_grid {

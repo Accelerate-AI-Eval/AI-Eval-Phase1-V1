@@ -110,30 +110,107 @@ function parseScoreFromText(text: string): number | null {
   return Number.isNaN(n) ? null : Math.min(100, Math.max(0, n));
 }
 
+function coerceScore(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.min(100, Math.max(0, Math.round(value)));
+  }
+  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) {
+    return Math.min(100, Math.max(0, Math.round(Number(value))));
+  }
+  return null;
+}
+
+/** Normalize report payload whether it arrives as object or JSON string. */
+function normalizeReportRaw(raw: unknown): Record<string, unknown> | null {
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (!t) return null;
+    try {
+      const parsed = JSON.parse(t) as unknown;
+      if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  return null;
+}
+
+function trustBlockFromReport(raw: unknown): Record<string, unknown> | null {
+  const o = normalizeReportRaw(raw);
+  if (!o) return null;
+  const ts = o.trustScore ?? o.trust_score;
+  if (ts == null || typeof ts !== "object") return null;
+  return ts as Record<string, unknown>;
+}
+
 /** Get overallScore (0–100) from report column trustScore.overallScore when full report validation fails. */
 function getOverallScoreFromReport(raw: unknown): number | null {
-  if (raw == null || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const ts = o.trustScore;
-  if (ts == null || typeof ts !== "object") return null;
-  const t = ts as Record<string, unknown>;
-  if (typeof t.overallScore === "number") return Math.min(100, Math.max(0, t.overallScore));
-  return null;
+  const t = trustBlockFromReport(raw);
+  if (!t) return null;
+  return (
+    coerceScore(t.overallScore) ??
+    coerceScore(t.overall_score) ??
+    null
+  );
+}
+
+/**
+ * Resolve displayable trust score for a product card.
+ * Prefer report JSON, then latest_trust_score, then matching stored generated-reports row.
+ * Treat 0 as missing so column/stored fallbacks can win when nested overallScore was never set.
+ */
+function resolveProductTrustScore(
+  product: ProductProfileProduct,
+  storedReports: StoredGeneratedReport[] = [],
+): number | null {
+  const fromReportRaw = getOverallScoreFromReport(product.generated_profile_report);
+  const fromParsed =
+    asGeneratedReport(product.generated_profile_report)?.trustScore?.overallScore ?? null;
+  const fromReport =
+    (fromReportRaw != null && fromReportRaw > 0 ? fromReportRaw : null) ??
+    (typeof fromParsed === "number" && fromParsed > 0 ? fromParsed : null);
+
+  if (fromReport != null) {
+    return Math.min(100, Math.max(0, Math.round(fromReport)));
+  }
+
+  const fromLatest = coerceScore(product.latest_trust_score);
+  if (fromLatest != null && fromLatest > 0) return fromLatest;
+
+  const stored = storedReports.find(
+    (r) => r.attestationId != null && String(r.attestationId) === String(product.id),
+  );
+  if (stored) {
+    const fromStoredCol = coerceScore(stored.trustScore);
+    if (fromStoredCol != null && fromStoredCol > 0) return fromStoredCol;
+    const fromStoredReport = getOverallScoreFromReport(stored.report);
+    if (fromStoredReport != null && fromStoredReport > 0) return fromStoredReport;
+  }
+
+  // Explicit 0 only if that is truly all we have
+  return fromLatest ?? fromReportRaw ?? (typeof fromParsed === "number" ? fromParsed : null);
 }
 
 /** Normalize API-generated report to GeneratedProductProfileReport (from attestation submit or fetch). */
 function asGeneratedReport(raw: unknown): GeneratedProductProfileReport | null {
-  if (raw == null || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  if (
-    o.trustScore == null ||
-    typeof o.trustScore !== "object" ||
-    !Array.isArray(o.sections)
-  )
-    return null;
-  const ts = o.trustScore as Record<string, unknown>;
+  const o = normalizeReportRaw(raw);
+  if (!o) return null;
+  const tsRaw = o.trustScore ?? o.trust_score;
+  const sections = Array.isArray(o.sections) ? o.sections : [];
+  if (tsRaw == null || typeof tsRaw !== "object") return null;
+  const ts = tsRaw as Record<string, unknown>;
   const summary = typeof ts.summary === "string" ? ts.summary : "";
-  let overallScore = typeof ts.overallScore === "number" ? ts.overallScore : 0;
+  let overallScore =
+    coerceScore(ts.overallScore) ??
+    coerceScore(ts.overall_score) ??
+    0;
   if (overallScore === 0) {
     const fromSummary = summary ? parseScoreFromText(summary) : null;
     const fromLabel = typeof ts.label === "string" ? parseScoreFromText(ts.label) : null;
@@ -149,7 +226,7 @@ function asGeneratedReport(raw: unknown): GeneratedProductProfileReport | null {
         | Record<string, string | number>
         | undefined,
     },
-    sections: o.sections as GeneratedProductProfileReport["sections"],
+    sections: sections as GeneratedProductProfileReport["sections"],
   };
 }
 
@@ -379,18 +456,15 @@ function ProductProfileView({
   const averageTrustScore = useMemo(() => {
     const scores: number[] = [];
     currentProducts.forEach((p) => {
-      const report = asGeneratedReport(p.generated_profile_report);
-      const score =
-        report?.trustScore?.overallScore ??
-        getOverallScoreFromReport(p.generated_profile_report);
-      if (typeof score === "number" && !Number.isNaN(score)) {
-        scores.push(Math.min(100, Math.max(0, score)));
+      const score = resolveProductTrustScore(p, storedReports);
+      if (typeof score === "number" && !Number.isNaN(score) && score > 0) {
+        scores.push(score);
       }
     });
     if (scores.length === 0) return null;
     const sum = scores.reduce((a, b) => a + b, 0);
     return Math.round(sum / scores.length);
-  }, [currentProducts]);
+  }, [currentProducts, storedReports]);
 
   /** On product detail, prefer company profile from loaded attestation; otherwise vendor form state. */
   const company =
@@ -634,7 +708,7 @@ function ProductProfileView({
               </p>
             </div>
           </div>
-          {/* <div className="btn_user_page product_profile_header_actions">
+          <div className="btn_user_page product_profile_header_actions">
             {onPublicListingToggle != null && (
               <>
                 <div className="product_profile_toggle_wrap">
@@ -655,7 +729,7 @@ function ProductProfileView({
                 )}
               </>
             )}
-          </div> */}
+          </div>
         </div>
       )}
 
@@ -719,9 +793,7 @@ function ProductProfileView({
               ? (() => {
                   const currentOnly = products.filter((p) => !isInProductProfileArchivedList(p));
                   const withScore = currentOnly.filter(
-                    (p) =>
-                      asGeneratedReport(p.generated_profile_report)?.trustScore?.overallScore != null ||
-                      getOverallScoreFromReport(p.generated_profile_report) != null,
+                    (p) => resolveProductTrustScore(p, storedReports) != null,
                   ).length;
                   return withScore === 1 ? "1 product" : `Across ${withScore} products`;
                 })()
@@ -1093,14 +1165,8 @@ function ProductProfileView({
                 <>
                 <div className="product_profile_product_cards">
                   {paginatedCurrentProducts.map((product) => {
-                    const productReport = asGeneratedReport(product.generated_profile_report);
-                    const overallFromReport = getOverallScoreFromReport(product.generated_profile_report);
-                    const trustScoreDisplay =
-                      productReport?.trustScore != null
-                        ? `${productReport.trustScore.overallScore}%`
-                        : overallFromReport != null
-                          ? `${overallFromReport}%`
-                          : "—";
+                    const score = resolveProductTrustScore(product, storedReports);
+                    const trustScoreDisplay = score != null ? `${score}%` : "—";
                     return (
                       <ProductProfileProductListCard
                         key={product.id}
@@ -1145,14 +1211,8 @@ function ProductProfileView({
                 <>
                 <div className="product_profile_product_cards">
                   {paginatedArchivedProducts.map((product) => {
-                    const productReport = asGeneratedReport(product.generated_profile_report);
-                    const overallFromReport = getOverallScoreFromReport(product.generated_profile_report);
-                    const trustScoreDisplay =
-                      productReport?.trustScore != null
-                        ? `${productReport.trustScore.overallScore}%`
-                        : overallFromReport != null
-                          ? `${overallFromReport}%`
-                          : "—";
+                    const score = resolveProductTrustScore(product, storedReports);
+                    const trustScoreDisplay = score != null ? `${score}%` : "—";
                     return (
                       <ProductProfileProductListCard
                         key={product.id}

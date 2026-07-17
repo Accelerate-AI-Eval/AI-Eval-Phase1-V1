@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import ProductProfileView from "../ProductProfile/ProductProfileView";
 import LoadingMessage from "../../UI/LoadingMessage";
 import { buildFormStateFromApi } from "../../../utils/vendorAttestationState";
@@ -8,13 +8,6 @@ import type { GeneratedProductProfileReport } from "../../../types/generatedProd
 import "../ProductProfile/product_profile.css";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
-
-/*
- * public_directory_listing (vendor_onboarding) / API field publicDirectoryListing:
- * Loaded with GET /vendorOnboarding; optional explicit PATCH /vendorOnboarding/public-directory-listing;
- * may be enabled from the server when marking a product “visible to buyers”. Drives buyer AI Vendor Directory eligibility.
- * @see backend/src/services/vendorDirectoryAttestationScope.ts
- */
 
 /** Clear auth session and navigate to login. Call only when user explicitly chooses to log in again. */
 function clearAuthAndGoToLogin() {
@@ -46,6 +39,8 @@ export interface ProductProfileProduct {
   userArchivedAt?: string | null;
   /** Generated product profile report (trust score + sections) after attestation submit. */
   generated_profile_report?: { trustScore: unknown; sections: unknown[] };
+  /** Denormalized VTS from attestation (fallback when report JSON is incomplete). */
+  latest_trust_score?: number | null;
   /** Product target sectors (public_sector, private_sector, non_profit_sector) for display. */
   sector?: string | Record<string, unknown> | null;
 }
@@ -59,11 +54,6 @@ export interface StoredGeneratedReport {
   createdAt: string;
 }
 
-/**
- * Product Profile route: product attestations, buyer visibility, generated profile, and org-level
- * Public Directory Listing (GET/PATCH vendor onboarding `publicDirectoryListing`). The listing toggle
- * in ProductProfileView is commented out in JSX but props/state/handlers stay wired for easy restore.
- */
 export const DirectoryListing = () => {
   const systemRole = (sessionStorage.getItem("systemRole") ?? "").toLowerCase().trim();
   const userRole = (sessionStorage.getItem("userRole") ?? "").toLowerCase().trim();
@@ -77,7 +67,6 @@ export const DirectoryListing = () => {
   const [formState, setFormState] = useState<VendorSelfAttestationFormState | null>(null);
   const [products, setProducts] = useState<ProductProfileProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  /** Org appears in public vendor directory when true (vendor onboarding `publicDirectoryListing`). */
   const [publicListing, setPublicListing] = useState(false);
   const [publicListingUpdating, setPublicListingUpdating] = useState(false);
   const [publicListingError, setPublicListingError] = useState<string | null>(null);
@@ -94,7 +83,6 @@ export const DirectoryListing = () => {
   /** Product list tab: current (non-expired attestation) vs archived (expired attestation) */
   const [productTab, setProductTab] = useState<"current" | "archived">("current");
 
-  /** Load org-level Public Directory Listing flag from GET /vendorOnboarding. */
   const fetchVendorPublicListing = useCallback(async () => {
     const token = sessionStorage.getItem("bearerToken");
     if (!token) return;
@@ -168,8 +156,8 @@ export const DirectoryListing = () => {
       const text = await response.text();
       let result: {
         success?: boolean;
-        attestation?: { id?: string; status?: string; product_name?: string; created_at?: string; updated_at?: string; visible_to_buyer?: boolean; expiry_at?: string | null; generated_profile_report?: unknown; sector?: unknown };
-        attestations?: { id?: string; status?: string; product_name?: string; created_at?: string; updated_at?: string; visible_to_buyer?: boolean; expiry_at?: string | null; generated_profile_report?: unknown; sector?: unknown; userArchivedAt?: string | null }[];
+        attestation?: { id?: string; status?: string; product_name?: string; created_at?: string; updated_at?: string; visible_to_buyer?: boolean; expiry_at?: string | null; generated_profile_report?: unknown; latest_trust_score?: number | null; sector?: unknown };
+        attestations?: { id?: string; status?: string; product_name?: string; created_at?: string; updated_at?: string; visible_to_buyer?: boolean; expiry_at?: string | null; generated_profile_report?: unknown; latest_trust_score?: number | null; sector?: unknown; userArchivedAt?: string | null }[];
         companyProfile?: Record<string, unknown>;
         message?: string;
       } = {};
@@ -207,6 +195,29 @@ export const DirectoryListing = () => {
                 ? "Rejected"
                 : "Draft";
           const productName = (a.product_name ?? "").trim() || "Draft";
+          let report = a.generated_profile_report as unknown;
+          if (typeof report === "string") {
+            try {
+              report = JSON.parse(report);
+            } catch {
+              report = undefined;
+            }
+          }
+          let latestTrust =
+            a.latest_trust_score != null && Number.isFinite(Number(a.latest_trust_score))
+              ? Number(a.latest_trust_score)
+              : null;
+          if ((latestTrust == null || latestTrust <= 0) && report != null && typeof report === "object") {
+            const ts = (report as Record<string, unknown>).trustScore ??
+              (report as Record<string, unknown>).trust_score;
+            if (ts != null && typeof ts === "object") {
+              const overall =
+                (ts as Record<string, unknown>).overallScore ??
+                (ts as Record<string, unknown>).overall_score;
+              const n = Number(overall);
+              if (Number.isFinite(n) && n > 0) latestTrust = Math.round(n);
+            }
+          }
           return {
             id: a.id,
             productName,
@@ -218,7 +229,8 @@ export const DirectoryListing = () => {
               a.userArchivedAt != null && String(a.userArchivedAt).trim() !== ""
                 ? String(a.userArchivedAt)
                 : null,
-            generated_profile_report: a.generated_profile_report,
+            generated_profile_report: report as ProductProfileProduct["generated_profile_report"],
+            latest_trust_score: latestTrust,
             sector: a.sector ?? undefined,
           };
         })
@@ -282,7 +294,6 @@ export const DirectoryListing = () => {
     }
   }, []);
 
-  /** PATCH /vendorOnboarding/public-directory-listing to enable or disable public directory presence. */
   const handlePublicListingToggle = useCallback(async () => {
     const token = sessionStorage.getItem("bearerToken");
     if (!token) {
@@ -469,6 +480,53 @@ export const DirectoryListing = () => {
     };
   }, []);
 
+  /** Fill missing card scores from generated-reports list (by attestation id). */
+  const productsWithScores = useMemo(() => {
+    if (!storedReports.length) return products;
+    return products.map((p) => {
+      if (p.latest_trust_score != null && Number.isFinite(p.latest_trust_score) && p.latest_trust_score > 0) {
+        return p;
+      }
+      const fromReport =
+        p.generated_profile_report != null &&
+        typeof p.generated_profile_report === "object"
+          ? (() => {
+              const ts =
+                (p.generated_profile_report as Record<string, unknown>).trustScore ??
+                (p.generated_profile_report as Record<string, unknown>).trust_score;
+              if (ts != null && typeof ts === "object") {
+                const n = Number(
+                  (ts as Record<string, unknown>).overallScore ??
+                    (ts as Record<string, unknown>).overall_score,
+                );
+                return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+              }
+              return null;
+            })()
+          : null;
+      if (fromReport != null) {
+        return { ...p, latest_trust_score: fromReport };
+      }
+      const stored = storedReports.find(
+        (r) => r.attestationId != null && String(r.attestationId) === String(p.id),
+      );
+      if (!stored) return p;
+      const storedScore = Number(stored.trustScore);
+      if (Number.isFinite(storedScore) && storedScore > 0) {
+        return {
+          ...p,
+          latest_trust_score: Math.round(storedScore),
+          generated_profile_report:
+            p.generated_profile_report ??
+            (stored.report as ProductProfileProduct["generated_profile_report"]),
+        };
+      }
+      return p;
+    });
+  }, [products, storedReports]);
+
+  const reportToShow = generatedReport ?? selectedStoredReport;
+
   if (loading) {
     return <LoadingMessage message="Loading product profile…" />;
   }
@@ -498,12 +556,10 @@ export const DirectoryListing = () => {
     );
   }
 
-  const reportToShow = generatedReport ?? selectedStoredReport;
-
   return (
     <ProductProfileView
       formState={formState}
-      products={products}
+      products={productsWithScores}
       productTab={productTab}
       onProductTabChange={setProductTab}
       fetchProductDetail={fetchProductDetail}

@@ -26,6 +26,7 @@ import {
   gradeFromOverallRiskScore,
   normalizeDisplayLetterGrade,
   completeReportRiskMeterColor,
+  overallRiskScoreFromReportJson,
 } from "../../../utils/completeReportGrade"
 import { mixSrgbHex } from "../../../utils/mixSrgbHex"
 import { riskScopeFromRow, type ReportRiskScope } from "../../../utils/reportRiskScope"
@@ -1152,7 +1153,7 @@ function ReportDetail() {
   )
 
   const deployment = data.deploymentOverview as DeploymentOverview | undefined
-  const overallScore = generated?.overallRiskScore ?? 0
+  const overallScore = generated?.overallRiskScore ?? overallRiskScoreFromReportJson(data) ?? 0
   const overallLevel = normalizeResidualRiskLabel(formatReportValue(generated?.riskLevel ?? "Low"))
   const alignmentScoreDisplay = alignmentScoreFromRiskScore(overallScore)
   const contextSummaryPreview = (() => {

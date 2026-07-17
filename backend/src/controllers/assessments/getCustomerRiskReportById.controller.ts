@@ -13,6 +13,7 @@ import {
   vendorCotsFrameworkMappingRowsForListView,
   countSubstantiveFrameworkMappingRows,
 } from "../../services/frameworkMappingFromCompliance.js";
+import { mergeScoreRationaleIntoReport, extractOverallRiskScoreFromReport } from "../../utils/mergeScoreRationale.js";
 
 /**
  * GET /customerRiskReports/:id
@@ -67,6 +68,8 @@ const getCustomerRiskReportById = async (req: Request, res: Response): Promise<v
         assessmentId: customerRiskAssessmentReports.assessment_id,
         title: customerRiskAssessmentReports.title,
         report: customerRiskAssessmentReports.report,
+        scoreRationale: customerRiskAssessmentReports.score_rationale,
+        scoreRationaleType: customerRiskAssessmentReports.score_rationale_type,
         createdAt: customerRiskAssessmentReports.created_at,
         expiryAt: assessments.expiry_at,
         attestationExpiryAt: vendorSelfAttestations.expiry_at,
@@ -318,13 +321,24 @@ const getCustomerRiskReportById = async (req: Request, res: Response): Promise<v
       }
     }
 
+    const reportWithRationale = mergeScoreRationaleIntoReport(
+      reportObj,
+      row.scoreRationale,
+      row.scoreRationaleType,
+    );
+    const overallRiskScore = extractOverallRiskScoreFromReport(reportWithRationale);
+
     res.status(200).json({
       success: true,
       data: {
         id: row.id,
         assessmentId: row.assessmentId,
         title: row.title,
-        report: reportObj,
+        report: reportWithRationale,
+        overallRiskScore:
+          overallRiskScore != null && Number.isFinite(overallRiskScore)
+            ? Math.round(overallRiskScore * 100) / 100
+            : null,
         createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
         expiryAt: row.expiryAt instanceof Date ? row.expiryAt.toISOString() : (row.expiryAt != null ? String(row.expiryAt) : null),
         attestationExpiryAt: row.attestationExpiryAt instanceof Date ? row.attestationExpiryAt.toISOString() : (row.attestationExpiryAt != null ? String(row.attestationExpiryAt) : null),

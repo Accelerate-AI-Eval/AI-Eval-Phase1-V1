@@ -35,6 +35,8 @@ const sqlFiles = [
   "20260424_assessment_user_archive_log.sql",
   "20260425_add_user_archived_at_vendor_self_attestations.sql",
   "20260426_vendor_self_attestation_user_archive_log.sql",
+  "20260714_enrich_generated_profile_reports_vts.sql",
+  "20260716_score_rationale_columns.sql",
 ];
 
 const pool = new pg.Pool({ connectionString });

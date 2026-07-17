@@ -1,0 +1,37 @@
+{
+  "region": "us-east-1",
+  "updatedAt": "2026-07-17T09:36:06.482Z",
+  "count": 1,
+  "results": [
+    {
+      "profileName": "US Anthropic Claude 3 Sonnet",
+      "profileType": "SYSTEM_DEFINED",
+      "inferenceProfileId": "us.anthropic.claude-3-sonnet-20240229-v1:0",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/us.anthropic.claude-3-sonnet-20240229-v1:0",
+      "foundationModelId": "anthropic.claude-3-sonnet-20240229-v1:0",
+      "prompt": "Hi",
+      "testedAt": "2026-07-17T09:36:06.468Z",
+      "tests": [
+        {
+          "status": "working",
+          "identifierType": "inferenceProfileId",
+          "value": "us.anthropic.claude-3-sonnet-20240229-v1:0",
+          "prompt": "Hi",
+          "reply": "Hello!",
+          "latencyMs": 2141,
+          "stopReason": "end_turn"
+        }
+      ],
+      "overallStatus": "working",
+      "workingTarget": {
+        "identifierType": "inferenceProfileId",
+        "value": "us.anthropic.claude-3-sonnet-20240229-v1:0"
+      },
+      "workingReply": "Hello!",
+      "summary": {
+        "working": 1,
+        "notWorking": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,538 @@
+/* Controls page — follows the shared application settings layout */
+.controlsPage {
+  --adm-border: #e2e8f0;
+  --adm-text: #0f172a;
+  --adm-muted: #64748b;
+  --adm-input-bg: #fff;
+  --adm-input-border: #cbd5e1;
+  --adm-outline: #94a3b8;
+  --adm-primary: var(--main-auth-button-color, #1cb0d4);
+  --adm-primary-strong: var(--main-auth-button-color-strong, #149bb8);
+
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.controlsPage__card {
+  width: 100%;
+}
+
+.controlsPage__cardHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.controlsPage__cardIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--ui-border-radius, 5px);
+  color: var(--adm-primary);
+  background: rgba(28, 176, 212, 0.1);
+  border: 1px solid rgba(28, 176, 212, 0.2);
+}
+
+.controlsPage__cardTitle {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--adm-text);
+  line-height: 1.35;
+}
+
+.controlsPage__cardHint {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--adm-muted);
+}
+
+/* Model field */
+.adminPage__modelField {
+  max-width: 42rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--adm-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.adminPage__modelLabelRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+}
+
+.adminPage__modelLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--adm-text);
+}
+
+.adminPage__modelCurrent {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(100%, 18rem);
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--adm-primary-strong);
+  background: rgba(28, 176, 212, 0.12);
+  border: 1px solid rgba(28, 176, 212, 0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminPage__modelControls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.adminPage__modelPickerRow {
+  width: 100%;
+  min-width: 0;
+}
+
+.adminPage__modelActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.adminPage__modelApplyBtn,
+.adminPage__modelTestBtn {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  margin-top: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.controlsPage .usersPage__btn--primary.adminPage__modelApplyBtn:hover:not(:disabled) {
+  background: var(--main-auth-button-color, #1cb0d4);
+}
+
+.adminPage__modelPicker {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.adminPage__modelTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  height: 40px;
+  padding: 0 0.75rem;
+  border-radius: var(--ui-border-radius, 5px);
+  border: 1px solid var(--adm-input-border);
+  background: var(--adm-input-bg);
+  color: var(--adm-text);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.adminPage__modelTrigger:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+.adminPage__modelPicker--open .adminPage__modelTrigger {
+  border-color: var(--adm-primary);
+  box-shadow: 0 0 0 2px rgba(28, 176, 212, 0.2);
+}
+
+.adminPage__modelTrigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.adminPage__modelTriggerText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminPage__modelTriggerIcon {
+  flex-shrink: 0;
+  color: var(--adm-muted);
+  transition: transform 0.15s ease;
+}
+
+.adminPage__modelPicker--open .adminPage__modelTriggerIcon {
+  transform: rotate(180deg);
+}
+
+.adminPage__modelMenu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--ui-border-radius, 5px);
+  border: 1px solid var(--adm-input-border);
+  background: var(--adm-input-bg);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.adminPage__modelSearchWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 40px;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid var(--adm-border);
+  background: #f8fafc;
+  box-sizing: border-box;
+}
+
+.adminPage__modelSearchWrap:focus-within {
+  background: rgba(28, 176, 212, 0.06);
+}
+
+.adminPage__modelSearchIcon {
+  flex-shrink: 0;
+  color: var(--adm-muted);
+}
+
+.adminPage__modelSearchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--adm-text);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.adminPage__modelSearchInput:focus {
+  outline: none;
+}
+
+.adminPage__modelSearchInput::placeholder {
+  color: #64748b;
+}
+
+.adminPage__modelSearchCount {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--adm-muted);
+  white-space: nowrap;
+}
+
+.adminPage__modelList {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  background: var(--adm-input-bg);
+  box-sizing: border-box;
+}
+
+.adminPage__modelListEmpty {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--adm-muted);
+}
+
+.adminPage__modelOption {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 36px;
+  padding: 0.45rem 0.65rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--adm-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.adminPage__modelOption:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.adminPage__modelOption--selected {
+  background: rgba(28, 176, 212, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(28, 176, 212, 0.35);
+}
+
+.adminPage__modelOptionLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminPage__modelOptionInvokeId {
+  flex: 0 1 52%;
+  min-width: 0;
+  margin-left: 1rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.3;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminPage__modelStatus {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--ui-border-radius, 5px);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  border: 1px solid var(--adm-border);
+  background: #f8fafc;
+  color: var(--adm-text);
+}
+
+.adminPage__modelStatus--success {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.adminPage__modelStatus--error {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.adminPage__ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 40px;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--ui-border-radius, 5px);
+  border: 1px solid var(--adm-outline);
+  background: #fff;
+  color: var(--adm-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.adminPage__ghostBtn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #64748b;
+}
+
+.adminPage__ghostBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Dialog / button styles used by ModelTestResultDialog */
+.usersPage__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.usersPage__dialog {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
+  border: 1px solid rgba(28, 176, 212, 0.15);
+}
+
+.usersPage__dialogHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.usersPage__dialogTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--main-text-color, #1f2937);
+}
+
+.usersPage__dialogClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.usersPage__dialogClose:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.usersPage__dialogBody {
+  padding: 1.1rem 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.usersPage__dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0 1.1rem 1.1rem;
+}
+
+.usersPage__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: var(--ui-border-radius, 5px);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.usersPage__btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.usersPage__btn--primary {
+  border: none;
+  color: #fff;
+  background: var(--main-auth-button-color, #1cb0d4);
+}
+
+.usersPage__btn--primary:hover:not(:disabled) {
+  background: var(--main-auth-button-color-strong, #149bb8);
+}
+
+.usersPage__btn--primary.usersPage__btn--inviteSend {
+  background: #1cb0d4a9;
+}
+
+.usersPage__btn--primary.usersPage__btn--inviteSend:hover:not(:disabled) {
+  background: #1cb0d4cc;
+}
+
+.usersPage__spinner {
+  animation: controlsPage-spin 0.8s linear infinite;
+}
+
+@keyframes controlsPage-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.adminPage__modelTestDialog {
+  max-width: 460px;
+}
+
+.adminPage__modelTestDialogBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.adminPage__modelTestDialogBanner--success {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.adminPage__modelTestDialogBanner--error {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.adminPage__modelTestDialogMeta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.adminPage__modelTestDialogRow {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.adminPage__modelTestDialogRow dt {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--main-text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.adminPage__modelTestDialogRow dd {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--main-text-color, #1f2937);
+  word-break: break-word;
+}

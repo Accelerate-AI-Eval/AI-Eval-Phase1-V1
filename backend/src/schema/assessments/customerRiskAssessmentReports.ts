@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, timestamp, jsonb, text } from "drizzle-orm/pg-core";
 
 /**
  * Analysis Report records generated when a vendor COTS assessment is submitted.
@@ -10,5 +10,7 @@ export const customerRiskAssessmentReports = pgTable("customer_risk_assessment_r
   organization_id: varchar("organization_id", { length: 255 }).notNull(),
   title: varchar("title", { length: 500 }).notNull(),
   report: jsonb("report").notNull(),
+  score_rationale: text("score_rationale"),
+  score_rationale_type: varchar("score_rationale_type", { length: 8 }),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

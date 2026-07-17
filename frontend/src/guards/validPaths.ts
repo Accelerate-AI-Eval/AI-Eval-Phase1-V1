@@ -8,6 +8,7 @@ export const VALID_PROTECTED_PATHS: (string | RegExp)[] = [
   "/dashboard",
   "/organizations",
   /^\/organizations\/assessment\/[^/]+$/,
+  "/controls",
   "/assessments",
   "/vendorcots",
   "/buyerAssessment",

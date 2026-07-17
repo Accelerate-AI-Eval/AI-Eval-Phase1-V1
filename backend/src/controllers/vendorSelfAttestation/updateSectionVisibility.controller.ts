@@ -2,7 +2,6 @@ import type { Request, Response } from "express";
 import { db } from "../../database/db.js";
 import { vendorSelfAttestations } from "../../schema/schema.js";
 import { and, eq } from "drizzle-orm";
-import { vendorAttestationListWhereForUser } from "../../services/vendorAttestationOrgScope.js";
 
 type SectionKey =
   | "visible_ai_governance"
@@ -20,8 +19,7 @@ type SectionKey =
 /**
  * PATCH /vendorSelfAttestation/section-visibility
  * Body: { attestationId: string, visible_ai_governance?: boolean, visible_security_posture?: boolean, visible_data_privacy?: boolean, visible_compliance?: boolean, visible_model_risk?: boolean }
- * Updates which detail sections are visible to buyers. Caller must own the row or be in the
- * same organization (same scope as GET /vendorSelfAttestation).
+ * Updates which detail sections are visible to buyers. Only the attestation owner can update.
  *
  * IMPORTANT: Product Profile toggle – must NOT update attestation submission metadata.
  * We only set section visibility fields. Do NOT set updated_at or submitted_at here.
@@ -73,13 +71,16 @@ const updateSectionVisibility = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const listWhere = await vendorAttestationListWhereForUser(userId);
-
     // Only update section visibility; do not touch updated_at so attestation "Submitted" date is unchanged
     const result = await db
       .update(vendorSelfAttestations)
       .set(updates)
-      .where(and(eq(vendorSelfAttestations.id, attestationId), listWhere))
+      .where(
+        and(
+          eq(vendorSelfAttestations.id, attestationId),
+          eq(vendorSelfAttestations.user_id, userId)
+        )
+      )
       .returning({ id: vendorSelfAttestations.id });
 
     if (!result || result.length === 0) {

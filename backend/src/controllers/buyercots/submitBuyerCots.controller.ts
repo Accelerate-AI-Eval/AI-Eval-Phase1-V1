@@ -91,10 +91,14 @@ async function persistVendorRiskReport(
       ...report,
       frameworkMapping: { rows: frameworkRows },
     } as unknown as Record<string, unknown>;
+    const irsRationale =
+      typeof report.scoreRationale === "string" ? report.scoreRationale.trim() : "";
     await db
       .update(cotsBuyerAssessments)
       .set({
         vendor_risk_assessment_report: reportStored,
+        score_rationale: irsRationale || undefined,
+        score_rationale_type: irsRationale ? "IRS" : undefined,
         updated_at: new Date(),
       })
       .where(eq(cotsBuyerAssessments.assessment_id, assessmentId));

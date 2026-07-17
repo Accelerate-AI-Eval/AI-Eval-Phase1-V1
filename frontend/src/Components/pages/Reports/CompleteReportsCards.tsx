@@ -1,11 +1,14 @@
-import { ChevronRight, Download, FileText } from "lucide-react";
+import { ChevronRight, CircleX, Download, FileText, Info } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import ClickTooltip from "../../UI/ClickTooltip";
+import Modal from "../../UI/Modal";
 import type { CustomerRiskReportItem } from "./Reports";
 import {
   completeReportRiskMeterColor,
   implementationRiskScoreFromReportPayload,
+  overallRiskScoreFromReportJson,
   reportContextScoreFromListPayload,
+  resolveScoreRationaleForCompleteReport,
   resolveScoreSubtitleForCompleteReport,
   type CompleteReportRiskMeterGrading,
 } from "../../../utils/completeReportGrade";
@@ -15,6 +18,7 @@ import {
   reportArchivedStatusBadge,
 } from "../../../utils/reportArchiveStatusLabel";
 import { mixSrgbHex } from "../../../utils/mixSrgbHex";
+import "../../../styles/popovers.css";
 import "../VendorDirectory/VendorDirectory.css";
 import "./general_reports.css";
 
@@ -72,6 +76,8 @@ interface CompleteReportsCardsProps {
    * Default: alignment gradient for customer reports; inverted IRS bands for `buyer_vendor_risk`.
    */
   riskMeterGrading?: CompleteReportRiskMeterGrading;
+  /** System admin org assessment view: show info icon beside risk score for type-specific rationale. */
+  showScoreRationaleInfo?: boolean;
 }
 
 function CompleteReportsCards({
@@ -84,10 +90,16 @@ function CompleteReportsCards({
   viewEnabledWhenArchived = false,
   singleCard = false,
   riskMeterGrading = "default",
+  showScoreRationaleInfo = false,
 }: CompleteReportsCardsProps) {
   const [scoreByReportId, setScoreByReportId] = useState<Record<string, number | null>>({});
   const [reportDetailById, setReportDetailById] = useState<Record<string, Record<string, unknown>>>({});
   const [fetchingReportId, setFetchingReportId] = useState<string | null>(null);
+  const [scoreRationaleModal, setScoreRationaleModal] = useState<{
+    reportTitle: string;
+    title: string;
+    rationale: string | null;
+  } | null>(null);
 
   const rowWithFetchedReport = useCallback(
     (report: CustomerRiskReportItem): CustomerRiskReportItem => {
@@ -105,7 +117,15 @@ function CompleteReportsCards({
         return scoreByReportId[report.id] ?? null;
       }
       if (riskMeterGrading === "buyer_cots_irs") {
-        return implementationRiskScoreFromReportPayload(row);
+        const irs = implementationRiskScoreFromReportPayload(row);
+        if (irs != null) return irs;
+        // Vendor COTS analysis reports store SRS as overallRiskScore (not IRS).
+        const listSrs =
+          row.overallRiskScore != null && Number.isFinite(Number(row.overallRiskScore))
+            ? Math.round(Number(row.overallRiskScore))
+            : null;
+        const srs = listSrs ?? overallRiskScoreFromReportJson(row.report);
+        return srs != null ? Math.round(srs) : null;
       }
       if (report.source === "buyer_vendor_risk") {
         return reportContextScoreFromListPayload(row);
@@ -142,11 +162,16 @@ function CompleteReportsCards({
           if (data?.success && data?.data?.report && typeof data.data.report === "object") {
             const rep = data.data.report as Record<string, unknown>;
             setReportDetailById((prev) => ({ ...prev, [report.id]: rep }));
-            const payload = { report: rep, source: "customer" as const };
+            const payload = { report: rep, source: "customer" as const, overallRiskScore: report.overallRiskScore };
             const irs = implementationRiskScoreFromReportPayload(payload);
+            const listSrs =
+              report.overallRiskScore != null && Number.isFinite(Number(report.overallRiskScore))
+                ? Math.round(Number(report.overallRiskScore))
+                : null;
+            const srs = listSrs ?? overallRiskScoreFromReportJson(rep);
             const report_context_score =
               riskMeterGrading === "buyer_cots_irs"
-                ? irs
+                ? (irs ?? (srs != null ? Math.round(srs) : null))
                 : isVendorPortalSession() && irs != null
                   ? irs
                   : reportContextScoreFromListPayload(payload);
@@ -180,6 +205,13 @@ function CompleteReportsCards({
       !archived && report_context_score != null
         ? resolveScoreSubtitleForCompleteReport(rowForMeter, meterGrading)
         : null;
+    const scoreRationale = showScoreRationaleInfo
+      ? resolveScoreRationaleForCompleteReport(rowForMeter, meterGrading)
+      : null;
+    const showRationaleInfo =
+      showScoreRationaleInfo &&
+      !archived &&
+      (report_context_score != null || scoreRationale?.rationale != null);
 
     const cardAccentStyle =
       !archived && meterColor != null
@@ -267,6 +299,24 @@ function CompleteReportsCards({
               >
                 {isFetching ? "…" : report_context_score != null ? `(${report_context_score}/100)` : "—"}
               </span>
+              {showRationaleInfo && scoreRationale ? (
+                <button
+                  type="button"
+                  className="general_rpr_card_download_btn complete_rpr_card_risk_info_btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setScoreRationaleModal({
+                      reportTitle: getTitle(report),
+                      title: scoreRationale.title,
+                      rationale: scoreRationale.rationale,
+                    });
+                  }}
+                  aria-label={`${scoreRationale.title} for ${getTitle(report)}`}
+                  title={scoreRationale.title}
+                >
+                  <Info size={14} aria-hidden />
+                </button>
+              ) : null}
               
             </span>
           </div>
@@ -314,9 +364,56 @@ function CompleteReportsCards({
       </article>
     );
   });
-  if (singleCard) return <>{cards}</>;
+  const modal = (
+    <Modal
+      isOpen={scoreRationaleModal != null}
+      onClose={() => setScoreRationaleModal(null)}
+      overlayClassName="profile_modal_overlay"
+      popupClassName=""
+    >
+      <div className="profile_modal_content settings_modal_content complete_rpr_score_rationale_modal_content">
+        <div className="profile_modal_header">
+          <h2 id="complete_rpr_score_rationale_modal_title" className="profile_modal_title">
+            {scoreRationaleModal?.title ?? "Score Rationale"}
+          </h2>
+          <button
+            type="button"
+            className="modal_close_btn"
+            onClick={() => setScoreRationaleModal(null)}
+            aria-label="Close"
+          >
+            <CircleX size={20} />
+          </button>
+        </div>
+        <div className="profile_modal_body">
+          {scoreRationaleModal?.reportTitle ? (
+            <p className="complete_rpr_score_rationale_report_name">
+              {scoreRationaleModal.reportTitle}
+            </p>
+          ) : null}
+          <p className="complete_rpr_score_rationale_body">
+            {scoreRationaleModal?.rationale?.trim()
+              ? scoreRationaleModal.rationale.trim()
+              : "No rationale available for this report yet."}
+          </p>
+        </div>
+      </div>
+    </Modal>
+  );
+
+  if (singleCard) {
+    return (
+      <>
+        {cards}
+        {showScoreRationaleInfo ? modal : null}
+      </>
+    );
+  }
   return (
-    <div className="general_rpr_cards_sec vendor_directory_grid complete_rpr_cards_grid">{cards}</div>
+    <>
+      <div className="general_rpr_cards_sec vendor_directory_grid complete_rpr_cards_grid">{cards}</div>
+      {showScoreRationaleInfo ? modal : null}
+    </>
   );
 }
 

@@ -1093,6 +1093,7 @@ const VendorAttestationsMainForm = () => {
       let result: {
         success?: boolean;
         message?: string;
+        detail?: string;
         attestation?: { id?: string; status?: string };
       } = {};
       try {
@@ -1110,7 +1111,11 @@ const VendorAttestationsMainForm = () => {
             'Completed attestations cannot be modified. Please use "New Attestation" to create a new one.',
           );
         } else {
-          setSubmitError(msg);
+          const detail =
+            typeof result.detail === "string" && result.detail.trim()
+              ? ` (${result.detail.trim()})`
+              : "";
+          setSubmitError(`${msg}${detail}`);
         }
         return { ok: false };
       }

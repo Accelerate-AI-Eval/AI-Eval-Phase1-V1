@@ -15,6 +15,7 @@ export const ALLOWED_ROUTES: Record<SystemRole, readonly string[]> = {
     "/",
     "/dashboard",
     "/organizations",
+    "/controls",
     "/assessments",
     "/attestation_details",
     "/vendor-directory",

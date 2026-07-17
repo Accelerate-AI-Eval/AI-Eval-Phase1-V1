@@ -18,6 +18,7 @@ import {
   Layers,
   TestTube,
   Workflow,
+  SlidersHorizontal,
 } from "lucide-react"
 
 export interface NavItemConfig {
@@ -115,6 +116,13 @@ export const NAVIGATION = {
       path: "/product_profile",
       accessRoles: ["admin", "user", "manager", "lead", "engineer", "viewer"],
       systemRoles: ["system admin", "system manager", "system viewer", "vendor"],
+    },
+    {
+      label: "Controls",
+      icon: SlidersHorizontal,
+      path: "/controls",
+      accessRoles: ["admin"],
+      systemRoles: ["system admin"],
     },
     {
       label: "User Management",

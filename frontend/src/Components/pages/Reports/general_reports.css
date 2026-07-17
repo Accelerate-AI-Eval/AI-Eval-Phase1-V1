@@ -790,6 +790,36 @@
   flex-shrink: 0;
 }
 
+.complete_rpr_card_risk_info_btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0.2rem;
+  margin-left: 0.15rem;
+}
+
+.complete_rpr_score_rationale_modal_content.profile_modal_content {
+  min-width: min(420px, calc(100vw - 2rem));
+  max-width: min(720px, calc(100vw - 2rem));
+}
+
+.complete_rpr_score_rationale_report_name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+}
+
+.complete_rpr_score_rationale_body {
+  font-size: 0.9375rem;
+  color: #4b5563;
+  margin: 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
 .complete_rpr_card_risk_subtitle {
   font-size: 0.6875rem;
   font-weight: 600;

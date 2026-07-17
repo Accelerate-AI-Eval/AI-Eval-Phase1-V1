@@ -131,6 +131,7 @@ type ReportPayload = { trustScore: unknown; sections: unknown[] };
 
 /**
  * Generate product profile report from vendor data and insert into generated_profile_reports.
+ * VTS comes from Python scoring service; this only persists trust_score + report.
  * Returns the report payload for the response, or null on error.
  */
 async function generateAndStoreProfileReport(
@@ -143,22 +144,50 @@ async function generateAndStoreProfileReport(
   try {
     const report = await generateVendorAttestationReport(vendorData, formulaPayload);
     const { reportPayload, trustScoreNum, summaryToStore } = buildReportPayloadAndSummary(report);
+    const scoring = report.scoringResult;
 
     const summaryForDb = summaryToStore && summaryToStore.length > 0 ? summaryToStore : null;
-    // console.log("[Summary] Step: submitVendorSelfAttestation (generateAndStoreProfileReport) — before DB insert | attestation_id:", attestationId, "| summaryToStore:", summaryToStore == null ? "undefined" : "length " + summaryToStore.length, "| summary column value:", summaryForDb == null ? "null" : "length " + summaryForDb.length);
-    // if (summaryForDb) console.log("[Summary] Step: submitVendorSelfAttestation — complete summary being stored:", summaryForDb);
-
     const trustScoreForDb = Number.isFinite(trustScoreNum) ? Math.round(trustScoreNum) : 0;
-    await db.insert(generatedProfileReports).values({
-      user_id: userId,
-      organization_id: organizationIdStr ?? undefined,
-      attestation_id: attestationId,
-      trust_score: trustScoreForDb,
-      summary: summaryForDb,
-      report: reportPayload,
-    });
+    const gradeForDb = scoring?.grade?.trim() || String(report.trustScore?.grade ?? "").trim() || null;
+    const scoreRationaleForDb =
+      typeof reportPayload.scoreRationale === "string" && reportPayload.scoreRationale.trim()
+        ? reportPayload.scoreRationale.trim()
+        : typeof scoring?.rationale === "string" && scoring.rationale.trim()
+          ? scoring.rationale.trim()
+          : null;
 
-    // console.log("[Summary] Step: submitVendorSelfAttestation (generateAndStoreProfileReport) — inserted into generated_profile_reports | attestation_id:", attestationId, "| summary stored:", summaryForDb != null);
+    const [inserted] = await db
+      .insert(generatedProfileReports)
+      .values({
+        user_id: userId,
+        organization_id: organizationIdStr ?? undefined,
+        attestation_id: attestationId,
+        trust_score: trustScoreForDb,
+        summary: summaryForDb,
+        report: reportPayload,
+        product_risk: scoring?.product_risk,
+        governance_risk: scoring?.governance_risk,
+        operational_risk: scoring?.operational_risk,
+        weighted_risk: scoring?.weighted_risk,
+        grade: gradeForDb ?? undefined,
+        classification: scoring?.classification || undefined,
+        formula_detail: scoring?.detail ?? undefined,
+        scoring_version: scoring?.scoring_version || undefined,
+        score_rationale: scoreRationaleForDb ?? undefined,
+        score_rationale_type: scoreRationaleForDb ? "VTS" : undefined,
+      })
+      .returning({ id: generatedProfileReports.id });
+
+    await db
+      .update(vendorSelfAttestations)
+      .set({
+        generated_profile_report: reportPayload,
+        latest_trust_score: trustScoreForDb,
+        latest_trust_grade: gradeForDb ?? undefined,
+        latest_profile_report_id: inserted?.id,
+        updated_at: new Date(),
+      })
+      .where(eq(vendorSelfAttestations.id, attestationId));
 
     return reportPayload;
   } catch (err) {
@@ -634,9 +663,21 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
     });
   } catch (error) {
     console.error("submitVendorSelfAttestation error:", error);
+    const detail = error instanceof Error ? error.message : String(error);
+    try {
+      const logPath = path.resolve(process.cwd(), "submit-attestation-error.log");
+      fs.appendFileSync(
+        logPath,
+        `${new Date().toISOString()} ${detail}\n${error instanceof Error && error.stack ? error.stack : ""}\n\n`,
+      );
+    } catch {
+      // ignore log write failures
+    }
     res.status(500).json({
       success: false,
       message: "Database or server error",
+      // Helps diagnose schema drift / constraint failures without digging through server logs.
+      detail,
     });
   }
 };

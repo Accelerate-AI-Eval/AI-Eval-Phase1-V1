@@ -29,20 +29,30 @@ const getBuyerVendorRiskReport = async (req: Request, res: Response): Promise<vo
       res.status(404).json({ success: false, message: "User not found" });
       return;
     }
+    const platformRole = String((user as Record<string, unknown>).user_platform_role ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/_/g, " ");
+    const isSystemUser =
+      platformRole === "system admin" ||
+      platformRole === "system manager" ||
+      platformRole === "system viewer";
     const organizationId = String((user as Record<string, unknown>).organization_id ?? "").trim();
     const id = typeof req.params?.id === "string" ? req.params.id.trim() : "";
-    if (!id || !organizationId) {
+    if (!id || (!isSystemUser && !organizationId)) {
       res.status(400).json({ success: false, message: "Invalid assessment id" });
       return;
     }
 
     await expireSubmittedAssessmentsAndArchiveBuyerReports(pool);
 
-    const whereBuyer = and(
-      eq(cotsBuyerAssessments.assessment_id, id),
-      eq(assessments.organization_id, organizationId),
-      eq(assessments.type, "cots_buyer"),
-    );
+    const whereBuyer = isSystemUser
+      ? and(eq(cotsBuyerAssessments.assessment_id, id), eq(assessments.type, "cots_buyer"))
+      : and(
+          eq(cotsBuyerAssessments.assessment_id, id),
+          eq(assessments.organization_id, organizationId),
+          eq(assessments.type, "cots_buyer"),
+        );
 
     const hasArchiveCol = await hasCotsBuyerArchivedReportColumn(pool);
     const [row] = hasArchiveCol

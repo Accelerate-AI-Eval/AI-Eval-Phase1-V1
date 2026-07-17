@@ -1,3 +1,10 @@
+/**
+ * LEGACY — Buyer Implementation Risk Score formula now runs in Python
+ * (`python/services/buyer_implementation_risk_formula.py` via
+ * POST /assessment/cots-buyer/score). Kept for reference / unit tests only.
+ * Runtime path: scoreCotsBuyerWithPython in pythonScoringClient.ts.
+ */
+
 type Breakdown = {
   vendorRisk: number;
   organizationalReadinessGap: number;

@@ -22,6 +22,7 @@ import GeneralReportDetail from "./Components/pages/Reports/GeneralReportDetail"
 import MyVendors from "./Components/pages/MyVendors/MyVendors";
 import Organizations from "./Components/pages/Organizations/Organizations";
 import OrganizationAssessmentView from "./Components/pages/Organizations/OrganizationAssessmentView";
+import Controls from "./Components/pages/Controls/Controls";
 import Toaster from "./Components/Toaster/Toaster";
 import LayoutWithoutNav from "./Components/layout/LayoutWithoutNav";
 import VendorMainForm from "./Components/pages/VendorOnboarding/VendorMainForm";
@@ -62,6 +63,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/organizations" element={<Organizations />} />
                 <Route path="/organizations/assessment/:assessmentId" element={<OrganizationAssessmentView />} />
+                <Route path="/controls" element={<Controls />} />
                 <Route path="/assessments" element={<Assessments />} />
                 <Route path="/vendorcots/:assessmentId" element={<VendorCOTSMain />} />
                 <Route path="/vendorcots" element={<VendorCOTSMain />} />

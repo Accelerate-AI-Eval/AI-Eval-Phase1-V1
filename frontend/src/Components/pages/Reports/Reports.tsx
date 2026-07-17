@@ -34,6 +34,8 @@ export interface CustomerRiskReportItem {
   source?: "customer" | "buyer_vendor_risk";
   /** Buyer complete report: IRS from assess-3 formula. */
   implementationRiskScore?: number | null;
+  /** Vendor COTS complete report: SRS (sales risk) from list API. */
+  overallRiskScore?: number | null;
   /** Buyer–vendor risk list / stored report: readiness classification (vendor-style meter). */
   implementationRiskClassification?: string | null;
   /** Buyer–vendor / org portal: PROCEED / DO NOT PROCEED style decision from assess-3. */
@@ -177,6 +179,10 @@ function Reports() {
           ? customerData.data.reports.map((r: CustomerRiskReportItem) => ({
               ...r,
               source: "customer" as const,
+              overallRiskScore:
+                r.overallRiskScore != null && Number.isFinite(Number(r.overallRiskScore))
+                  ? Number(r.overallRiskScore)
+                  : null,
             }))
           : [];
         const buyerList: CustomerRiskReportItem[] = Array.isArray(

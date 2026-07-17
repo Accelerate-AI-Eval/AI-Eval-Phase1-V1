@@ -91,4 +91,8 @@ export const vendorSelfAttestations = pgTable("vendor_self_attestations", {
   user_archived_at: timestamp("user_archived_at", { withTimezone: true }),
   /** Generated product profile report (trust score + sections) when attestation is submitted as COMPLETED. */
   generated_profile_report: jsonb("generated_profile_report"),
+  /** Latest VTS from most recent generated_profile_reports row. */
+  latest_trust_score: integer("latest_trust_score"),
+  latest_trust_grade: varchar("latest_trust_grade", { length: 8 }),
+  latest_profile_report_id: uuid("latest_profile_report_id"),
 });

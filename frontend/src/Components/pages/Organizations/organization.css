@@ -534,3 +534,88 @@
   font-weight: 400;
 }
 
+/* System admin: trust score centered under product name (attestations + assessments) */
+.vendor_preview .attestation_list_rows .org_attestation_card_title_block,
+.vendor_preview .assessment_list_rows .org_attestation_card_title_block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.vendor_preview .attestation_list_rows .org_attestation_card_title_block .general_rpr_card_title_wrap,
+.vendor_preview .assessment_list_rows .org_attestation_card_title_block .general_rpr_card_title_wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.vendor_preview .attestation_list_rows .org_attestation_card_title_block .vendor_directory_card_name,
+.vendor_preview .assessment_list_rows .org_attestation_card_title_block .vendor_directory_card_name {
+  text-align: center;
+}
+
+.vendor_preview .attestation_list_rows .org_attestation_card_trust_score,
+.vendor_preview .assessment_list_rows .org_attestation_card_trust_score {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 0.5rem 0 0 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.vendor_preview .attestation_list_rows .org_attestation_card_trust_label,
+.vendor_preview .assessment_list_rows .org_attestation_card_trust_label {
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.vendor_preview .attestation_list_rows .org_attestation_card_trust_value,
+.vendor_preview .assessment_list_rows .org_attestation_card_trust_value {
+  color: #059669;
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+/* System admin: View first, then score rationale info */
+.vendor_preview .attestation_list_rows .org_attestation_card_actions,
+.vendor_preview .assessment_list_rows .org_attestation_card_actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.vendor_preview .attestation_list_rows .org_attestation_vts_info_btn,
+.vendor_preview .assessment_list_rows .org_attestation_vts_info_btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Centered VTS Rationale modal – matches app profile/settings modal */
+.org_vts_rationale_modal_content.profile_modal_content {
+  min-width: min(420px, calc(100vw - 2rem));
+  max-width: min(720px, calc(100vw - 2rem));
+}
+
+.org_vts_rationale_product_name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+}
+
+.org_vts_rationale_body {
+  font-size: 0.9375rem;
+  color: #4b5563;
+  margin: 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+

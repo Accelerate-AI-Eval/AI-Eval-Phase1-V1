@@ -252,6 +252,7 @@ async function createCustomerRiskReport(
     top5RisksWithMitigations,
     frameworkRowsForStoredReport,
   );
+  let srsRationale = "";
   if (generated) {
     if (
       generated.matchedRiskSummaries &&
@@ -338,6 +339,16 @@ async function createCustomerRiskReport(
     report.generatedAnalysis = {
       overallRiskScore: generated.overallRiskScore,
       riskLevel: generated.riskLevel,
+      scoreRationale:
+        typeof generated.scoreRationale === "string"
+          ? generated.scoreRationale.trim() || undefined
+          : undefined,
+      scoreRationaleType:
+        generated.scoreRationaleType === "SCS" ||
+        generated.scoreRationaleType === "SRS" ||
+        generated.scoreRationaleType === "IRS"
+          ? generated.scoreRationaleType
+          : "SCS",
       summary: generated.summary,
       executiveSummary: generated.executiveSummary,
       keyRisks: generated.keyRisks,
@@ -362,6 +373,12 @@ async function createCustomerRiskReport(
     if (frameworkMappingRows.length > 0) {
       report.frameworkMappingRows = frameworkMappingRows;
     }
+    srsRationale =
+      typeof generated.scoreRationale === "string" ? generated.scoreRationale.trim() : "";
+    if (srsRationale) {
+      report.scoreRationale = srsRationale;
+      report.scoreRationaleType = "SCS";
+    }
   } else if (frameworkRowsForStoredReport.length > 0) {
     report.generatedAnalysis = {
       fullReport: {
@@ -376,6 +393,8 @@ async function createCustomerRiskReport(
     organization_id: orgIdStr,
     title,
     report,
+    score_rationale: srsRationale || undefined,
+    score_rationale_type: srsRationale ? "SCS" : undefined,
   });
 }
 
