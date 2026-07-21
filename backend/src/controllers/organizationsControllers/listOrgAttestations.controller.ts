@@ -168,6 +168,11 @@ const listOrgAttestations = async (req: Request, res: Response) => {
         report_operational_risk: generatedProfileReports.operational_risk,
         report_classification: generatedProfileReports.classification,
         report_formula_detail: generatedProfileReports.formula_detail,
+        profile_report_id: generatedProfileReports.id,
+        llm_model_id: vendorSelfAttestations.llm_model_id,
+        llm_model_label: vendorSelfAttestations.llm_model_label,
+        report_llm_model_id: generatedProfileReports.llm_model_id,
+        report_llm_model_label: generatedProfileReports.llm_model_label,
         user_name: usersTable.user_name,
         user_first_name: usersTable.user_first_name,
         user_last_name: usersTable.user_last_name,
@@ -251,6 +256,15 @@ const listOrgAttestations = async (req: Request, res: Response) => {
           trust_score: trustScore,
           trust_grade: grade || null,
           vts_rationale: vtsRationale,
+          profile_report_id: a.profile_report_id ?? null,
+          llm_model_id:
+            (a.llm_model_id != null && String(a.llm_model_id).trim()) ||
+            (a.report_llm_model_id != null && String(a.report_llm_model_id).trim()) ||
+            null,
+          llm_model_label:
+            (a.llm_model_label != null && String(a.llm_model_label).trim()) ||
+            (a.report_llm_model_label != null && String(a.report_llm_model_label).trim()) ||
+            null,
         };
       }),
     });

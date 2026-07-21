@@ -79,6 +79,8 @@ export interface GeneratedReportItem {
   generatedAt: string;
   /** Markdown for most types; JSON string or object for Vendor Comparison Matrix. */
   briefContent?: string | Record<string, unknown>;
+  /** Bedrock / Controls model id used when this report was generated. */
+  llmModelId?: string | null;
   /** When in the past, report is archived (assessment expired). */
   expiryAt?: string | null;
   /** When in the past, report is archived (linked attestation expired). */
@@ -306,6 +308,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
               reportType: string;
               generatedAt: string;
               briefContent?: string;
+              llmModelId?: string | null;
               expiryAt?: string | null;
               attestationExpiryAt?: string | null;
               assessmentUserArchivedAt?: string | null;
@@ -316,6 +319,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
               reportType: r.reportType,
               generatedAt: r.generatedAt,
               briefContent: r.briefContent,
+              llmModelId: r.llmModelId ?? null,
               expiryAt: r.expiryAt ?? null,
               attestationExpiryAt: r.attestationExpiryAt ?? null,
               assessmentUserArchivedAt: r.assessmentUserArchivedAt ?? null,
@@ -534,6 +538,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
             reportType: report.reportType,
             generatedAt: report.generatedAt,
             briefContent: report.briefContent,
+            llmModelId: report.llmModelId ?? null,
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
@@ -589,6 +594,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
             reportType: report.reportType,
             generatedAt: report.generatedAt,
             briefContent: report.briefContent,
+            llmModelId: report.llmModelId ?? null,
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
@@ -651,6 +657,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
             reportType: report.reportType,
             generatedAt: report.generatedAt,
             briefContent: report.briefContent,
+            llmModelId: report.llmModelId ?? null,
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
@@ -704,6 +711,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
             reportType: report.reportType,
             generatedAt: report.generatedAt,
             briefContent: report.briefContent,
+            llmModelId: report.llmModelId ?? null,
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
@@ -758,6 +766,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
             reportType: report.reportType,
             generatedAt: report.generatedAt,
             briefContent: report.briefContent,
+            llmModelId: report.llmModelId ?? null,
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
@@ -815,6 +824,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
             reportType: report.reportType,
             generatedAt: report.generatedAt,
             briefContent: report.briefContent,
+            llmModelId: report.llmModelId ?? null,
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
@@ -872,6 +882,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
             reportType: report.reportType,
             generatedAt: report.generatedAt,
             briefContent: report.briefContent,
+            llmModelId: report.llmModelId ?? null,
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
@@ -929,6 +940,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
             reportType: report.reportType,
             generatedAt: report.generatedAt,
             briefContent: report.briefContent,
+            llmModelId: report.llmModelId ?? null,
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {

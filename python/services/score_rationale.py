@@ -60,8 +60,11 @@ def _payload_get(payload: dict[str, Any] | None, keys: tuple[str, ...]) -> Any:
 
 
 def _bool_yes_local(v: Any) -> bool:
+    """True for bare yes/true and Buyer COTS options like 'Yes - Active board…'."""
+    if isinstance(v, bool):
+        return v
     s = str(v if v is not None else "").strip().lower()
-    return s in ("yes", "true", "available", "exists", "defined")
+    return s.startswith("yes") or s in ("true", "available", "exists", "defined")
 
 
 # ---------------------------------------------------------------------------

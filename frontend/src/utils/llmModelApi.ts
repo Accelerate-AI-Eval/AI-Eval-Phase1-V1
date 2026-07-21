@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "./apiBaseUrl";
+import { publishActiveLlmModel } from "./activeLlmModelStore";
 
 export type LlmModelOption = {
   id: string;
@@ -85,18 +86,19 @@ export async function fetchLlmModelConfig(): Promise<
       };
     }
 
-    return {
-      ok: true,
-      config: {
-        modelId: data.modelId ?? "",
-        modelLabel: data.modelLabel ?? data.modelId ?? "",
-        backend: data.backend ?? "bedrock",
-        options: data.options,
-        requiresPythonRestart: data.requiresPythonRestart,
-        pythonSynced: data.pythonSynced,
-        inferenceProfiles: data.inferenceProfiles,
-      },
+    const config: LlmModelConfig = {
+      modelId: data.modelId ?? "",
+      modelLabel: data.modelLabel ?? data.modelId ?? "",
+      backend: data.backend ?? "bedrock",
+      options: data.options,
+      requiresPythonRestart: data.requiresPythonRestart,
+      pythonSynced: data.pythonSynced,
+      inferenceProfiles: data.inferenceProfiles,
     };
+    if (config.modelId || config.modelLabel) {
+      publishActiveLlmModel(config);
+    }
+    return { ok: true, config };
   } catch {
     return { ok: false, message: "Network error while loading LLM models." };
   }
@@ -164,9 +166,21 @@ export async function applyLlmModel(
       };
     }
 
+    const config: LlmModelConfig = {
+      modelId: data.modelId ?? "",
+      modelLabel: data.modelLabel ?? data.modelId ?? "",
+      backend: data.backend ?? "bedrock",
+      options: Array.isArray(data.options) ? data.options : [],
+      requiresPythonRestart: data.requiresPythonRestart,
+      pythonSynced: data.pythonSynced,
+      inferenceProfiles: data.inferenceProfiles,
+    };
+    if (config.modelId || config.modelLabel) {
+      publishActiveLlmModel(config);
+    }
     return {
       ok: true,
-      config: data,
+      config,
       message: data.message ?? "LLM model updated.",
     };
   } catch {

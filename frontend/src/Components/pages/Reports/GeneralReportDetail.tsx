@@ -24,6 +24,10 @@ import {
 } from "lucide-react";
 import LoadingMessage from "../../UI/LoadingMessage";
 import {
+  AdminLlmModelLabel,
+  resolveStoredLlmModelId,
+} from "../../UI/AdminLlmModelInfo";
+import {
   buildReportPdfFilename,
   downloadElementAsPdf,
   splitAssessmentLabelForPdf,
@@ -54,6 +58,7 @@ interface GeneratedReportItem {
   generatedAt: string;
   /** Stored general report body: markdown for most types, or JSON (string or parsed) for Vendor Comparison Matrix. */
   briefContent?: string | Record<string, unknown>;
+  llmModelId?: string | null;
   expiryAt?: string | null;
   attestationExpiryAt?: string | null;
   assessmentUserArchivedAt?: string | null;
@@ -406,6 +411,7 @@ function GeneralReportDetail() {
             reportType: d.reportType,
             generatedAt: d.generatedAt,
             briefContent: d.briefContent,
+            llmModelId: d.llmModelId ?? null,
             expiryAt: d.expiryAt ?? null,
             attestationExpiryAt: d.attestationExpiryAt ?? null,
             assessmentUserArchivedAt: d.assessmentUserArchivedAt ?? null,
@@ -642,11 +648,35 @@ function GeneralReportDetail() {
       </section> */}
 
       <div ref={pdfBodyRef} className="report_detail_body_shell">
-        <header className="report_assessment_doc_header">
-          <h1 className="report_assessment_title">{getReportTypeDisplayLabel(report.reportType)}</h1>
-          <p className="report_assessment_subtitle">
-            {report.assessmentLabel} • {generatedDate}
-          </p>
+        <header className="report_assessment_doc_header report_assessment_doc_header--with_llm">
+          <div className="report_assessment_doc_header_main">
+            <h1 className="report_assessment_title">{getReportTypeDisplayLabel(report.reportType)}</h1>
+            <p className="report_assessment_subtitle">
+              {report.assessmentLabel} • {generatedDate}
+            </p>
+          </div>
+          <AdminLlmModelLabel
+            className="report_llm_model_tag"
+            showIcon={false}
+            preferModelId
+            fallbackToActive
+            modelName={resolveStoredLlmModelId({
+              llmModelId: report.llmModelId,
+              report:
+                typeof report.briefContent === "object" && report.briefContent != null
+                  ? report.briefContent
+                  : (() => {
+                      if (typeof report.briefContent !== "string") return null;
+                      const t = report.briefContent.trim();
+                      if (!t.startsWith("{")) return null;
+                      try {
+                        return JSON.parse(t) as Record<string, unknown>;
+                      } catch {
+                        return null;
+                      }
+                    })(),
+            })}
+          />
         </header>
         <section className="">
           {/* <h2 className="report_section_heading">

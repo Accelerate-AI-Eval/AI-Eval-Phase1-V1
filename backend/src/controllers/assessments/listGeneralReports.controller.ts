@@ -64,6 +64,7 @@ const listGeneralReports = async (req: Request, res: Response): Promise<void> =>
         assessment_label: generalReports.assessment_label,
         report_type: generalReports.report_type,
         content: generalReports.content,
+        llm_model_id: generalReports.llm_model_id,
         created_at: generalReports.created_at,
         created_by: generalReports.created_by,
         expiryAt: assessments.expiry_at,
@@ -108,6 +109,10 @@ const listGeneralReports = async (req: Request, res: Response): Promise<void> =>
         generatedAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
         briefContent,
         createdBy: r.created_by,
+        llmModelId:
+          typeof r.llm_model_id === "string" && r.llm_model_id.trim()
+            ? r.llm_model_id.trim()
+            : null,
         expiryAt: r.expiryAt instanceof Date ? r.expiryAt.toISOString() : (r.expiryAt != null ? String(r.expiryAt) : null),
         attestationExpiryAt: r.attestationExpiryAt instanceof Date ? r.attestationExpiryAt.toISOString() : (r.attestationExpiryAt != null ? String(r.attestationExpiryAt) : null),
         assessmentUserArchivedAt:

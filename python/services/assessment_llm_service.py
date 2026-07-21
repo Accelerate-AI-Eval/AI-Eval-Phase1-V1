@@ -7,7 +7,7 @@ from typing import Any
 
 import boto3
 
-from config import settings
+from config import get_bedrock_model_id, settings
 
 
 def _bedrock_client():
@@ -24,6 +24,7 @@ def invoke_assessment_llm(
     formula_context: str = "",
     max_tokens: int | None = None,
     temperature: float = 0.3,
+    model_id: str | None = None,
 ) -> str:
     """Invoke Claude with optional pgvector formula context prepended."""
     text = ((formula_context or "") + (user_prompt or "")).strip()
@@ -40,9 +41,11 @@ def invoke_assessment_llm(
             }
         ],
     }
+    resolved_model = (model_id or "").strip() or get_bedrock_model_id()
+    print(f"[LLM] assessment invoke using model: {resolved_model}")
     client = _bedrock_client()
     response = client.invoke_model(
-        modelId=settings.BEDROCK_MODEL_ID,
+        modelId=resolved_model,
         contentType="application/json",
         accept="application/json",
         body=json.dumps(body),

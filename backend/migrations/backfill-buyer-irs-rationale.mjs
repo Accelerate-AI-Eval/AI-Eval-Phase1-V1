@@ -31,8 +31,15 @@ function firstNonEmpty(...values) {
 }
 
 function boolYes(v) {
+  if (typeof v === "boolean") return v;
   const s = String(v ?? "").trim().toLowerCase();
-  return ["yes", "true", "available", "exists", "defined"].includes(s);
+  return (
+    s.startsWith("yes") ||
+    s === "true" ||
+    s === "available" ||
+    s === "exists" ||
+    s === "defined"
+  );
 }
 
 function readinessProfileFromScore(score) {

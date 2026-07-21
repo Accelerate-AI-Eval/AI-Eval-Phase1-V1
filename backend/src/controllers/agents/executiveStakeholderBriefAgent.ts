@@ -1,8 +1,8 @@
 import "dotenv/config";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { getActiveBedrockModelId } from "../../utils/bedrockModelId.js";
 
 const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
-const MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0";
 const client = new BedrockRuntimeClient({ region: REGION });
 
 const EXECUTIVE_BRIEF_PROMPT = `You are an executive briefing analyst. Using ONLY the Assessment Analysis Report and Vendor Attestation data provided below, generate an Executive Stakeholder Brief in this exact format. Use clear headings and bullets. Do not invent data not present in the inputs.
@@ -60,7 +60,7 @@ async function invokeModel(userInput: string): Promise<string> {
     messages: [{ role: "user", content: [{ type: "text", text: userInput }] }],
   });
   const command = new InvokeModelCommand({
-    modelId: MODEL_ID,
+    modelId: getActiveBedrockModelId(),
     contentType: "application/json",
     accept: "application/json",
     body,

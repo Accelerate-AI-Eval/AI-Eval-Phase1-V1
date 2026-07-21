@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from exceptions.custom_exceptions import RiskCalculationException
+from services.category_coverage_service import resolve_category_coverage_inputs
 from services.cert_industry_segment import (
     CERTIFICATIONS_SCORE_CAP,
     get_relevant_certification_framework_set,
@@ -943,6 +944,31 @@ def calculate_vendor_trust_score(user_input: LooseInput) -> dict[str, Any]:
     vts = _pf(max(0.0, 100 - weighted_risk), 2)
     interpretation = interpret_trust_score(vts)
 
+    detail: dict[str, Any] = {
+        "product_risk": {
+            "likelihood": l_result,
+            "impact": i_result,
+            "combined_contextual_multiplier": cm_result,
+            "domain_weight": dw_result,
+            "sector_modifier": sm_result,
+            "inherent_risk": ir_result,
+            "mitigation_effectiveness": me_result,
+            "confidence_factor": cf_result,
+            "product_risk": pr_result,
+        },
+        "governance_risk": gr_result,
+        "operational_risk": or_result,
+        "final_formula": {
+            "expression": "VTS = 100 - [(PR × 0.40) + (GR × 0.30) + (OR × 0.30)]",
+            "product_risk_contribution": _pf(pr_result["value"] * 0.40),
+            "governance_risk_contribution": _pf(gr_result["value"] * 0.30),
+            "operational_risk_contribution": _pf(or_result["value"] * 0.30),
+        },
+    }
+    coverage_meta = user_input.get("_categoryCoverageMeta")
+    if isinstance(coverage_meta, dict) and coverage_meta:
+        detail["category_coverage_resolution"] = coverage_meta
+
     return {
         "vendor_trust_score": vts,
         "product_risk": pr_result["value"],
@@ -952,27 +978,7 @@ def calculate_vendor_trust_score(user_input: LooseInput) -> dict[str, Any]:
         "grade": interpretation["grade"],
         "classification": interpretation["classification"],
         "recommended_action": interpretation["recommended_action"],
-        "detail": {
-            "product_risk": {
-                "likelihood": l_result,
-                "impact": i_result,
-                "combined_contextual_multiplier": cm_result,
-                "domain_weight": dw_result,
-                "sector_modifier": sm_result,
-                "inherent_risk": ir_result,
-                "mitigation_effectiveness": me_result,
-                "confidence_factor": cf_result,
-                "product_risk": pr_result,
-            },
-            "governance_risk": gr_result,
-            "operational_risk": or_result,
-            "final_formula": {
-                "expression": "VTS = 100 - [(PR × 0.40) + (GR × 0.30) + (OR × 0.30)]",
-                "product_risk_contribution": _pf(pr_result["value"] * 0.40),
-                "governance_risk_contribution": _pf(gr_result["value"] * 0.30),
-                "operational_risk_contribution": _pf(or_result["value"] * 0.30),
-            },
-        },
+        "detail": detail,
         "scoring_version": SCORING_VERSION,
     }
 
@@ -1083,6 +1089,10 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
         )
     )
 
+    # Category_Coverage: attestation answers + vector document evidence (no hardcoded 4/6)
+    use_vector = payload.get("_skipCategoryVector") is not True
+    coverage_inputs = resolve_category_coverage_inputs(payload, use_vector=use_vector)
+
     return {
         "likelihoodScores": [3, 3, 3],
         "impactScores": [3, 3, 3],
@@ -1110,9 +1120,10 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
         "regulatoryComplexity": [],
         "deploymentScale": lower(get("deployment_scale")) or "mid_market",
         "patientDemographic": "general",
-        "requiredCategories": MITIGATION_CATEGORIES[:6],
-        "implementedCategories": MITIGATION_CATEGORIES[:4],
-        "mitigations": [{"mitigationId": "default", "riskCount": 1, "avgRelevance": 0.7}],
+        "requiredCategories": list(coverage_inputs["requiredCategories"]),
+        "implementedCategories": list(coverage_inputs["implementedCategories"]),
+        "mitigations": list(coverage_inputs["mitigations"]),
+        "_categoryCoverageMeta": coverage_inputs.get("meta") or {},
         "assessmentMethod": "internal_audit",
         "complianceDocumentationComplete": True,
         "penetrationTestReportAvailable": bool(as_str(get("adversarial_security_testing"))),

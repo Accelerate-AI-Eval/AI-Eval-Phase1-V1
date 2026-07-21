@@ -7,6 +7,7 @@ import { and, eq, or, sql } from "drizzle-orm";
 import { buildVendorDataFromPayload } from "../../utils/buildVendorDataFromPayload.js";
 import { generateVendorAttestationReport, buildReportPayloadAndSummary } from "../agents/vendorAttestation.js";
 import { parseAndStoreComplianceDocumentExpiries } from "../../services/complianceDocumentParser.js";
+import { stampActiveLlmModel, getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
 
 const UPLOADS_DIR = path.resolve(process.cwd(), "public", "uploads_vendor_attestations");
 
@@ -143,7 +144,12 @@ async function generateAndStoreProfileReport(
 ): Promise<ReportPayload | null> {
   try {
     const report = await generateVendorAttestationReport(vendorData, formulaPayload);
-    const { reportPayload, trustScoreNum, summaryToStore } = buildReportPayloadAndSummary(report);
+    const built = buildReportPayloadAndSummary(report);
+    const reportPayload = stampActiveLlmModel(
+      built.reportPayload as unknown as Record<string, unknown>,
+    );
+    const llmMeta = getActiveLlmModelMeta();
+    const { trustScoreNum, summaryToStore } = built;
     const scoring = report.scoringResult;
 
     const summaryForDb = summaryToStore && summaryToStore.length > 0 ? summaryToStore : null;
@@ -175,6 +181,8 @@ async function generateAndStoreProfileReport(
         scoring_version: scoring?.scoring_version || undefined,
         score_rationale: scoreRationaleForDb ?? undefined,
         score_rationale_type: scoreRationaleForDb ? "VTS" : undefined,
+        llm_model_id: llmMeta.modelId,
+        llm_model_label: llmMeta.modelLabel,
       })
       .returning({ id: generatedProfileReports.id });
 
@@ -185,11 +193,13 @@ async function generateAndStoreProfileReport(
         latest_trust_score: trustScoreForDb,
         latest_trust_grade: gradeForDb ?? undefined,
         latest_profile_report_id: inserted?.id,
+        llm_model_id: llmMeta.modelId,
+        llm_model_label: llmMeta.modelLabel,
         updated_at: new Date(),
       })
       .where(eq(vendorSelfAttestations.id, attestationId));
 
-    return reportPayload;
+    return reportPayload as unknown as ReportPayload;
   } catch (err) {
     console.error("generateVendorAttestationReport after submit:", err);
     return null;

@@ -1,8 +1,38 @@
 {
   "region": "us-east-1",
-  "updatedAt": "2026-07-17T09:36:06.482Z",
-  "count": 1,
+  "updatedAt": "2026-07-21T06:16:21.292Z",
+  "count": 2,
   "results": [
+    {
+      "profileName": "Global Anthropic Claude Haiku 4.5",
+      "profileType": "SYSTEM_DEFINED",
+      "inferenceProfileId": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "foundationModelId": "anthropic.claude-haiku-4-5-20251001-v1:0",
+      "prompt": "Hi",
+      "testedAt": "2026-07-21T05:40:57.496Z",
+      "tests": [
+        {
+          "status": "working",
+          "identifierType": "inferenceProfileId",
+          "value": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "prompt": "Hi",
+          "reply": "# Hello! 👋\n\nHow can I help you today?",
+          "latencyMs": 2133,
+          "stopReason": "end_turn"
+        }
+      ],
+      "overallStatus": "working",
+      "workingTarget": {
+        "identifierType": "inferenceProfileId",
+        "value": "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+      },
+      "workingReply": "# Hello! 👋\n\nHow can I help you today?",
+      "summary": {
+        "working": 1,
+        "notWorking": 0
+      }
+    },
     {
       "profileName": "US Anthropic Claude 3 Sonnet",
       "profileType": "SYSTEM_DEFINED",
@@ -10,15 +40,15 @@
       "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/us.anthropic.claude-3-sonnet-20240229-v1:0",
       "foundationModelId": "anthropic.claude-3-sonnet-20240229-v1:0",
       "prompt": "Hi",
-      "testedAt": "2026-07-17T09:36:06.468Z",
+      "testedAt": "2026-07-21T06:16:21.290Z",
       "tests": [
         {
           "status": "working",
           "identifierType": "inferenceProfileId",
           "value": "us.anthropic.claude-3-sonnet-20240229-v1:0",
           "prompt": "Hi",
-          "reply": "Hello!",
-          "latencyMs": 2141,
+          "reply": "Hi there! How can I assist you today?",
+          "latencyMs": 1362,
           "stopReason": "end_turn"
         }
       ],
@@ -27,7 +57,7 @@
         "identifierType": "inferenceProfileId",
         "value": "us.anthropic.claude-3-sonnet-20240229-v1:0"
       },
-      "workingReply": "Hello!",
+      "workingReply": "Hi there! How can I assist you today?",
       "summary": {
         "working": 1,
         "notWorking": 0

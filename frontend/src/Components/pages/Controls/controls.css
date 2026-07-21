@@ -14,14 +14,30 @@
   flex-direction: column;
 }
 
+.controlsPage__cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+  width: 100%;
+}
+
 .controlsPage__card {
   width: 100%;
+  margin-bottom: 0;
+  min-width: 0;
 }
 
 .controlsPage__cardHead {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
+}
+
+@media (max-width: 960px) {
+  .controlsPage__cards {
+    grid-template-columns: 1fr;
+  }
 }
 
 .controlsPage__cardIconWrap {
@@ -32,9 +48,8 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: var(--ui-border-radius, 5px);
-  color: var(--adm-primary);
-  background: rgba(28, 176, 212, 0.1);
-  border: 1px solid rgba(28, 176, 212, 0.2);
+  color: var(--main-auth-button-color, #2463eb);
+  background-color: #e6edf7;
 }
 
 .controlsPage__cardTitle {
@@ -52,9 +67,70 @@
   color: var(--adm-muted);
 }
 
+.controlsPage__apiKeyInputWrap {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.controlsPage__apiKeyInput {
+  width: 100%;
+  height: 40px;
+  padding: 0 2.5rem 0 0.75rem;
+  border-radius: var(--ui-border-radius, 5px);
+  border: 1px solid var(--adm-input-border);
+  background: var(--adm-input-bg);
+  color: var(--adm-text);
+  font: inherit;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+}
+
+.controlsPage__apiKeyInput:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+.controlsPage__apiKeyInput:focus {
+  outline: none;
+  border-color: var(--main-auth-button-color, #014aad);
+  box-shadow: 0 0 0 2px rgba(1, 74, 173, 0.15);
+}
+
+.controlsPage__apiKeyInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.controlsPage__apiKeyToggle {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--adm-muted);
+  cursor: pointer;
+}
+
+.controlsPage__apiKeyToggle:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: var(--adm-text);
+}
+
+.controlsPage__apiKeyToggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Model field */
 .adminPage__modelField {
-  max-width: 42rem;
+  max-width: none;
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--adm-border);
@@ -65,7 +141,7 @@
 
 .adminPage__modelLabelRow {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
   gap: 0.35rem 0.65rem;
 }
@@ -80,14 +156,13 @@
   display: inline-flex;
   align-items: center;
   max-width: min(100%, 18rem);
-  padding: 0.2rem 0.55rem;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--ui-border-radius, 5px);
+  font-size: 0.8125rem;
+  font-weight: 500;
   line-height: 1.35;
-  color: var(--adm-primary-strong);
-  background: rgba(28, 176, 212, 0.12);
-  border: 1px solid rgba(28, 176, 212, 0.4);
+  color: #1d4ed8;
+  background-color: #dbeafe;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

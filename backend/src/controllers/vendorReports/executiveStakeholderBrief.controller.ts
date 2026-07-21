@@ -6,6 +6,7 @@ import { customerRiskAssessmentReports } from "../../schema/assessments/customer
 import { cotsVendorAssessments } from "../../schema/assessments/cotsVendorAssessments.js";
 import { vendorSelfAttestations } from "../../schema/assessments/vendorSelfAttestations.js";
 import { generalReports } from "../../schema/assessments/generalReports.js";
+import { getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
 import { generateExecutiveStakeholderBrief } from "../agents/executiveStakeholderBriefAgent.js";
 
 function toStr(v: unknown): string {
@@ -122,6 +123,7 @@ const executiveStakeholderBrief = async (req: Request, res: Response): Promise<v
         report_type: REPORT_TYPE_EXECUTIVE_BRIEF,
         content: brief,
         assessment_label: assessmentLabel,
+        llm_model_id: getActiveLlmModelMeta().modelId,
         created_by: userId,
       })
       .returning();
@@ -134,6 +136,10 @@ const executiveStakeholderBrief = async (req: Request, res: Response): Promise<v
     const created_at = inserted.created_at;
     const generatedAt =
       created_at instanceof Date ? created_at.toISOString() : String(created_at);
+    const llmModelId =
+      typeof inserted.llm_model_id === "string" && inserted.llm_model_id.trim()
+        ? inserted.llm_model_id.trim()
+        : null;
 
     res.status(200).json({
       success: true,
@@ -147,6 +153,7 @@ const executiveStakeholderBrief = async (req: Request, res: Response): Promise<v
           generatedAt,
           briefContent: inserted.content ?? undefined,
           createdBy: inserted.created_by,
+          llmModelId,
         },
       },
     });

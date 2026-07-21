@@ -11,6 +11,7 @@ import {
   getTop5RisksWithMitigations,
   type Top5RisksWithMitigations,
 } from "../../services/getTop5RisksFromAssessmentContext.js";
+import { stampActiveLlmModel, getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
 
 /** Persisted under fullReport.appendix: catalog rows used to generate the assessment. */
 function appendixCatalogRisksAndMitigations(
@@ -388,13 +389,18 @@ async function createCustomerRiskReport(
     report.frameworkMappingRows = frameworkRowsForStoredReport;
   }
 
+  const llmMeta = getActiveLlmModelMeta();
+  const reportStored = stampActiveLlmModel(report as Record<string, unknown>);
+
   await db.insert(customerRiskAssessmentReports).values({
     assessment_id: assessmentId,
     organization_id: orgIdStr,
     title,
-    report,
+    report: reportStored,
     score_rationale: srsRationale || undefined,
     score_rationale_type: srsRationale ? "SCS" : undefined,
+    llm_model_id: llmMeta.modelId,
+    llm_model_label: llmMeta.modelLabel,
   });
 }
 

@@ -4,6 +4,38 @@
   margin-bottom: 2rem;
 }
 
+.generated_profile_llm_row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 0.75rem;
+}
+
+.generated_profile_llm_model.admin_llm_model_label,
+.generated_profile_llm_model {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(100%, 22rem);
+  margin: 0;
+  padding: 0.28rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid #dbe3ef;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.generated_profile_llm_model .admin_llm_model_label_text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.generated_profile_llm_model .admin_llm_model_label_text strong {
+  font-weight: 600;
+  color: #0f172a;
+}
+
 .generated_profile_trust_section {
   margin-bottom: 1.5rem;
 }

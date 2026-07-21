@@ -7,8 +7,9 @@ import type {
   CapabilityGapsByVendor,
 } from "./buyerVendorRiskReportAgent.js";
 
+import { getActiveBedrockModelId } from "../../utils/bedrockModelId.js";
+
 const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
-const MODEL_ID = process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-sonnet-20240229-v1:0";
 const client = new BedrockRuntimeClient({ region: REGION });
 
 export type VendorComparisonMatrixPayload = {
@@ -177,7 +178,7 @@ async function invokeModel(prompt: string): Promise<string> {
     messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
   });
   const command = new InvokeModelCommand({
-    modelId: MODEL_ID,
+    modelId: getActiveBedrockModelId(),
     contentType: "application/json",
     accept: "application/json",
     body,

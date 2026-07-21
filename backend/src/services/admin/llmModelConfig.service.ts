@@ -448,8 +448,21 @@ export async function setLlmModel(modelId: string): Promise<LlmModelConfig> {
   applyEnvToProcess(updates);
   upsertEnvFile(envLocalPath, updates);
 
+  console.log("[LLM] model changed (Controls Apply)", {
+    selectedModelId: trimmed,
+    invokeModelId: invokeModelId ?? null,
+    BEDROCK_MODEL: updates.BEDROCK_MODEL ?? null,
+    BEDROCK_MODEL_ID: updates.BEDROCK_MODEL_ID ?? null,
+    activeAfterApply: getActiveBedrockModelIdSafe(),
+  });
+
   // Python sync is optional in AI-Q (endpoint may not exist). Node env apply is the source of truth.
   const python = await syncPythonModel(updates.BEDROCK_MODEL ?? trimmed);
+  console.log("[LLM] Python sync after model change:", {
+    ok: python.ok,
+    modelSynced: updates.BEDROCK_MODEL ?? trimmed,
+    requiresPythonRestart: python.requiresPythonRestart ?? null,
+  });
   const config = await getLlmModelConfigAsync();
   config.pythonSynced = true;
   if (python.ok && python.requiresPythonRestart != null) {
@@ -457,4 +470,13 @@ export async function setLlmModel(modelId: string): Promise<LlmModelConfig> {
   }
 
   return config;
+}
+
+/** Log-friendly active model without nested getActiveBedrockModelId spam during Apply. */
+function getActiveBedrockModelIdSafe(): string {
+  const raw =
+    process.env.BEDROCK_MODEL?.trim() ||
+    process.env.BEDROCK_MODEL_ID?.trim() ||
+    "";
+  return normalizeBedrockModelAlias(raw);
 }

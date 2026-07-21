@@ -49,3 +49,21 @@ export function resolveBedrockInvokeModelId(modelId: string): string {
   if (!trimmed) return trimmed;
   return trimmed.replace(INVOKE_CONTEXT_SUFFIX, "");
 }
+
+/**
+ * Active Bedrock chat model for app-wide invokes.
+ * Reads process.env at call time so Controls → Apply takes effect without restart.
+ */
+export function getActiveBedrockModelId(): string {
+  const fromBedrockModel = process.env.BEDROCK_MODEL?.trim() || "";
+  const fromBedrockModelId = process.env.BEDROCK_MODEL_ID?.trim() || "";
+  const raw = fromBedrockModel || fromBedrockModelId || "";
+  const resolved = resolveBedrockInvokeModelId(normalizeBedrockModelAlias(raw));
+  const source = fromBedrockModel
+    ? "BEDROCK_MODEL"
+    : fromBedrockModelId
+      ? "BEDROCK_MODEL_ID"
+      : "DEFAULT_BEDROCK_MODEL";
+  console.log(`[LLM] taking model from ${source}: ${resolved}`);
+  return resolved;
+}

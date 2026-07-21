@@ -716,19 +716,45 @@
  */
 .complete_rpr_card_title_model_group {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.35rem;
   width: 100%;
   min-width: 0;
   text-align: left;
+}
+
+.complete_rpr_card_llm_info {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
 }
 
 .complete_rpr_card_design .complete_rpr_card_title_model_group .click_tooltip_wrapper,
 .complete_rpr_card_design .complete_rpr_card_title_model_group .click_tooltip_trigger,
 .complete_rpr_card_design .complete_rpr_card_title_model_group .general_rpr_card_title_wrap {
   text-align: left;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.admin_llm_model_info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  cursor: help;
+}
+
+.report_assessment_title_with_llm,
+.bvr_doc_title_with_llm,
+.org_attestation_card_title_with_llm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .complete_rpr_card_title_model_group .complete_rpr_card_model {

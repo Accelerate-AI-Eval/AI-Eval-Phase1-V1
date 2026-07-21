@@ -59,6 +59,7 @@ const getGeneralReportById = async (req: Request, res: Response): Promise<void> 
         assessment_label: generalReports.assessment_label,
         report_type: generalReports.report_type,
         content: generalReports.content,
+        llm_model_id: generalReports.llm_model_id,
         created_at: generalReports.created_at,
         created_by: generalReports.created_by,
         expiryAt: assessments.expiry_at,
@@ -114,6 +115,10 @@ const getGeneralReportById = async (req: Request, res: Response): Promise<void> 
         generatedAt,
         briefContent,
         createdBy: row.created_by,
+        llmModelId:
+          typeof row.llm_model_id === "string" && row.llm_model_id.trim()
+            ? row.llm_model_id.trim()
+            : null,
         expiryAt,
         attestationExpiryAt,
         assessmentUserArchivedAt,

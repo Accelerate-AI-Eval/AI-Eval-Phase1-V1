@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import LoadingMessage from "../../../UI/LoadingMessage";
 import {
+  AdminLlmModelLabel,
+  resolveStoredLlmModelId,
+} from "../../../UI/AdminLlmModelInfo";
+import {
   frameworkControlsDisplayLinesTopRanked,
   FRAMEWORK_MAPPING_TOP_CONTROLS_MAX,
 } from "../../../../utils/frameworkMappingControlsDisplay";
@@ -134,6 +138,7 @@ export default function BuyerVendorRiskReport() {
   const [productName, setProductName] = useState("");
   const [orgName, setOrgName] = useState("");
   const [report, setReport] = useState<ReportPayload | null>(null);
+  const [llmModelId, setLlmModelId] = useState<string | null>(null);
   const [frameworkMappingRows, setFrameworkMappingRows] = useState<FrameworkMappingRow[]>([]);
   const [archived, setArchived] = useState(false);
   /** True when the assessment is user-archived in the ledger but not yet past assessment expiry. */
@@ -190,6 +195,13 @@ export default function BuyerVendorRiskReport() {
       } else if (data.report && typeof data.report === "object") {
         setPending(false);
         setReport(data.report as ReportPayload);
+        setLlmModelId(
+          resolveStoredLlmModelId({
+            llmModelId:
+              typeof data.llmModelId === "string" ? data.llmModelId : null,
+            report: data.report,
+          }),
+        );
       } else {
         setError("Report data unavailable");
       }
@@ -417,7 +429,7 @@ export default function BuyerVendorRiskReport() {
 
       <article ref={pdfArticleRef} className="bvr_document">
         <header className="bvr_doc_header">
-          <div>
+          <div className="bvr_doc_header_main">
             <h1 className="bvr_doc_title">{title}</h1>
             <p className="bvr_doc_meta">
               Vendor assessment
@@ -425,6 +437,13 @@ export default function BuyerVendorRiskReport() {
               <span className="bvr_ai_badge">AI Generated</span>
             </p>
           </div>
+          <AdminLlmModelLabel
+            className="report_llm_model_tag bvr_doc_llm_model"
+            showIcon={false}
+            preferModelId
+            fallbackToActive
+            modelName={llmModelId}
+          />
         </header>
 
         {archived ? (

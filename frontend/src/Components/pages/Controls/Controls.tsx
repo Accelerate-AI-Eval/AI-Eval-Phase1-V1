@@ -2,6 +2,7 @@ import { useEffect, useId } from "react";
 import { Cpu, SlidersHorizontal } from "lucide-react";
 import "../UserManagement/user_management.css";
 import "./controls.css";
+import { AiRiskApiKeyCard } from "./AiRiskApiKeyCard";
 import { ModelCompatibilityChecker } from "./ModelCompatibilityChecker";
 
 function Controls() {
@@ -27,26 +28,30 @@ function Controls() {
         </div>
       </div>
 
-      <section
-        className="org_settings_card controlsPage__card"
-        aria-labelledby={`${baseId}-llm-title`}
-      >
-        <div className="controlsPage__cardHead">
-          <span className="controlsPage__cardIconWrap" aria-hidden>
-            <Cpu size={20} strokeWidth={2} />
-          </span>
-          <div>
-            <h2 id={`${baseId}-llm-title`} className="controlsPage__cardTitle">
-              LLM Model Configuration
-            </h2>
-            <p className="controlsPage__cardHint">
-              Choose and validate the Bedrock model used for AI assessments.
-            </p>
+      <div className="controlsPage__cards">
+        <section
+          className="org_settings_card controlsPage__card"
+          aria-labelledby={`${baseId}-llm-title`}
+        >
+          <div className="controlsPage__cardHead">
+            <span className="controlsPage__cardIconWrap" aria-hidden>
+              <Cpu size={20} strokeWidth={2} />
+            </span>
+            <div>
+              <h2 id={`${baseId}-llm-title`} className="controlsPage__cardTitle">
+                LLM Model Configuration
+              </h2>
+              <p className="controlsPage__cardHint">
+                Choose and validate the Bedrock model used for AI assessments.
+              </p>
+            </div>
           </div>
-        </div>
 
-        <ModelCompatibilityChecker idPrefix={`${baseId}-llm-model`} />
-      </section>
+          <ModelCompatibilityChecker idPrefix={`${baseId}-llm-model`} />
+        </section>
+
+        <AiRiskApiKeyCard idPrefix={`${baseId}-api-key`} />
+      </div>
     </div>
   );
 }

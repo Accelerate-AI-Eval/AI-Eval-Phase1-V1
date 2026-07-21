@@ -227,6 +227,14 @@ function asGeneratedReport(raw: unknown): GeneratedProductProfileReport | null {
         | undefined,
     },
     sections: sections as GeneratedProductProfileReport["sections"],
+    ...(typeof o.modelId === "string" && o.modelId.trim()
+      ? { modelId: o.modelId.trim() }
+      : {}),
+    ...(typeof o.modelLabel === "string" && o.modelLabel.trim()
+      ? { modelLabel: o.modelLabel.trim() }
+      : typeof o.model_label === "string" && o.model_label.trim()
+        ? { modelLabel: o.model_label.trim() }
+        : {}),
   };
 }
 

@@ -4,6 +4,8 @@
  * Env: PYTHON_SCORING_URL (default http://localhost:8000)
  */
 
+import { getActiveBedrockModelId } from "../utils/bedrockModelId.js";
+
 export type AssessmentLlmType =
   | "vendor_self_attestation"
   | "cots_vendor"
@@ -37,8 +39,10 @@ export async function invokePythonLlmWithVector(options: {
   queryText?: string;
   maxTokens?: number;
   temperature?: number;
+  modelId?: string;
 }): Promise<PythonLlmWithVectorResult> {
   const url = `${scoringBaseUrl()}/assessment/llm-with-vector`;
+  const modelId = options.modelId?.trim() || getActiveBedrockModelId();
   let response: Response;
   try {
     response = await fetch(url, {
@@ -50,6 +54,7 @@ export async function invokePythonLlmWithVector(options: {
         query_text: options.queryText,
         max_tokens: options.maxTokens ?? 8192,
         temperature: options.temperature ?? 0.3,
+        model_id: modelId,
       }),
     });
   } catch (err) {

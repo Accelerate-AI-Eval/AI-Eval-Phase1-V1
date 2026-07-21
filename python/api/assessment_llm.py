@@ -41,6 +41,8 @@ class LlmWithVectorRequest(BaseModel):
     query_text: str | None = None
     max_tokens: int | None = 8192
     temperature: float | None = 0.3
+    # Optional override from Node Controls-selected model
+    model_id: str | None = None
 
 
 class LlmWithVectorResponse(BaseModel):
@@ -79,6 +81,7 @@ async def llm_with_vector(body: LlmWithVectorRequest) -> LlmWithVectorResponse:
             formula_context=formula_context,
             max_tokens=body.max_tokens,
             temperature=float(body.temperature if body.temperature is not None else 0.3),
+            model_id=body.model_id,
         )
         if not (text or "").strip():
             raise_http_exception("LLM returned empty response", status_code=500)

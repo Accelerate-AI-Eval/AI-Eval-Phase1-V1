@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../database/db.js";
 import { usersTable, generatedProfileReports, vendorSelfAttestations } from "../../schema/schema.js";
 import { generateVendorAttestationReport, buildReportPayloadAndSummary } from "../agents/vendorAttestation.js";
+import { stampActiveLlmModel, getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
 
 /**
  * POST /vendorSelfAttestation/generate-profile
@@ -65,7 +66,12 @@ const generateProductProfile = async (req: Request, res: Response): Promise<void
 
     // Python calculates VTS; Node persists trust_score + report
     const report = await generateVendorAttestationReport(vendorData, formulaPayload);
-    const { reportPayload, trustScoreNum, summaryToStore } = buildReportPayloadAndSummary(report);
+    const built = buildReportPayloadAndSummary(report);
+    const reportPayload = stampActiveLlmModel(
+      built.reportPayload as unknown as Record<string, unknown>,
+    );
+    const llmMeta = getActiveLlmModelMeta();
+    const { trustScoreNum, summaryToStore } = built;
 
     const attestationIdRaw = req.body?.attestationId ?? req.body?.attestation_id;
     const attestationId =
@@ -102,6 +108,8 @@ const generateProductProfile = async (req: Request, res: Response): Promise<void
         scoring_version: scoring?.scoring_version || undefined,
         score_rationale: scoreRationaleForDb ?? undefined,
         score_rationale_type: scoreRationaleForDb ? "VTS" : undefined,
+        llm_model_id: llmMeta.modelId,
+        llm_model_label: llmMeta.modelLabel,
       })
       .returning({ id: generatedProfileReports.id });
 
@@ -113,6 +121,8 @@ const generateProductProfile = async (req: Request, res: Response): Promise<void
           latest_trust_score: trustScoreForDb,
           latest_trust_grade: gradeForDb ?? undefined,
           latest_profile_report_id: inserted.id,
+          llm_model_id: llmMeta.modelId,
+          llm_model_label: llmMeta.modelLabel,
           updated_at: new Date(),
         })
         .where(eq(vendorSelfAttestations.id, attestationId));
@@ -123,6 +133,8 @@ const generateProductProfile = async (req: Request, res: Response): Promise<void
       data: {
         trustScore: reportPayload.trustScore,
         sections: report.sections,
+        modelId: llmMeta.modelId,
+        modelLabel: llmMeta.modelLabel,
       },
     });
   } catch (error) {

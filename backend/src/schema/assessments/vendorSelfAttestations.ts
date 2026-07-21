@@ -95,4 +95,7 @@ export const vendorSelfAttestations = pgTable("vendor_self_attestations", {
   latest_trust_score: integer("latest_trust_score"),
   latest_trust_grade: varchar("latest_trust_grade", { length: 8 }),
   latest_profile_report_id: uuid("latest_profile_report_id"),
+  /** Controls LLM used for the latest generated VTS / profile report. */
+  llm_model_id: varchar("llm_model_id", { length: 512 }),
+  llm_model_label: varchar("llm_model_label", { length: 512 }),
 });

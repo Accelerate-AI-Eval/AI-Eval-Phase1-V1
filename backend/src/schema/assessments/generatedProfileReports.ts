@@ -24,5 +24,8 @@ export const generatedProfileReports = pgTable("generated_profile_reports", {
   /** Full VTS/SRS/IRS rationale block (same as terminal). */
   score_rationale: text("score_rationale"),
   score_rationale_type: varchar("score_rationale_type", { length: 8 }),
+  /** Controls LLM used when this profile report was generated. */
+  llm_model_id: varchar("llm_model_id", { length: 512 }),
+  llm_model_label: varchar("llm_model_label", { length: 512 }),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

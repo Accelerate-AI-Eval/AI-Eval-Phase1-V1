@@ -27,7 +27,9 @@ import { getOrganizationTypeDisplay } from "../../../utils/organizationTypeDispl
 import { Landmark, Plus, User, FileCheck, ClipboardList, Eye, CircleX, Search, FileText, Info } from "lucide-react";
 import Button from "../../UI/Button";
 import Breadcrumbs from "../../UI/Breadcrumbs";
-import Modal from "../../UI/Modal";
+import ScoreTracePanel from "./ScoreTracePanel";
+import "./score_trace_panel.css";
+import { resolveStoredLlmModelId } from "../../UI/AdminLlmModelInfo";
 
 /** Helpers for org assessment cards (same logic as Assessments page). */
 function isOrgAssessmentExpired(row) {
@@ -121,11 +123,13 @@ const Organizations = () => {
   const [previewComplianceExpiries, setPreviewComplianceExpiries] = useState<
     Record<string, ComplianceDocumentExpiryMeta> | null
   >(null);
-  const [scoreRationaleModal, setScoreRationaleModal] = useState<{
-    modalTitle: string;
-    itemTitle: string;
-    rationale: string | null;
-    emptyMessage: string;
+  const [scoreTraceOpen, setScoreTraceOpen] = useState(false);
+  const [scoreTraceTarget, setScoreTraceTarget] = useState<{
+    id: string;
+    title: string;
+    reportId?: string | null;
+    traceType: "vts" | "scs" | "irs";
+    llmModelName?: string | null;
   } | null>(null);
   const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5003/api/v1";
 
@@ -652,10 +656,12 @@ const Organizations = () => {
                                   a.trust_score != null && Number.isFinite(Number(a.trust_score))
                                     ? Math.round(Number(a.trust_score))
                                     : null;
-                                const vtsRationale =
-                                  typeof a.vts_rationale === "string" && a.vts_rationale.trim()
-                                    ? a.vts_rationale.trim()
-                                    : null;
+                                const profileReportId =
+                                  typeof a.profile_report_id === "string" && a.profile_report_id.trim()
+                                    ? a.profile_report_id.trim()
+                                    : typeof a.id === "string"
+                                      ? a.id
+                                      : null;
                                 return (
                                   <article
                                     key={a.id}
@@ -690,21 +696,33 @@ const Organizations = () => {
                                         >
                                           <Eye size={14} aria-hidden />
                                         </button>
-                                        {isSystemAdmin && (vtsRationale || trustScore != null) && (
+                                        {isSystemAdmin && trustScore != null && (
                                           <button
                                             type="button"
                                             className="general_rpr_card_download_btn assessment_card_header_action_btn org_attestation_vts_info_btn"
-                                            onClick={() =>
-                                              setScoreRationaleModal({
-                                                modalTitle: "VTS Rationale",
-                                                itemTitle: title,
-                                                rationale: vtsRationale,
-                                                emptyMessage:
-                                                  "No rationale available for this attestation yet.",
-                                              })
-                                            }
-                                            aria-label={`VTS rationale for ${title}`}
-                                            title="VTS Rationale"
+                                            onClick={() => {
+                                              setScoreTraceTarget({
+                                                id: String(a.id),
+                                                title,
+                                                reportId: profileReportId,
+                                                traceType: "vts",
+                                                llmModelName: resolveStoredLlmModelId({
+                                                  llmModelId:
+                                                    (typeof a.llm_model_id === "string" &&
+                                                    a.llm_model_id.trim()
+                                                      ? a.llm_model_id.trim()
+                                                      : null) ||
+                                                    (typeof a.llmModelId === "string" &&
+                                                    a.llmModelId.trim()
+                                                      ? a.llmModelId.trim()
+                                                      : null),
+                                                  report: a.generated_profile_report ?? a.report,
+                                                }),
+                                              });
+                                              setScoreTraceOpen(true);
+                                            }}
+                                            aria-label={`Vendor score explainability for ${title}`}
+                                            title="Vendor Score Explainability"
                                           >
                                             <Info size={14} aria-hidden />
                                           </button>
@@ -858,16 +876,6 @@ const Organizations = () => {
                                     row.scoreRationale.trim()
                                       ? row.scoreRationale.trim()
                                       : null;
-                                  const scoreRationaleTitle =
-                                    row.scoreRationaleType === "IRS"
-                                      ? "IRS Rationale"
-                                      : row.scoreRationaleType === "SCS" ||
-                                          row.scoreRationaleType === "SRS" ||
-                                          isVendorCots
-                                        ? "SCS Rationale"
-                                        : isBuyerCots
-                                          ? "IRS Rationale"
-                                          : "SCS Rationale";
                                   const scoreLabel = isVendorCots
                                     ? "Sales Confidence"
                                     : isBuyerCots
@@ -930,17 +938,32 @@ const Organizations = () => {
                                             <button
                                               type="button"
                                               className="general_rpr_card_download_btn assessment_card_header_action_btn org_attestation_vts_info_btn"
-                                              onClick={() =>
-                                                setScoreRationaleModal({
-                                                  modalTitle: scoreRationaleTitle,
-                                                  itemTitle: title,
-                                                  rationale: scoreRationale,
-                                                  emptyMessage:
-                                                    "No rationale available for this assessment yet.",
-                                                })
+                                              onClick={() => {
+                                                setScoreTraceTarget({
+                                                  id: String(row.assessmentId ?? ""),
+                                                  title,
+                                                  traceType: isBuyerCots ? "irs" : "scs",
+                                                  llmModelName: resolveStoredLlmModelId({
+                                                    llmModelId:
+                                                      (typeof row.llmModelId === "string" &&
+                                                      row.llmModelId.trim()
+                                                        ? row.llmModelId.trim()
+                                                        : null) ||
+                                                      (typeof row.llm_model_id === "string" &&
+                                                      row.llm_model_id.trim()
+                                                        ? row.llm_model_id.trim()
+                                                        : null),
+                                                    report: row.report ?? row.vendor_risk_assessment_report,
+                                                  }),
+                                                });
+                                                setScoreTraceOpen(true);
+                                              }}
+                                              aria-label={`${isBuyerCots ? "Implementation readiness" : "Sales confidence"} explainability for ${title}`}
+                                              title={
+                                                isBuyerCots
+                                                  ? "Implementation Risk Explainability"
+                                                  : "Sales Confidence Explainability"
                                               }
-                                              aria-label={`${scoreRationaleTitle} for ${title}`}
-                                              title={scoreRationaleTitle}
                                             >
                                               <Info size={14} aria-hidden />
                                             </button>
@@ -1063,41 +1086,24 @@ const Organizations = () => {
             </div>
           )}
 
-          <Modal
-            isOpen={scoreRationaleModal != null}
-            onClose={() => setScoreRationaleModal(null)}
-            overlayClassName="profile_modal_overlay"
-            popupClassName=""
-          >
-            <div className="profile_modal_content settings_modal_content org_vts_rationale_modal_content">
-              <div className="profile_modal_header">
-                <h2 id="org_score_rationale_modal_title" className="profile_modal_title">
-                  {scoreRationaleModal?.modalTitle ?? "Score Rationale"}
-                </h2>
-                <button
-                  type="button"
-                  className="modal_close_btn"
-                  onClick={() => setScoreRationaleModal(null)}
-                  aria-label="Close"
-                >
-                  <CircleX size={20} />
-                </button>
-              </div>
-              <div className="profile_modal_body">
-                {scoreRationaleModal?.itemTitle ? (
-                  <p className="org_vts_rationale_product_name">
-                    {scoreRationaleModal.itemTitle}
-                  </p>
-                ) : null}
-                <p className="org_vts_rationale_body">
-                  {scoreRationaleModal?.rationale?.trim()
-                    ? scoreRationaleModal.rationale.trim()
-                    : scoreRationaleModal?.emptyMessage ??
-                      "No rationale available yet."}
-                </p>
-              </div>
-            </div>
-          </Modal>
+          {isSystemAdmin && (
+            <ScoreTracePanel
+              isOpen={scoreTraceOpen}
+              onClose={() => {
+                setScoreTraceOpen(false);
+                setScoreTraceTarget(null);
+              }}
+              assessmentId={scoreTraceTarget?.id ?? ""}
+              assessmentTitle={scoreTraceTarget?.title ?? ""}
+              traceType={scoreTraceTarget?.traceType ?? "vts"}
+              reportId={
+                scoreTraceTarget?.reportId ||
+                (scoreTraceTarget?.traceType === "vts" ? scoreTraceTarget?.id : undefined) ||
+                undefined
+              }
+              llmModelName={scoreTraceTarget?.llmModelName}
+            />
+          )}
           
         </div>
         

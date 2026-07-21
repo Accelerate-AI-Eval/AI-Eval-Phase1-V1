@@ -14,6 +14,7 @@ import {
   countSubstantiveFrameworkMappingRows,
 } from "../../services/frameworkMappingFromCompliance.js";
 import { mergeScoreRationaleIntoReport, extractOverallRiskScoreFromReport } from "../../utils/mergeScoreRationale.js";
+import { mergeLlmModelIntoReport } from "../../utils/activeLlmModelMeta.js";
 
 /**
  * GET /customerRiskReports/:id
@@ -70,6 +71,8 @@ const getCustomerRiskReportById = async (req: Request, res: Response): Promise<v
         report: customerRiskAssessmentReports.report,
         scoreRationale: customerRiskAssessmentReports.score_rationale,
         scoreRationaleType: customerRiskAssessmentReports.score_rationale_type,
+        llmModelId: customerRiskAssessmentReports.llm_model_id,
+        llmModelLabel: customerRiskAssessmentReports.llm_model_label,
         createdAt: customerRiskAssessmentReports.created_at,
         expiryAt: assessments.expiry_at,
         attestationExpiryAt: vendorSelfAttestations.expiry_at,
@@ -326,7 +329,12 @@ const getCustomerRiskReportById = async (req: Request, res: Response): Promise<v
       row.scoreRationale,
       row.scoreRationaleType,
     );
-    const overallRiskScore = extractOverallRiskScoreFromReport(reportWithRationale);
+    const reportWithModel = mergeLlmModelIntoReport(
+      reportWithRationale,
+      row.llmModelId,
+      row.llmModelLabel,
+    );
+    const overallRiskScore = extractOverallRiskScoreFromReport(reportWithModel);
 
     res.status(200).json({
       success: true,
@@ -334,7 +342,9 @@ const getCustomerRiskReportById = async (req: Request, res: Response): Promise<v
         id: row.id,
         assessmentId: row.assessmentId,
         title: row.title,
-        report: reportWithRationale,
+        report: reportWithModel,
+        llmModelId: row.llmModelId ?? null,
+        llmModelLabel: row.llmModelLabel ?? null,
         overallRiskScore:
           overallRiskScore != null && Number.isFinite(overallRiskScore)
             ? Math.round(overallRiskScore * 100) / 100

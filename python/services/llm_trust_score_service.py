@@ -13,7 +13,7 @@ from typing import Any
 
 import boto3
 
-from config import settings
+from config import get_bedrock_model_id, settings
 from prompts.vendor_attestation_prompt import VENDOR_ATTESTATION_PROMPT
 
 SECTION_TITLES = {
@@ -74,8 +74,10 @@ def invoke_vendor_attestation_llm(
         ],
     }
     client = _bedrock_client()
+    model_id = get_bedrock_model_id()
+    print(f"[LLM] vendor attestation invoke using model: {model_id}")
     response = client.invoke_model(
-        modelId=settings.BEDROCK_MODEL_ID,
+        modelId=model_id,
         contentType="application/json",
         accept="application/json",
         body=json.dumps(body),

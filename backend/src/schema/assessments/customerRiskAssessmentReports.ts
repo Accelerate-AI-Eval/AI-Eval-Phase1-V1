@@ -12,5 +12,8 @@ export const customerRiskAssessmentReports = pgTable("customer_risk_assessment_r
   report: jsonb("report").notNull(),
   score_rationale: text("score_rationale"),
   score_rationale_type: varchar("score_rationale_type", { length: 8 }),
+  /** Controls LLM used when this analysis report was generated. */
+  llm_model_id: varchar("llm_model_id", { length: 512 }),
+  llm_model_label: varchar("llm_model_label", { length: 512 }),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -216,7 +216,7 @@ export async function scoreCotsBuyerWithPython(options: {
     product_name: options.productName,
   });
 
-  const implementationRiskScore = Number(r.implementationRiskScore);
+  const implementationRiskScore = Math.round(Number(r.implementationRiskScore));
   if (!Number.isFinite(implementationRiskScore)) {
     throw new Error("Python cots-buyer scoring response missing implementationRiskScore");
   }
@@ -230,6 +230,12 @@ export async function scoreCotsBuyerWithPython(options: {
       ? (r.source as Record<string, unknown>)
       : {};
 
+  const vendorRisk = Math.round(Number(breakdownRaw.vendorRisk ?? 0) * 100) / 100;
+  const organizationalReadinessGap =
+    Math.round(Number(breakdownRaw.organizationalReadinessGap ?? 0) * 100) / 100;
+  const integrationRisk = Math.round(Number(breakdownRaw.integrationRisk ?? 0) * 100) / 100;
+  const vendorTrustScore = Math.round(Number(breakdownRaw.vendorTrustScore ?? 0) * 100) / 100;
+
   return {
     implementationRiskScore,
     grade: String(r.grade ?? ""),
@@ -240,10 +246,10 @@ export async function scoreCotsBuyerWithPython(options: {
     recommendedAction: String(r.recommendedAction ?? ""),
     formula: String(r.formula ?? ""),
     breakdown: {
-      vendorRisk: Number(breakdownRaw.vendorRisk ?? 0),
-      organizationalReadinessGap: Number(breakdownRaw.organizationalReadinessGap ?? 0),
-      integrationRisk: Number(breakdownRaw.integrationRisk ?? 0),
-      vendorTrustScore: Number(breakdownRaw.vendorTrustScore ?? 0),
+      vendorRisk,
+      organizationalReadinessGap,
+      integrationRisk,
+      vendorTrustScore,
     },
     source: {
       vendorName: String(sourceRaw.vendorName ?? options.vendorName),
@@ -251,7 +257,7 @@ export async function scoreCotsBuyerWithPython(options: {
       usedAttestation: Boolean(sourceRaw.usedAttestation),
     },
     scoring_source: r.scoring_source != null ? String(r.scoring_source) : "formula",
-    scoring_version: r.scoring_version != null ? String(r.scoring_version) : "irs-1.0",
+    scoring_version: r.scoring_version != null ? String(r.scoring_version) : "irs-1.1",
     rationale: typeof r.rationale === "string" ? r.rationale : undefined,
   };
 }

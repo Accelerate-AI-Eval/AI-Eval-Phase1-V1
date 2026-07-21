@@ -62,6 +62,9 @@ export const cotsBuyerAssessments = pgTable("cots_buyer_assessments", {
   /** Full IRS rationale block (same as terminal); denormalized for admin i-icon reads. */
   score_rationale: text("score_rationale"),
   score_rationale_type: varchar("score_rationale_type", { length: 8 }),
+  /** Controls LLM used when the vendor risk assessment report was generated. */
+  llm_model_id: varchar("llm_model_id", { length: 512 }),
+  llm_model_label: varchar("llm_model_label", { length: 512 }),
   /** Set when assessment expires: frozen JSON; live vendor_risk_assessment_report is cleared. */
   archived_vendor_risk_assessment_report: jsonb("archived_vendor_risk_assessment_report"),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

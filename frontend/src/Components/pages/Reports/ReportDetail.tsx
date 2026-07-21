@@ -28,6 +28,10 @@ import {
   completeReportRiskMeterColor,
   overallRiskScoreFromReportJson,
 } from "../../../utils/completeReportGrade"
+import {
+  AdminLlmModelLabel,
+  resolveStoredLlmModelId,
+} from "../../UI/AdminLlmModelInfo"
 import { mixSrgbHex } from "../../../utils/mixSrgbHex"
 import { riskScopeFromRow, type ReportRiskScope } from "../../../utils/reportRiskScope"
 import {
@@ -961,6 +965,8 @@ function ReportDetail() {
     assessmentId?: string
     title: string
     report: Record<string, unknown>
+    llmModelId?: string | null
+    llmModelLabel?: string | null
     createdAt: string
     expiryAt?: string | null
     attestationExpiryAt?: string | null
@@ -1010,6 +1016,8 @@ function ReportDetail() {
             assessmentId: data.data.assessmentId,
             title: data.data.title,
             report: data.data.report ?? {},
+            llmModelId: data.data.llmModelId ?? null,
+            llmModelLabel: data.data.llmModelLabel ?? null,
             createdAt: data.data.createdAt ?? "",
             expiryAt: data.data.expiryAt ?? null,
             attestationExpiryAt: data.data.attestationExpiryAt ?? null,
@@ -1307,15 +1315,29 @@ function ReportDetail() {
       </header>
 
       <div ref={pdfBodyRef} className="report_detail_body_shell">
-        <header className="report_assessment_doc_header">
-          <h1 className="report_assessment_title">{title}</h1>
-          <p className="report_assessment_subtitle">Analysis Report • {assessmentDate} • AI Generated</p>
+        <header className="report_assessment_doc_header report_assessment_doc_header--with_llm">
+          <div className="report_assessment_doc_header_main">
+            <h1 className="report_assessment_title">{title}</h1>
+            <p className="report_assessment_subtitle">Analysis Report • {assessmentDate} • AI Generated</p>
+          </div>
+          <AdminLlmModelLabel
+            className="report_llm_model_tag"
+            showIcon={false}
+            preferModelId
+            fallbackToActive
+            modelName={resolveStoredLlmModelId({
+              llmModelId: report?.llmModelId,
+              report: report?.report,
+            })}
+          />
         </header>
         {/* Vendor-Side Assessment Context Panel — vendors: score box + short context line (full narrative in Executive Summary only); buyers: preview + approval banner below */}
         <section
           className={`report_context_panel${usePortalStyleUi ? " report_context_panel_vendor_portal" : ""}`}
         >
-          <span className="report_context_pill">Customer-Specific Risk Assessment (Vendor-Side)</span>
+          <div className="report_context_panel_top">
+            <span className="report_context_pill">Customer-Specific Risk Assessment (Vendor-Side)</span>
+          </div>
           <span className="report_context_grade_label">Grade:</span>{" "}
           <div className="report_context_inner">
             <div className="report_context_left">

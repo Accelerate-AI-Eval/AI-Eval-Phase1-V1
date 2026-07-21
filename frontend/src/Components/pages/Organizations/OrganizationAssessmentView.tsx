@@ -532,7 +532,6 @@ export default function OrganizationAssessmentView() {
                 isArchived={isCompleteReportArchived}
                 getExpiryDate={getCompleteReportExpiry}
                 onViewReport={handleViewCompleteReport}
-                showScoreRationaleInfo={isSystemAdmin}
                 singleCard
               />
               {generalReports.map((report) => {

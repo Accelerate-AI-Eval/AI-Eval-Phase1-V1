@@ -17,6 +17,11 @@ import {
   scoreVendorAttestationWithPython,
   type PythonScoreResult,
 } from "../../services/pythonScoringClient.js";
+import {
+  buildFactorExplanations,
+  type FactorExplanation,
+  type VtsFormulaResult,
+} from "../../services/vtsFactorExplanations.js";
 
 // const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
 // // const MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
@@ -31,6 +36,8 @@ export interface TrustScoreBlock {
   /** Letter grade from trust formula when computed from formula path (A–D, F for lowest). */
   grade?: string;
   scoreByCategory?: Record<string, string | number>;
+  /** Factor-level explainability (Score Trace / Vendor Score Explainability UI). */
+  factorExplanations?: FactorExplanation[];
 }
 
 export interface ReportSection {
@@ -621,8 +628,9 @@ async function chat(
 
 /**
  * Generate a structured vendor attestation report from vendor data.
- * Python runs Bedrock LLM for Overall Trust Score (+ formula risk breakdown);
- * Node only shapes the response for DB persistence.
+ * Authoritative VTS uses the document formula:
+ *   VTS = 100 − [(PR × 0.40) + (GR × 0.30) + (OR × 0.30)]
+ * LLM may still supply narrative summary/sections; category scores always come from formula risks.
  */
 export async function generateVendorAttestationReport(
   vendorData: string,
@@ -641,28 +649,48 @@ export async function generateVendorAttestationReport(
   }
 
   const llmTrust = formula.trust_score;
-  const overallRounded = Math.round(
-    Number(
-      llmTrust?.overallScore ??
-        formula.vendor_trust_score ??
-        0,
-    ),
-  );
+  // Prefer deterministic formula VTS (explainability document methodology)
+  const formulaVts =
+    formula.formula_vendor_trust_score != null &&
+    Number.isFinite(Number(formula.formula_vendor_trust_score))
+      ? Number(formula.formula_vendor_trust_score)
+      : Number(formula.vendor_trust_score ?? 0);
+  const overallRounded = Math.round(Math.max(0, Math.min(100, formulaVts)));
 
-  const scoreByCategory =
-    llmTrust?.scoreByCategory && Object.keys(llmTrust.scoreByCategory).length > 0
-      ? llmTrust.scoreByCategory
-      : {
-          Product: Number(
-            Math.max(0, Math.min(100, 100 - Number(formula.product_risk || 0))).toFixed(2),
-          ),
-          Governance: Number(
-            Math.max(0, Math.min(100, 100 - Number(formula.governance_risk || 0))).toFixed(2),
-          ),
-          Operational: Number(
-            Math.max(0, Math.min(100, 100 - Number(formula.operational_risk || 0))).toFixed(2),
-          ),
-        };
+  const scoreByCategory = {
+    Product: Number(
+      Math.max(0, Math.min(100, 100 - Number(formula.product_risk || 0))).toFixed(2),
+    ),
+    Governance: Number(
+      Math.max(0, Math.min(100, 100 - Number(formula.governance_risk || 0))).toFixed(2),
+    ),
+    Operational: Number(
+      Math.max(0, Math.min(100, 100 - Number(formula.operational_risk || 0))).toFixed(2),
+    ),
+  };
+
+  let factorExplanations: FactorExplanation[] | undefined;
+  try {
+    const formulaInput = buildFormulaInputFromPayload(formulaPayload);
+    const detail = formula.detail ?? {};
+    const vtsForFactors: VtsFormulaResult = {
+      vendor_trust_score: formulaVts,
+      product_risk: Number(formula.product_risk || 0),
+      governance_risk: Number(formula.governance_risk || 0),
+      operational_risk: Number(formula.operational_risk || 0),
+      detail: {
+        governance_risk: (detail.governance_risk ?? {}) as VtsFormulaResult["detail"]["governance_risk"],
+        operational_risk: (detail.operational_risk ?? {}) as VtsFormulaResult["detail"]["operational_risk"],
+        product_risk: (detail.product_risk ?? {
+          confidence_factor: { value: 0 },
+          mitigation_effectiveness: { value: 0 },
+        }) as VtsFormulaResult["detail"]["product_risk"],
+      },
+    };
+    factorExplanations = buildFactorExplanations(vtsForFactors, formulaInput);
+  } catch (err) {
+    console.warn("buildFactorExplanations failed:", err instanceof Error ? err.message : err);
+  }
 
   const summaryFromLlm = String(llmTrust?.summary ?? "").trim();
   const summary =
@@ -678,14 +706,19 @@ export async function generateVendorAttestationReport(
   return {
     trustScore: {
       overallScore: overallRounded,
-      grade: String(llmTrust?.grade ?? formula.grade ?? "").trim() || undefined,
-      label: String(llmTrust?.label ?? formula.classification ?? "Not specified"),
+      grade: String(formula.grade ?? llmTrust?.grade ?? "").trim() || undefined,
+      label: String(formula.classification ?? llmTrust?.label ?? "Not specified"),
       summary,
       scoreByCategory,
+      ...(factorExplanations?.length ? { factorExplanations } : {}),
     },
     sections,
     raw: formula.raw || vendorData || "",
-    scoringResult: formula,
+    scoringResult: {
+      ...formula,
+      vendor_trust_score: formulaVts,
+      scoring_source: "formula",
+    },
   };
 
   /* NODE LLM AGENT FALLBACK DISABLED — Bedrock trust score now runs in Python.
@@ -849,9 +882,14 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
     regulatoryComplexity: [],
     deploymentScale: lower(get("deployment_scale")) || "mid_market",
     patientDemographic: "general",
-    requiredCategories: MITIGATION_CATEGORIES.slice(0, 6),
-    implementedCategories: MITIGATION_CATEGORIES.slice(0, 4),
-    mitigations: [{ mitigationId: "default", riskCount: 1, avgRelevance: 0.7 }],
+    ...(() => {
+      const coverage = resolveCategoryCoverageFromAttestation(payload, get);
+      return {
+        requiredCategories: coverage.requiredCategories,
+        implementedCategories: coverage.implementedCategories,
+        mitigations: coverage.mitigations,
+      };
+    })(),
     assessmentMethod: "internal_audit",
     complianceDocumentationComplete: true,
     penetrationTestReportAvailable: !!asStr(get("adversarial_security_testing")),
@@ -1495,6 +1533,164 @@ const MITIGATION_CATEGORIES = [
   'Compliance & Regulatory Adherence',
   'User Education & Awareness',
 ];
+
+/** Attestation-only Category_Coverage (Python adds vector evidence at score time). */
+function resolveCategoryCoverageFromAttestation(payload: Record<string, unknown>, get: (k: string) => unknown) {
+  const flatten = (v: unknown): string => {
+    if (v == null) return "";
+    if (typeof v === "string") return v.trim();
+    if (Array.isArray(v)) return v.map(flatten).filter(Boolean).join(" ");
+    if (typeof v === "object") return Object.values(v as Record<string, unknown>).map(flatten).filter(Boolean).join(" ");
+    return String(v).trim();
+  };
+  const emptyish = (t: string) => {
+    const s = t.trim().toLowerCase();
+    return !s || /^(none|n\/?a|na|null|undefined|not\s+specified|not\s+provided|-|—)$/i.test(s);
+  };
+  const neg = (t: string, pats: RegExp[]) => pats.some((p) => p.test(t));
+
+  const uploads =
+    (payload.document_uploads && typeof payload.document_uploads === "object"
+      ? (payload.document_uploads as Record<string, unknown>)
+      : null) ||
+    (payload.documentUpload && typeof payload.documentUpload === "object"
+      ? (payload.documentUpload as Record<string, unknown>)
+      : {}) ||
+    {};
+
+  const hasDoc = (key: string) => {
+    const arr = (uploads as Record<string, unknown>)[key];
+    return Array.isArray(arr) && arr.some((x) => typeof x === "string" && x.trim());
+  };
+  const slot2 = (uploads as Record<string, unknown>)["2"];
+  const slot2Blob =
+    slot2 && typeof slot2 === "object"
+      ? JSON.stringify(slot2).toLowerCase()
+      : "";
+
+  const signals: Record<string, { fields: string[]; docKeys?: string[]; hints?: string[]; negative: RegExp[] }> = {
+    "Data Governance & Privacy Controls": {
+      fields: ["pii_handling", "pii_information", "data_retention_policy", "data_residency_options"],
+      hints: ["privacy", "gdpr", "hipaa"],
+      negative: [/\bno\s+pii\b/i, /^none$/i, /^no$/i],
+    },
+    "Model Security & Integrity": {
+      fields: ["training_data_documentation", "training_data_document", "ai_model_types", "adversarial_security_testing", "security_testing"],
+      docKeys: ["evidenceTestingPolicy"],
+      hints: ["security", "iso", "soc"],
+      negative: [/\bno\s+documentation\b/i, /\bno\s+testing\b/i, /^none$/i, /^no$/i],
+    },
+    "Access Management & Authentication": {
+      fields: ["audit_logs_available", "audit_logs"],
+      hints: ["soc", "iso", "access"],
+      negative: [/^none$/i, /^no$/i, /\bnot\s+available\b/i],
+    },
+    "Testing & Auditing Procedures": {
+      fields: ["assessment_completion_level", "assessment_feedback", "audit_frequency", "testing_results_available", "bias_testing_approach", "bias_ai"],
+      docKeys: ["evidenceTestingPolicy"],
+      hints: ["soc", "iso", "audit"],
+      negative: [/\bno\s+formal\b/i, /^none$/i, /^no$/i],
+    },
+    "Post-Deployment Monitoring": {
+      fields: ["bias_testing_approach", "bias_ai", "interaction_data_available", "available_usage_data", "change_management"],
+      negative: [/^none$/i, /^no$/i],
+    },
+    "Incident Response & Recovery": {
+      fields: ["incident_response_plan", "rollback_capability", "rollback_deployment_issues"],
+      negative: [/\bin\s+development\b/i, /\bno\s+plan\b/i, /^none$/i, /^no$/i],
+    },
+    "Transparency & Documentation": {
+      fields: ["model_transparency", "ai_model_transparency", "training_data_documentation", "documented_ai_governance_policy"],
+      docKeys: ["aiGovernancePolicy"],
+      negative: [/\bproprietary\b/i, /^none$/i, /^no$/i],
+    },
+    "Human Oversight Mechanisms": {
+      fields: ["human_oversight", "decision_autonomy", "ai_autonomy_level"],
+      docKeys: ["aiGovernancePolicy"],
+      negative: [/\bno\s+specific\b/i, /\bno\s+oversight\b/i, /^none$/i, /^no$/i],
+    },
+    "Bias Detection & Mitigation": {
+      fields: ["bias_testing_approach", "bias_ai"],
+      docKeys: ["evidenceTestingPolicy"],
+      negative: [/\bno\s+formal\s+bias\b/i, /^none$/i, /^no$/i],
+    },
+    "Adversarial Robustness": {
+      fields: ["adversarial_security_testing", "security_testing", "bias_testing_approach", "bias_ai"],
+      docKeys: ["evidenceTestingPolicy"],
+      negative: [/\bno\s+testing\b/i, /^none$/i, /^no$/i],
+    },
+    "Supply Chain Security": {
+      fields: ["ai_model_types", "ai_models_usage"],
+      hints: ["soc", "iso"],
+      negative: [/^none$/i, /^no$/i],
+    },
+    "Compliance & Regulatory Adherence": {
+      fields: ["security_certifications", "security_compliance_certificates", "regulatorycompliance_cert_material", "assessment_completion_level"],
+      hints: ["soc", "iso", "hipaa", "fedramp", "compliance"],
+      negative: [/^none$/i, /^no$/i],
+    },
+    "User Education & Awareness": {
+      fields: ["support_slas", "change_management", "human_oversight"],
+      negative: [/^none$/i, /^no$/i],
+    },
+  };
+
+  const requiredSet = new Set<string>([
+    "Data Governance & Privacy Controls",
+    "Testing & Auditing Procedures",
+    "Incident Response & Recovery",
+    "Transparency & Documentation",
+    "Human Oversight Mechanisms",
+    "Compliance & Regulatory Adherence",
+    "Model Security & Integrity",
+    "Post-Deployment Monitoring",
+  ]);
+  const blob = MITIGATION_CATEGORIES.map((c) => {
+    const s = signals[c];
+    return s ? s.fields.map((f) => flatten(get(f))).join(" ") : "";
+  }).join(" ").toLowerCase() + " " + slot2Blob;
+
+  if (/bias/i.test(blob) || !emptyish(flatten(get("bias_testing_approach") ?? get("bias_ai")))) {
+    requiredSet.add("Bias Detection & Mitigation");
+  }
+  if (/adversarial|red team/i.test(blob) || !emptyish(flatten(get("adversarial_security_testing") ?? get("security_testing")))) {
+    requiredSet.add("Adversarial Robustness");
+  }
+  if (/third|off-the-shelf|openai|anthropic|vendor/i.test(flatten(get("ai_model_types") ?? get("ai_models_usage")))) {
+    requiredSet.add("Supply Chain Security");
+  }
+  if (/audit log/i.test(blob) || !emptyish(flatten(get("audit_logs_available") ?? get("audit_logs")))) {
+    requiredSet.add("Access Management & Authentication");
+  }
+  if (/training|education|awareness|onboarding/i.test(blob) || !emptyish(flatten(get("support_slas")))) {
+    requiredSet.add("User Education & Awareness");
+  }
+
+  const required = MITIGATION_CATEGORIES.filter((c) => requiredSet.has(c));
+  const implemented: string[] = [];
+  for (const cat of required) {
+    const s = signals[cat];
+    if (!s) continue;
+    let ok = false;
+    for (const f of s.fields) {
+      const t = flatten(get(f));
+      if (!emptyish(t) && !neg(t, s.negative)) {
+        ok = true;
+        break;
+      }
+    }
+    if (!ok && (s.docKeys || []).some(hasDoc)) ok = true;
+    if (!ok && (s.hints || []).some((h) => slot2Blob.includes(h))) ok = true;
+    if (ok) implemented.push(cat);
+  }
+
+  const mitigations =
+    implemented.length > 0
+      ? implemented.map((c) => ({ mitigationId: c, riskCount: 1, avgRelevance: 0.7 }))
+      : [{ mitigationId: "none", riskCount: 1, avgRelevance: 0.2 }];
+
+  return { requiredCategories: required, implementedCategories: implemented, mitigations };
+}
 
 function calcCategoryCoverage(p: LooseInput) {
   const requiredCategories = (p.requiredCategories ?? []) as string[];

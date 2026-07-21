@@ -4,6 +4,7 @@ from api.health import router as health_router
 from api.scoring import router as scoring_router
 from api.assessment_llm import router as assessment_llm_router
 from api.cots_scoring import router as cots_scoring_router
+from api.config_llm import router as config_llm_router
 
 from config import settings
 
@@ -15,6 +16,7 @@ app.include_router(health_router)
 app.include_router(scoring_router)
 app.include_router(assessment_llm_router)
 app.include_router(cots_scoring_router)
+app.include_router(config_llm_router)
 
 try:
     from api.assessment import router as assessment_router

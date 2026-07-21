@@ -24,6 +24,9 @@ export interface CustomerRiskReportItem {
   assessmentId: string;
   title: string;
   report?: Record<string, unknown>;
+  /** Stored Controls LLM used when this report was generated. */
+  llmModelId?: string | null;
+  llmModelLabel?: string | null;
   createdAt: string;
   expiryAt?: string | null;
   /** When set and in the past, report is archived (linked attestation expired). */
@@ -108,6 +111,7 @@ function Reports() {
 
   const systemRoleForAccess = (sessionStorage.getItem("systemRole") ?? "").toLowerCase().trim().replace(/_/g, " ");
   const userRoleForAccess = (sessionStorage.getItem("userRole") ?? "").toLowerCase().trim();
+  const isSystemAdmin = systemRoleForAccess === "system admin";
   const isAssessmentAnalysisViewOnly =
     systemRoleForAccess === "system manager" || systemRoleForAccess === "system viewer";
   // T&SA Manager / Lead / Engineer / Viewer (vendor): view-only on Reports (no generate, no delete).
@@ -411,6 +415,7 @@ function Reports() {
                 getExpiryDate={getCompleteReportExpiryDate}
                 onViewReport={handleSelectReport}
                 onDownload={(r, e) => handleDownload(r.id, e)}
+                showScoreRationaleInfo={isSystemAdmin}
               />
               <ReportsPagination
                 totalItems={assessmentReports.length}
@@ -469,6 +474,7 @@ function Reports() {
                         onViewReport={handleSelectReport}
                         viewEnabledWhenArchived
                         singleCard
+                        showScoreRationaleInfo={isSystemAdmin}
                       />
                     ) : (
                       <GeneralReportsCards

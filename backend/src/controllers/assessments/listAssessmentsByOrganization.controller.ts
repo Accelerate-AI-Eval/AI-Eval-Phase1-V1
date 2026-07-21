@@ -159,7 +159,20 @@ const listAssessmentsByOrganization = async (req: Request, res: Response) => {
           b.vendor_risk_assessment_report->>'scoreRationaleType'
         ) AS "buyerScoreRationaleType",
         vcr.vendor_report_score_rationale AS "vendorScoreRationale",
-        vcr.vendor_report_score_rationale_type AS "vendorScoreRationaleType"
+        vcr.vendor_report_score_rationale_type AS "vendorScoreRationaleType",
+        COALESCE(
+          NULLIF(TRIM(b.llm_model_label), ''),
+          NULLIF(TRIM(b.llm_model_id), ''),
+          NULLIF(TRIM(b.vendor_risk_assessment_report->>'modelLabel'), ''),
+          NULLIF(TRIM(b.vendor_risk_assessment_report->>'modelId'), ''),
+          NULLIF(TRIM(vcr.vendor_llm_model_label), ''),
+          NULLIF(TRIM(vcr.vendor_llm_model_id), '')
+        ) AS "llmModelLabel",
+        COALESCE(
+          NULLIF(TRIM(b.llm_model_id), ''),
+          NULLIF(TRIM(b.vendor_risk_assessment_report->>'modelId'), ''),
+          NULLIF(TRIM(vcr.vendor_llm_model_id), '')
+        ) AS "llmModelId"
       FROM assessments a
       LEFT JOIN cots_buyer_assessments b ON a.id = b.assessment_id
       LEFT JOIN cots_vendor_assessments v ON a.id = v.assessment_id
@@ -201,7 +214,9 @@ const listAssessmentsByOrganization = async (req: Request, res: Response) => {
             cr.report->>'scoreRationaleType',
             cr.report->'generatedAnalysis'->>'scoreRationaleType'
           ) AS vendor_report_score_rationale_type,
-          cr.report AS vendor_report_json
+          cr.report AS vendor_report_json,
+          cr.llm_model_id AS vendor_llm_model_id,
+          cr.llm_model_label AS vendor_llm_model_label
         FROM customer_risk_assessment_reports cr
         WHERE cr.assessment_id = a.id
         ORDER BY cr.created_at DESC
@@ -360,6 +375,12 @@ const listAssessmentsByOrganization = async (req: Request, res: Response) => {
         if (r.type === "cots_buyer") return "IRS";
         return null;
       })(),
+      llmModelId:
+        typeof r.llmModelId === "string" && r.llmModelId.trim() ? r.llmModelId.trim() : null,
+      llmModelLabel:
+        typeof r.llmModelLabel === "string" && r.llmModelLabel.trim()
+          ? r.llmModelLabel.trim()
+          : null,
     };
     });
 

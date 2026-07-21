@@ -1,7 +1,8 @@
-import { ChevronRight, CircleX, Download, FileText, Info } from "lucide-react";
+import { ChevronRight, Download, FileText, Info } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import ClickTooltip from "../../UI/ClickTooltip";
-import Modal from "../../UI/Modal";
+import { resolveStoredLlmModelId } from "../../UI/AdminLlmModelInfo";
+import ScoreTracePanel from "../Organizations/ScoreTracePanel";
 import type { CustomerRiskReportItem } from "./Reports";
 import {
   completeReportRiskMeterColor,
@@ -24,8 +25,6 @@ import "./general_reports.css";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
 
-// const DEFAULT_MODEL_DISPLAY_NAME = "Claude Sonnet 3";
-
 function isVendorPortalSession(): boolean {
   return (sessionStorage.getItem("systemRole") ?? "").toLowerCase().trim() === "vendor";
 }
@@ -43,20 +42,16 @@ function riskMeterGradingForReport(
   return "default";
 }
 
-// function modelNameFromReport(report: CustomerRiskReportItem): string {
-//   const raw = report.report;
-//   if (raw == null || typeof raw !== "object") return DEFAULT_MODEL_DISPLAY_NAME;
-//   const o = raw as Record<string, unknown>;
-//   const gen = o.generatedAnalysis ?? o.generated_analysis;
-//   if (gen != null && typeof gen === "object") {
-//     const g = gen as Record<string, unknown>;
-//     const fromGen = g.modelName ?? g.model_name ?? g.aiModel ?? g.ai_model;
-//     if (typeof fromGen === "string" && fromGen.trim()) return fromGen.trim();
-//   }
-//   const top = o.modelName ?? o.model_name ?? o.aiModel;
-//   if (typeof top === "string" && top.trim()) return top.trim();
-//   return DEFAULT_MODEL_DISPLAY_NAME;
-// }
+function scoreTraceTypeForReport(
+  report: CustomerRiskReportItem,
+  riskMeterGrading: CompleteReportRiskMeterGrading,
+): "irs" | "scs" {
+  const grading = riskMeterGradingForReport(report, riskMeterGrading);
+  if (grading === "buyer_cots_irs" || grading === "vendor_cots_irs" || report.source === "buyer_vendor_risk") {
+    return "irs";
+  }
+  return "scs";
+}
 
 interface CompleteReportsCardsProps {
   reports: CustomerRiskReportItem[];
@@ -69,14 +64,12 @@ interface CompleteReportsCardsProps {
   viewEnabledWhenArchived?: boolean;
   /** When true, render only the card(s) in a fragment (no wrapper div) for use inside a parent grid. */
   singleCard?: boolean;
-  // /** Shown directly under the card title; defaults from report JSON when present, else Claude Sonnet 3. */
-  // getModelName?: (report: CustomerRiskReportItem) => string;
   /**
    * Organizational portal vendor COTS: show implementation risk score and buyer COTS grade colors (IRS high = red).
    * Default: alignment gradient for customer reports; inverted IRS bands for `buyer_vendor_risk`.
    */
   riskMeterGrading?: CompleteReportRiskMeterGrading;
-  /** System admin org assessment view: show info icon beside risk score for type-specific rationale. */
+  /** System admin: open score tracing (with LLM model in stp_header) from the risk Info button. */
   showScoreRationaleInfo?: boolean;
 }
 
@@ -95,10 +88,12 @@ function CompleteReportsCards({
   const [scoreByReportId, setScoreByReportId] = useState<Record<string, number | null>>({});
   const [reportDetailById, setReportDetailById] = useState<Record<string, Record<string, unknown>>>({});
   const [fetchingReportId, setFetchingReportId] = useState<string | null>(null);
-  const [scoreRationaleModal, setScoreRationaleModal] = useState<{
-    reportTitle: string;
+  const [scoreTraceTarget, setScoreTraceTarget] = useState<{
+    assessmentId: string;
+    reportId: string;
     title: string;
-    rationale: string | null;
+    traceType: "irs" | "scs";
+    llmModelName: string | null;
   } | null>(null);
 
   const rowWithFetchedReport = useCallback(
@@ -278,9 +273,6 @@ function CompleteReportsCards({
                 </h2>
               </span>
             </ClickTooltip>
-            {/* <p className="complete_rpr_card_model">
-              Model: {getModelName ? getModelName(report) : modelNameFromReport(report)}
-            </p> */}
           </div>
         </div>
 
@@ -305,10 +297,17 @@ function CompleteReportsCards({
                   className="general_rpr_card_download_btn complete_rpr_card_risk_info_btn"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setScoreRationaleModal({
-                      reportTitle: getTitle(report),
-                      title: scoreRationale.title,
-                      rationale: scoreRationale.rationale,
+                    const assessmentId = String(report.assessmentId ?? "").trim();
+                    if (!assessmentId) return;
+                    setScoreTraceTarget({
+                      assessmentId,
+                      reportId: String(report.id ?? ""),
+                      title: getTitle(report),
+                      traceType: scoreTraceTypeForReport(report, riskMeterGrading),
+                      llmModelName: resolveStoredLlmModelId({
+                        llmModelId: report.llmModelId,
+                        report: rowForMeter.report,
+                      }),
                     });
                   }}
                   aria-label={`${scoreRationale.title} for ${getTitle(report)}`}
@@ -364,55 +363,30 @@ function CompleteReportsCards({
       </article>
     );
   });
-  const modal = (
-    <Modal
-      isOpen={scoreRationaleModal != null}
-      onClose={() => setScoreRationaleModal(null)}
-      overlayClassName="profile_modal_overlay"
-      popupClassName=""
-    >
-      <div className="profile_modal_content settings_modal_content complete_rpr_score_rationale_modal_content">
-        <div className="profile_modal_header">
-          <h2 id="complete_rpr_score_rationale_modal_title" className="profile_modal_title">
-            {scoreRationaleModal?.title ?? "Score Rationale"}
-          </h2>
-          <button
-            type="button"
-            className="modal_close_btn"
-            onClick={() => setScoreRationaleModal(null)}
-            aria-label="Close"
-          >
-            <CircleX size={20} />
-          </button>
-        </div>
-        <div className="profile_modal_body">
-          {scoreRationaleModal?.reportTitle ? (
-            <p className="complete_rpr_score_rationale_report_name">
-              {scoreRationaleModal.reportTitle}
-            </p>
-          ) : null}
-          <p className="complete_rpr_score_rationale_body">
-            {scoreRationaleModal?.rationale?.trim()
-              ? scoreRationaleModal.rationale.trim()
-              : "No rationale available for this report yet."}
-          </p>
-        </div>
-      </div>
-    </Modal>
-  );
+  const scoreTracePanel = showScoreRationaleInfo ? (
+    <ScoreTracePanel
+      isOpen={scoreTraceTarget != null}
+      onClose={() => setScoreTraceTarget(null)}
+      assessmentId={scoreTraceTarget?.assessmentId ?? ""}
+      assessmentTitle={scoreTraceTarget?.title ?? ""}
+      traceType={scoreTraceTarget?.traceType ?? "scs"}
+      reportId={scoreTraceTarget?.reportId || undefined}
+      llmModelName={scoreTraceTarget?.llmModelName}
+    />
+  ) : null;
 
   if (singleCard) {
     return (
       <>
         {cards}
-        {showScoreRationaleInfo ? modal : null}
+        {scoreTracePanel}
       </>
     );
   }
   return (
     <>
       <div className="general_rpr_cards_sec vendor_directory_grid complete_rpr_cards_grid">{cards}</div>
-      {showScoreRationaleInfo ? modal : null}
+      {scoreTracePanel}
     </>
   );
 }

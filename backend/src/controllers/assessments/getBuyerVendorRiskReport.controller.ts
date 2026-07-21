@@ -11,6 +11,7 @@ import {
   regulatorySnippetFromJson,
 } from "../agents/buyerVendorRiskReportAgent.js";
 import { buildBuyerCotsFrameworkMappingRows } from "../../services/buyerCotsFrameworkMapping.js";
+import { mergeLlmModelIntoReport } from "../../utils/activeLlmModelMeta.js";
 
 /**
  * GET /buyerCotsAssessment/:id/vendor-risk-report
@@ -71,6 +72,8 @@ const getBuyerVendorRiskReport = async (req: Request, res: Response): Promise<vo
             governance_maturity: cotsBuyerAssessments.governance_maturity,
             target_timeline: cotsBuyerAssessments.target_timeline,
             regulatory_requirments: cotsBuyerAssessments.regulatory_requirments,
+            llmModelId: cotsBuyerAssessments.llm_model_id,
+            llmModelLabel: cotsBuyerAssessments.llm_model_label,
           })
           .from(cotsBuyerAssessments)
           .innerJoin(assessments, eq(cotsBuyerAssessments.assessment_id, assessments.id))
@@ -90,6 +93,8 @@ const getBuyerVendorRiskReport = async (req: Request, res: Response): Promise<vo
             governance_maturity: cotsBuyerAssessments.governance_maturity,
             target_timeline: cotsBuyerAssessments.target_timeline,
             regulatory_requirments: cotsBuyerAssessments.regulatory_requirments,
+            llmModelId: cotsBuyerAssessments.llm_model_id,
+            llmModelLabel: cotsBuyerAssessments.llm_model_label,
           })
           .from(cotsBuyerAssessments)
           .innerJoin(assessments, eq(cotsBuyerAssessments.assessment_id, assessments.id))
@@ -145,14 +150,26 @@ const getBuyerVendorRiskReport = async (req: Request, res: Response): Promise<vo
     }
 
     const reportObj = rawReport as Record<string, unknown>;
-    const enriched = enrichStoredBuyerVendorReport(reportObj, vendorName, productName, {
-      criticality: row.criticality,
-      riskAppetite: row.risk_appetite,
-      dataSensitivity: row.data_sensitivity,
-      governanceMaturity: row.governance_maturity,
-      targetTimeline: row.target_timeline,
-      regulatorySnippet: regulatorySnippetFromJson(row.regulatory_requirments),
-    });
+    const llmModelId =
+      typeof (row as { llmModelId?: string | null }).llmModelId === "string"
+        ? String((row as { llmModelId?: string | null }).llmModelId).trim()
+        : "";
+    const llmModelLabel =
+      typeof (row as { llmModelLabel?: string | null }).llmModelLabel === "string"
+        ? String((row as { llmModelLabel?: string | null }).llmModelLabel).trim()
+        : "";
+    const enriched = mergeLlmModelIntoReport(
+      enrichStoredBuyerVendorReport(reportObj, vendorName, productName, {
+        criticality: row.criticality,
+        riskAppetite: row.risk_appetite,
+        dataSensitivity: row.data_sensitivity,
+        governanceMaturity: row.governance_maturity,
+        targetTimeline: row.target_timeline,
+        regulatorySnippet: regulatorySnippetFromJson(row.regulatory_requirments),
+      }) as Record<string, unknown>,
+      llmModelId || null,
+      llmModelLabel || null,
+    );
     const frameworkMappingRows = buildBuyerCotsFrameworkMappingRows(
       reportObj,
       row.regulatory_requirments,
@@ -168,6 +185,8 @@ const getBuyerVendorRiskReport = async (req: Request, res: Response): Promise<vo
       productName,
       organizationName: row.organization_name ?? "",
       report: enriched,
+      llmModelId: llmModelId || null,
+      llmModelLabel: llmModelLabel || null,
       frameworkMappingRows,
     });
   } catch (e) {

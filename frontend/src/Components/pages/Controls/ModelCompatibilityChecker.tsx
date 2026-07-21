@@ -6,6 +6,7 @@ import {
   testLlmModel,
   type LlmModelOption,
 } from "../../../utils/llmModelApi";
+import { subscribeActiveLlmModel } from "../../../utils/activeLlmModelStore";
 import { LlmModelPicker } from "./LlmModelPicker";
 import {
   ModelTestResultDialog,
@@ -95,6 +96,15 @@ export function ModelCompatibilityChecker({
       cancelled = true;
     };
   }, [loadConfig]);
+
+  // Keep Controls "current" label in sync when Apply happens in another tab.
+  useEffect(() => {
+    return subscribeActiveLlmModel((next) => {
+      if (!next.modelId && !next.modelLabel) return;
+      setAppliedModel(next.modelId);
+      setAppliedModelLabel(next.modelLabel);
+    });
+  }, []);
 
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
@@ -203,6 +213,12 @@ export function ModelCompatibilityChecker({
       setApplyResult("success");
       setTestStatusMessage("");
       setApplyStatusMessage(`Active model set to ${result.config.modelLabel}.`);
+      console.log("[LLM] model changed (Controls Apply)", {
+        modelId: result.config.modelId,
+        modelLabel: result.config.modelLabel,
+        backend: result.config.backend,
+        pythonSynced: result.config.pythonSynced,
+      });
 
       if (result.config.pythonSynced === false) {
         setApplyStatusMessage("Warning: Python service sync failed.");

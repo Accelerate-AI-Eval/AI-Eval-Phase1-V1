@@ -7,6 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { findAttestationForBuyerAssessment } from "../../services/findAttestationForBuyerVendorProduct.js";
 import { resolveFrameworkMappingRowsForAttestation } from "../../services/frameworkMappingFromCompliance.js";
 import { generateBuyerVendorRiskReport } from "../agents/buyerVendorRiskReportAgent.js";
+import { stampActiveLlmModel, getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
 
 function readBuyerAttestationIdFromBody(body: Record<string, unknown>): string | null {
   const keys = [
@@ -87,10 +88,11 @@ async function persistVendorRiskReport(
       productName || "Product",
     );
     const frameworkRows = resolveFrameworkMappingRowsForAttestation(attestation);
-    const reportStored = {
+    const llmMeta = getActiveLlmModelMeta();
+    const reportStored = stampActiveLlmModel({
       ...report,
       frameworkMapping: { rows: frameworkRows },
-    } as unknown as Record<string, unknown>;
+    } as unknown as Record<string, unknown>);
     const irsRationale =
       typeof report.scoreRationale === "string" ? report.scoreRationale.trim() : "";
     await db
@@ -99,6 +101,8 @@ async function persistVendorRiskReport(
         vendor_risk_assessment_report: reportStored,
         score_rationale: irsRationale || undefined,
         score_rationale_type: irsRationale ? "IRS" : undefined,
+        llm_model_id: llmMeta.modelId,
+        llm_model_label: llmMeta.modelLabel,
         updated_at: new Date(),
       })
       .where(eq(cotsBuyerAssessments.assessment_id, assessmentId));

@@ -397,6 +397,46 @@
   margin-bottom: 1.25rem;
 }
 
+.report_assessment_doc_header--with_llm {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.report_assessment_doc_header_main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.report_llm_model_tag.admin_llm_model_label {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  align-self: flex-start;
+  max-width: min(100%, 22rem);
+  margin: 0;
+  padding: 0.28rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid #dbe3ef;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  gap: 0;
+}
+
+.report_llm_model_tag .admin_llm_model_label_text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report_llm_model_tag .admin_llm_model_label_text strong {
+  font-weight: 600;
+  color: #0f172a;
+}
+
 .report_detail_breadcrumb {
   font-size: 0.8125rem;
   color: #6b7280;
@@ -1459,6 +1499,40 @@
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   margin-bottom: 1rem;
+}
+
+.report_context_panel_top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.report_context_panel_top .report_context_pill {
+  margin-bottom: 0;
+}
+
+.admin_llm_model_label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  font-size: 0.75rem;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.admin_llm_model_label_text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin_llm_model_label_text strong {
+  font-weight: 600;
+  color: #0f172a;
 }
 
 .report_context_inner {

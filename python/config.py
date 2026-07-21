@@ -1,4 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
+import os
+import re
 
 
 class Settings(BaseSettings):
@@ -29,6 +32,67 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+_ENV_PATH = Path(__file__).resolve().parent / ".env"
+
+
+def get_bedrock_model_id() -> str:
+    """Active Bedrock chat model (Controls Apply updates this at runtime)."""
+    model_id = (settings.BEDROCK_MODEL_ID or "").strip() or "anthropic.claude-3-sonnet-20240229-v1:0"
+    print(f"[LLM] taking model from BEDROCK_MODEL_ID: {model_id}")
+    return model_id
+
+
+def set_bedrock_model_id(model_id: str) -> str:
+    """
+    Update the in-memory Bedrock model and persist to python/.env so restarts keep it.
+    Called by PUT /config/llm-model from Node Controls Apply.
+    """
+    trimmed = (model_id or "").strip()
+    if not trimmed:
+        raise ValueError("modelId is required")
+    previous = (settings.BEDROCK_MODEL_ID or "").strip()
+    settings.BEDROCK_MODEL_ID = trimmed
+    os.environ["BEDROCK_MODEL_ID"] = trimmed
+    _upsert_env_file(_ENV_PATH, {"BEDROCK_MODEL_ID": trimmed})
+    print(f"[LLM] model changed (Python sync): {previous!r} -> {trimmed!r}")
+    return trimmed
+
+
+def _upsert_env_file(path: Path, updates: dict[str, str]) -> None:
+    if not updates:
+        return
+    lines: list[str] = []
+    if path.exists():
+        lines = path.read_text(encoding="utf-8").splitlines()
+
+    touched: set[str] = set()
+    next_lines: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            next_lines.append(line)
+            continue
+        match = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=", line)
+        if not match:
+            next_lines.append(line)
+            continue
+        key = match.group(1)
+        if key in updates:
+            next_lines.append(f"{key}={updates[key]}")
+            touched.add(key)
+        else:
+            next_lines.append(line)
+
+    for key, value in updates.items():
+        if key not in touched:
+            next_lines.append(f"{key}={value}")
+
+    body = "\n".join(next_lines)
+    if body and not body.endswith("\n"):
+        body += "\n"
+    path.write_text(body, encoding="utf-8")
+
 
 # Back-compat aliases used by chunker / extraction helpers
 AWS_ACCESS_KEY_ID = settings.AWS_ACCESS_KEY_ID

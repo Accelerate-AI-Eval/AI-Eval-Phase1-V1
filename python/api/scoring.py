@@ -110,12 +110,16 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
             logger.warning("LLM trust score failed; using formula VTS fallback: %s", llm_error)
             logger.debug(traceback.format_exc())
 
+        # Authoritative score follows the explainability document formula:
+        # VTS = 100 − [(PR × 0.40) + (GR × 0.30) + (OR × 0.30)]
+        # LLM still supplies narrative summary/sections when available.
+        final_score = formula_vts
+        scoring_source = "formula"
+        scoring_version = "vts-1.0"
         if llm_score is not None and llm_score > 0:
-            final_score = llm_score
-        else:
-            final_score = formula_vts
-            scoring_source = "formula"
-            scoring_version = "vts-1.0"
+            # LLM narrative only — do not override formula VTS.
+            scoring_source = "formula+llm-narrative"
+            scoring_version = "vts-formula-1.0"
 
         interpretation = interpret_trust_score(final_score)
 
@@ -124,6 +128,12 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
             trust_block["label"] = interpretation["classification"]
         trust_block["overallScore"] = round(final_score)
         trust_block["grade"] = interpretation["grade"]
+        # Always expose formula category scores (higher = better) for Score Trace UI
+        trust_block["scoreByCategory"] = {
+            "Product": round(max(0.0, min(100.0, 100.0 - float(formula.get("product_risk") or 0))), 2),
+            "Governance": round(max(0.0, min(100.0, 100.0 - float(formula.get("governance_risk") or 0))), 2),
+            "Operational": round(max(0.0, min(100.0, 100.0 - float(formula.get("operational_risk") or 0))), 2),
+        }
         if not str(trust_block.get("summary") or "").strip():
             trust_block["summary"] = (
                 f"Vendor trust score {round(final_score)}/100 "
@@ -144,6 +154,10 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
         }
         detail["formula_vendor_trust_score"] = formula_vts
         detail["vector_retrieval"] = vector_meta
+        if "category_coverage_resolution" not in detail and isinstance(formula_input, dict):
+            meta = formula_input.get("_categoryCoverageMeta")
+            if isinstance(meta, dict) and meta:
+                detail["category_coverage_resolution"] = meta
 
         rationale = print_vts_rationale(
             final_score=final_score,

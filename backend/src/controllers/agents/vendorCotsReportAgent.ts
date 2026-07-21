@@ -3,10 +3,9 @@ import {
   BedrockRuntimeClient,
   InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
+import { getActiveBedrockModelId } from "../../utils/bedrockModelId.js";
 
 const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
-// const MODEL_ID ="us.anthropic.claude-haiku-4-5-20251001-v1:0";
-const MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0";
 
 const client = new BedrockRuntimeClient({ region: REGION });
 
@@ -1730,7 +1729,7 @@ async function invokeModelLocal(userInput: string): Promise<string> {
   });
 
   const command = new InvokeModelCommand({
-    modelId: MODEL_ID,
+    modelId: getActiveBedrockModelId(),
     contentType: "application/json",
     accept: "application/json",
     body,
@@ -1860,6 +1859,7 @@ export async function generateVendorCotsReport(
             classification: formulaResult.classification,
             deal_characteristics: formulaResult.deal_characteristics,
             recommended_actions: formulaResult.recommended_actions,
+            detail: formulaResult.detail ?? undefined,
           },
         },
       },

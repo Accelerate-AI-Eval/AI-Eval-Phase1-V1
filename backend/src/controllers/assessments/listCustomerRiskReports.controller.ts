@@ -9,6 +9,7 @@ import { vendorSelfAttestations } from "../../schema/assessments/vendorSelfAttes
 import { riskTop5Mitigations } from "../../schema/risks/riskTop5Mitigations.js";
 import { vendorCotsFrameworkMappingRowsForListView } from "../../services/frameworkMappingFromCompliance.js";
 import { mergeScoreRationaleIntoReport, extractOverallRiskScoreFromReport } from "../../utils/mergeScoreRationale.js";
+import { mergeLlmModelIntoReport } from "../../utils/activeLlmModelMeta.js";
 
 /**
  * GET /customerRiskReports
@@ -70,6 +71,8 @@ const listCustomerRiskReports = async (req: Request, res: Response): Promise<voi
         report: customerRiskAssessmentReports.report,
         scoreRationale: customerRiskAssessmentReports.score_rationale,
         scoreRationaleType: customerRiskAssessmentReports.score_rationale_type,
+        llmModelId: customerRiskAssessmentReports.llm_model_id,
+        llmModelLabel: customerRiskAssessmentReports.llm_model_label,
         createdAt: customerRiskAssessmentReports.created_at,
         expiryAt: assessments.expiry_at,
         attestationExpiryAt: vendorSelfAttestations.expiry_at,
@@ -205,12 +208,19 @@ const listCustomerRiskReports = async (req: Request, res: Response): Promise<voi
         r.scoreRationale,
         r.scoreRationaleType,
       );
-      const overallRiskScore = extractOverallRiskScoreFromReport(reportWithRationale);
+      const reportWithModel = mergeLlmModelIntoReport(
+        reportWithRationale,
+        r.llmModelId,
+        r.llmModelLabel,
+      );
+      const overallRiskScore = extractOverallRiskScoreFromReport(reportWithModel);
       return {
         id: r.id,
         assessmentId: r.assessmentId,
         title: r.title,
-        report: reportWithRationale,
+        report: reportWithModel,
+        llmModelId: r.llmModelId ?? null,
+        llmModelLabel: r.llmModelLabel ?? null,
         overallRiskScore:
           overallRiskScore != null && Number.isFinite(overallRiskScore)
             ? Math.round(overallRiskScore * 100) / 100

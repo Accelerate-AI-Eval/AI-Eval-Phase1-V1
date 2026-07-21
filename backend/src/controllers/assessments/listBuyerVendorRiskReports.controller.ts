@@ -6,6 +6,7 @@ import { usersTable } from "../../schema/schema.js";
 import { assessments } from "../../schema/assessments/assessments.js";
 import { cotsBuyerAssessments } from "../../schema/assessments/cotsBuyerAssessments.js";
 import { mergeScoreRationaleIntoReport } from "../../utils/mergeScoreRationale.js";
+import { mergeLlmModelIntoReport } from "../../utils/activeLlmModelMeta.js";
 
 /**
  * GET /buyerVendorRiskReports
@@ -64,6 +65,8 @@ const listBuyerVendorRiskReports = async (req: Request, res: Response): Promise<
         vendorRiskReport: cotsBuyerAssessments.vendor_risk_assessment_report,
         scoreRationale: cotsBuyerAssessments.score_rationale,
         scoreRationaleType: cotsBuyerAssessments.score_rationale_type,
+        llmModelId: cotsBuyerAssessments.llm_model_id,
+        llmModelLabel: cotsBuyerAssessments.llm_model_label,
       })
       .from(cotsBuyerAssessments)
       .innerJoin(assessments, eq(cotsBuyerAssessments.assessment_id, assessments.id))
@@ -86,10 +89,14 @@ const listBuyerVendorRiskReports = async (req: Request, res: Response): Promise<
       const product = (r.productName ?? "").trim() || "Product";
       const title = `${vendor} – ${product}`;
       const rep = r.vendorRiskReport;
-      const repObj = mergeScoreRationaleIntoReport(
-        rep != null && typeof rep === "object" ? rep : null,
-        r.scoreRationale,
-        r.scoreRationaleType,
+      const repObj = mergeLlmModelIntoReport(
+        mergeScoreRationaleIntoReport(
+          rep != null && typeof rep === "object" ? rep : null,
+          r.scoreRationale,
+          r.scoreRationaleType,
+        ),
+        r.llmModelId,
+        r.llmModelLabel,
       );
       const repRecord =
         repObj != null && typeof repObj === "object" && !Array.isArray(repObj)
@@ -115,6 +122,8 @@ const listBuyerVendorRiskReports = async (req: Request, res: Response): Promise<
         assessmentId: r.assessmentId,
         title,
         report: repRecord ?? undefined,
+        llmModelId: r.llmModelId ?? null,
+        llmModelLabel: r.llmModelLabel ?? null,
         createdAt:
           r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt ?? ""),
         expiryAt:

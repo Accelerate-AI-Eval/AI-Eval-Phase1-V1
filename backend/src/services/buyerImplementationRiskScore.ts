@@ -42,8 +42,9 @@ function norm(v: unknown): string {
 }
 
 function boolYes(v: unknown): boolean {
+  if (typeof v === "boolean") return v;
   const s = norm(v);
-  return s === "yes" || s === "true" || s === "available" || s === "exists" || s === "defined";
+  return s.startsWith("yes") || s === "true" || s === "available" || s === "exists" || s === "defined";
 }
 
 function parseList(v: unknown): string[] {
@@ -74,31 +75,95 @@ function extractVendorTrustScore(attestationRow: Record<string, unknown> | null)
   return clamp01(Number.isFinite(n) ? n : 50);
 }
 
+function isHighStakes(criticality: string): boolean {
+  return (
+    criticality.includes("life or death") ||
+    criticality.includes("major financial") ||
+    criticality.includes("high") ||
+    criticality.includes("critical")
+  );
+}
+
+function isLowOrMediumStakes(criticality: string): boolean {
+  return (
+    criticality.includes("low impact") ||
+    criticality.includes("minimal") ||
+    criticality.includes("moderate impact") ||
+    criticality.includes("medium") ||
+    criticality.includes("low")
+  );
+}
+
+function isAggressiveAppetite(appetite: string): boolean {
+  return (
+    appetite.includes("aggressive") ||
+    appetite.includes("very high") ||
+    appetite.startsWith("high")
+  );
+}
+
+function isConservativeAppetite(appetite: string): boolean {
+  return (
+    appetite.includes("conservative") ||
+    appetite.includes("very low") ||
+    appetite.startsWith("low")
+  );
+}
+
 function calculateOrgReadinessGap(buyerPayload: Record<string, unknown>): number {
   let risk = 35;
   const digital = norm(buyerPayload.digitalMaturityLevel);
-  if (digital.includes("high") || digital.includes("advanced")) risk -= 10;
-  else if (digital.includes("medium")) risk -= 4;
-  else if (digital.includes("low") || digital.includes("ad-hoc")) risk += 10;
+  if (
+    digital.includes("level 5") ||
+    digital.includes("level 4") ||
+    digital.includes("high") ||
+    digital.includes("advanced")
+  ) {
+    risk -= 10;
+  } else if (digital.includes("level 3") || digital.includes("medium")) {
+    risk -= 4;
+  } else if (
+    digital.includes("level 1") ||
+    digital.includes("level 2") ||
+    digital.includes("low") ||
+    digital.includes("ad-hoc")
+  ) {
+    risk += 10;
+  }
 
   const governance = norm(buyerPayload.dataGovernanceMaturity);
-  if (governance.includes("optimized") || governance.includes("managed")) risk -= 8;
-  else if (governance.includes("basic")) risk += 4;
-  else if (governance.includes("ad-hoc") || governance.includes("low")) risk += 10;
+  if (
+    governance.includes("optimized") ||
+    governance.includes("managed") ||
+    governance.includes("mature")
+  ) {
+    risk -= 8;
+  } else if (governance.includes("basic") || governance.includes("developing")) {
+    risk += 4;
+  } else if (
+    governance.includes("ad-hoc") ||
+    governance.includes("low") ||
+    governance.includes("initial") ||
+    governance.startsWith("none")
+  ) {
+    risk += 10;
+  }
 
   if (!boolYes(buyerPayload.aiGovernanceBoard)) risk += 8;
   if (!boolYes(buyerPayload.aiEthicsPolicy)) risk += 8;
 
-  const team = parseList(buyerPayload.implementationTeamComposition);
+  const team = parseList(buyerPayload.implementationTeamComposition).filter(
+    (t) => !norm(t).includes("no team"),
+  );
   if (team.length >= 4) risk -= 6;
   else if (team.length <= 1) risk += 8;
 
   const appetite = norm(buyerPayload.riskAppetite);
   const criticality = norm(buyerPayload.criticality);
-  if ((criticality.includes("high") || criticality.includes("critical")) && appetite.includes("aggressive")) {
+  if (isHighStakes(criticality) && isAggressiveAppetite(appetite)) {
     risk += 8;
   }
-  if ((criticality.includes("low") || criticality.includes("medium")) && appetite.includes("conservative")) {
+  if (isLowOrMediumStakes(criticality) && isConservativeAppetite(appetite)) {
     risk -= 2;
   }
   return clamp01(risk);
@@ -106,16 +171,27 @@ function calculateOrgReadinessGap(buyerPayload: Record<string, unknown>): number
 
 function calculateIntegrationRisk(buyerPayload: Record<string, unknown>): number {
   let risk = 25;
-  const systems = parseList(buyerPayload.integrationSystems);
+  const systems = parseList(buyerPayload.integrationSystems).filter((s) => {
+    const n = norm(s);
+    return !n.includes("no integration") && n !== "none";
+  });
   risk += Math.min(30, systems.length * 6);
 
   const gaps = String(buyerPayload.requirementGaps ?? "").trim();
   if (gaps.length > 0) risk += 12;
 
   const rollback = norm(buyerPayload.rollbackCapability);
-  if (rollback.includes("no")) risk += 12;
-  else if (rollback.includes("manual")) risk += 6;
-  else risk -= 3;
+  if (rollback.startsWith("none") || rollback.includes("no rollback") || rollback === "no") {
+    risk += 12;
+  } else if (
+    rollback.includes("manual") ||
+    rollback.startsWith("moderate") ||
+    rollback.startsWith("limited")
+  ) {
+    risk += 6;
+  } else {
+    risk -= 3;
+  }
 
   if (!boolYes(buyerPayload.monitoringDataAvailable)) risk += 6;
   if (!boolYes(buyerPayload.auditLogsAvailable)) risk += 6;
@@ -172,28 +248,42 @@ export function buyerImplementationReadinessGradeFromScore(rawScore: number): "A
   return interpret(rawScore).grade;
 }
 
+/** Canonical IRS from breakdown parts — matches Python `_irs_final_from_parts` / JS Math.round. */
+export function irsFinalScoreFromParts(
+  vendorRisk: number,
+  orgGap: number,
+  integrationRisk: number,
+): { score: number; vendorRisk: number; orgGap: number; integrationRisk: number } {
+  const vr = Math.round(clamp01(vendorRisk) * 100) / 100;
+  const org = Math.round(clamp01(orgGap) * 100) / 100;
+  const integ = Math.round(clamp01(integrationRisk) * 100) / 100;
+  const weighted = 100 - (vr * 0.35 + org * 0.35 + integ * 0.3);
+  const score = Math.round(clamp01(weighted));
+  return { score, vendorRisk: vr, orgGap: org, integrationRisk: integ };
+}
+
 export function calculateBuyerImplementationRiskScore(
   buyerPayload: Record<string, unknown>,
   attestationRow: Record<string, unknown> | null,
   vendorName: string,
   productName: string,
 ): BuyerImplementationRiskScore {
-  const vendorTrustScore = extractVendorTrustScore(attestationRow);
-  const vendorRisk = clamp01(100 - vendorTrustScore);
-  const organizationalReadinessGap = calculateOrgReadinessGap(buyerPayload);
-  const integrationRisk = calculateIntegrationRisk(buyerPayload);
-  const weighted = 100 - (vendorRisk * 0.35 + organizationalReadinessGap * 0.35 + integrationRisk * 0.3);
-  const implementationRiskScore = Math.round(clamp01(weighted));
-  const interpreted = interpret(implementationRiskScore);
+  const vendorTrustScore = Math.round(extractVendorTrustScore(attestationRow) * 100) / 100;
+  const parts = irsFinalScoreFromParts(
+    clamp01(100 - vendorTrustScore),
+    calculateOrgReadinessGap(buyerPayload),
+    calculateIntegrationRisk(buyerPayload),
+  );
+  const interpreted = interpret(parts.score);
 
   return {
-    implementationRiskScore,
+    implementationRiskScore: parts.score,
     ...interpreted,
     formula: "IRS = 100 - ((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30))",
     breakdown: {
-      vendorRisk,
-      organizationalReadinessGap,
-      integrationRisk,
+      vendorRisk: parts.vendorRisk,
+      organizationalReadinessGap: parts.orgGap,
+      integrationRisk: parts.integrationRisk,
       vendorTrustScore,
     },
     source: {

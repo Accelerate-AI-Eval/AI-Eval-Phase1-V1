@@ -19,6 +19,10 @@ import {
 } from "lucide-react";
 import type { GeneratedProductProfileReport } from "../../../types/generatedProductProfile";
 import { sortReportSectionsForDisplay } from "../../../utils/productProfileSectionDisplayOrder";
+import {
+  AdminLlmModelLabel,
+  resolveStoredLlmModelId,
+} from "../../UI/AdminLlmModelInfo";
 import "./GeneratedProductProfileCards.css";
 
 const SECTION_ICONS: Record<number, React.ReactNode> = {
@@ -255,6 +259,18 @@ function GeneratedProductProfileCards({
 
   return (
     <div className="generated_profile_wrap">
+      <div className="generated_profile_llm_row">
+        <AdminLlmModelLabel
+          className="report_llm_model_tag generated_profile_llm_model"
+          showIcon={false}
+          preferModelId
+          fallbackToActive
+          modelName={resolveStoredLlmModelId({
+            llmModelId: report.modelId,
+            report,
+          })}
+        />
+      </div>
       {/* Trust Score on top – number then label (match reference: large green number, "Trust Score" below) */}
       <section className="generated_profile_trust_section" aria-label="Trust Score">
         <div
