@@ -1,7 +1,7 @@
 /**
  * Call Python Bedrock LLM with pgvector formula context for assessment types.
  * Type 2 = cots_vendor, Type 3 = cots_buyer (same pattern as VTS /assessment/score).
- * Env: PYTHON_SCORING_URL (default http://localhost:8000)
+ * Env: PYTHON_SCORING_URL (default http://localhost:5004)
  */
 
 import { getActiveBedrockModelId } from "../utils/bedrockModelId.js";
@@ -29,7 +29,7 @@ export interface PythonLlmWithVectorResult {
 }
 
 function scoringBaseUrl(): string {
-  const raw = (process.env.PYTHON_SCORING_URL ?? "http://localhost:8000").trim();
+  const raw = (process.env.PYTHON_SCORING_URL ?? "http://localhost:5004").trim();
   return raw.replace(/\/+$/, "");
 }
 

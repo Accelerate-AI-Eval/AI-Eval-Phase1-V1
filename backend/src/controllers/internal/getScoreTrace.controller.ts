@@ -33,6 +33,7 @@ type IrsBreakdown = {
   organizationalReadinessGap: number;
   integrationRisk: number;
   vendorTrustScore: number;
+  intentMultiplier?: number;
 };
 
 function breakdownDrift(a: IrsBreakdown, b: IrsBreakdown): boolean {
@@ -73,16 +74,19 @@ async function refreshStaleIrsOnReport(opts: {
       vendorName,
       productName,
     });
+    const intentMultiplier = Number(fresh.breakdown.intentMultiplier ?? 1);
     const parts = irsFinalScoreFromParts(
       Number(fresh.breakdown.vendorRisk ?? 0),
       Number(fresh.breakdown.organizationalReadinessGap ?? 0),
       Number(fresh.breakdown.integrationRisk ?? 0),
+      Number.isFinite(intentMultiplier) && intentMultiplier > 0 ? intentMultiplier : 1,
     );
     const freshBreakdown: IrsBreakdown = {
       vendorRisk: parts.vendorRisk,
       organizationalReadinessGap: parts.orgGap,
       integrationRisk: parts.integrationRisk,
       vendorTrustScore: Math.round(Number(fresh.breakdown.vendorTrustScore ?? 50) * 100) / 100,
+      intentMultiplier: Number.isFinite(intentMultiplier) ? intentMultiplier : 1,
     };
     const freshScore = parts.score;
     const scoreDrift = Math.abs(freshScore - storedScore) >= 1;
@@ -230,6 +234,7 @@ export async function getIrsScoreTrace(req: Request, res: Response): Promise<voi
       organizationalReadinessGap:  Number(rawBreakdown.organizationalReadinessGap  ?? 0),
       integrationRisk:             Number(rawBreakdown.integrationRisk             ?? 0),
       vendorTrustScore:            Number(rawBreakdown.vendorTrustScore            ?? 50),
+      intentMultiplier:            Number(rawBreakdown.intentMultiplier ?? 1) || 1,
     };
 
     // Reconstruct the buyer payload with camelCase keys (mirrors buildBuyerContextForReport)

@@ -556,6 +556,8 @@ export type IrsTraceInput = {
     organizationalReadinessGap: number;
     integrationRisk: number;
     vendorTrustScore: number;
+    /** AI Risk Intellect intent multiplier when present (default 1.0). */
+    intentMultiplier?: number;
   };
   /** Stored final IRS from vendor_risk_assessment_report.implementationRiskScore. */
   storedScore: number;
@@ -661,7 +663,17 @@ export function buildIrsScoreTrace(input: IrsTraceInput): ScoreTrace {
   }
 
   // Canonical readiness score from stored breakdown (same helper as Python / buyer UI).
-  const { score: canonicalIrs } = irsFinalScoreFromParts(vRisk, storedOrg, storedInt);
+  const intentMultiplier =
+    Number.isFinite(Number(storedBreakdown.intentMultiplier)) &&
+    Number(storedBreakdown.intentMultiplier) > 0
+      ? Number(storedBreakdown.intentMultiplier)
+      : 1.0;
+  const { score: canonicalIrs } = irsFinalScoreFromParts(
+    vRisk,
+    storedOrg,
+    storedInt,
+    intentMultiplier,
+  );
   if (Math.abs(canonicalIrs - storedScore) >= 1) {
     warnings.push(
       `Final score was ${storedScore} in storage; canonical formula from breakdown is ${canonicalIrs}. ` +
@@ -679,13 +691,16 @@ export function buildIrsScoreTrace(input: IrsTraceInput): ScoreTrace {
     scoreType: "buyer_implementation_risk",
     finalScore: canonicalIrs,
     formula:
-      "IRS = 100 − ((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30))",
+      intentMultiplier === 1
+        ? "IRS = 100 − ((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30))"
+        : "IRS = 100 − (((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30)) × Intent)",
     scoringVersion: SCORING_VERSION,
     rawSubScores: {
       vendorRisk: vRisk,
       orgReadinessGap: storedOrg,
       integrationRisk: storedInt,
       vendorTrustScore: vtScore,
+      intentMultiplier,
     },
     components: allComponents,
     warnings,

@@ -564,12 +564,64 @@ def interpret_sales_risk_score(deal_probability: float) -> dict[str, str]:
     }
 
 
+def calc_intent_multiplier(p: dict[str, Any]) -> dict[str, Any]:
+    """
+    Intent multiplier for type 2 (SRS), same bands as VTS / AI Risk Intellect enrichment:
+    Intentional (>60%) → 1.2, Unintentional (>60%) → 0.7, Mixed → 1.0.
+    Accepts precomputed intent_multiplier_value or intentional/unintentional counts.
+    """
+    raw_value = p.get("intent_multiplier_value")
+    if raw_value is None:
+        raw_value = p.get("intentMultiplierValue")
+    if raw_value is not None:
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            value = 1.0
+        if not (0.5 <= value <= 1.5):
+            value = 1.0
+        profile = str(p.get("intent_profile") or p.get("intentProfile") or "Mixed")
+        return {
+            "intentional_count": int(p.get("intentionalRiskCount") or 0),
+            "unintentional_count": int(p.get("unintentionalRiskCount") or 0),
+            "profile": profile,
+            "value": value,
+        }
+
+    intentional = int(p.get("intentionalRiskCount") or 0)
+    unintentional = int(p.get("unintentionalRiskCount") or 0)
+    total = intentional + unintentional
+    if total == 0:
+        return {
+            "intentional_count": 0,
+            "unintentional_count": 0,
+            "profile": "Mixed",
+            "value": 1.0,
+        }
+    intentional_pct = intentional / total
+    unintentional_pct = unintentional / total
+    if intentional_pct > 0.6:
+        value, profile = 1.2, "Intentional"
+    elif unintentional_pct > 0.6:
+        value, profile = 0.7, "Unintentional"
+    else:
+        value, profile = 1.0, "Mixed"
+    return {
+        "intentional_count": intentional,
+        "unintentional_count": unintentional,
+        "profile": profile,
+        "value": value,
+    }
+
+
 def calculate_sales_risk_score(user_input: dict[str, Any]) -> dict[str, Any]:
     cfr = calculate_customer_friction_risk(user_input)
     ir = calculate_implementation_risk(user_input)
     cr = calculate_competitive_risk(user_input)
+    intent = calc_intent_multiplier(user_input)
 
-    weighted_score = cfr["value"] * 0.35 + ir["value"] * 0.35 + cr["value"] * 0.3
+    base_weighted = cfr["value"] * 0.35 + ir["value"] * 0.35 + cr["value"] * 0.3
+    weighted_score = base_weighted * float(intent["value"])
     srs = float(f"{min(100, max(0, weighted_score)):.2f}")
     deal_probability = float(f"{max(0, 100 - srs):.2f}")
     deal_probability_rounded = max(0, min(100, round(deal_probability)))
@@ -589,11 +641,17 @@ def calculate_sales_risk_score(user_input: dict[str, Any]) -> dict[str, Any]:
             "customer_friction_risk": cfr,
             "implementation_risk": ir,
             "competitive_risk": cr,
+            "intent_multiplier": intent,
             "final_formula": {
-                "expression": "SRS = 100 - ((CFR × 0.35) + (IR × 0.35) + (CR × 0.30))",
+                "expression": (
+                    "SRS = min(100, ((CFR × 0.35) + (IR × 0.35) + (CR × 0.30)) × Intent)"
+                ),
                 "customer_friction_contribution": float(f"{cfr['value'] * 0.35:.4f}"),
                 "implementation_risk_contribution": float(f"{ir['value'] * 0.35:.4f}"),
                 "competitive_risk_contribution": float(f"{cr['value'] * 0.3:.4f}"),
+                "base_weighted_sum": float(f"{base_weighted:.4f}"),
+                "intent_multiplier": intent["value"],
+                "intent_profile": intent["profile"],
                 "weighted_sum": float(f"{weighted_score:.4f}"),
             },
         },
@@ -607,6 +665,15 @@ def calculate_sales_risk_score(user_input: dict[str, Any]) -> dict[str, Any]:
 
 def to_string_value(v: Any) -> str:
     return str(v if v is not None else "").strip()
+
+
+def _safe_int(v: Any, default: int = 0) -> int:
+    try:
+        if v is None or v is False:
+            return default
+        return int(v)
+    except (TypeError, ValueError):
+        return default
 
 
 def to_string_list(v: Any) -> list[str]:
@@ -884,12 +951,22 @@ def build_sales_risk_formula_input(payload: dict[str, Any]) -> dict[str, Any]:
         "customerExpectsLargerVendorFeatures": customer_type == "Enterprise",
         "customerEmployeeCount": customer_employee_count,
         "vendorEmployeeCount": 250,
+        # AI Risk Intellect intent enrichment (types 2) — optional; defaults to Mixed 1.0
+        "intentionalRiskCount": _safe_int(payload.get("intentionalRiskCount"), 0),
+        "unintentionalRiskCount": _safe_int(payload.get("unintentionalRiskCount"), 0),
+        "intent_multiplier_value": payload.get("intent_multiplier_value")
+        if payload.get("intent_multiplier_value") is not None
+        else payload.get("intentMultiplierValue"),
+        "intent_profile": payload.get("intent_profile")
+        if payload.get("intent_profile") is not None
+        else payload.get("intentProfile"),
     }
 
 
 __all__ = [
     "build_sales_risk_formula_input",
     "calculate_sales_risk_score",
+    "calc_intent_multiplier",
     "interpret_sales_risk_score",
     "calc_regulatory_complexity",
     "calc_data_sensitivity_friction",

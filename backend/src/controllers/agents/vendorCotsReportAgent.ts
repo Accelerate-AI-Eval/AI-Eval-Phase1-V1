@@ -12,6 +12,7 @@ const client = new BedrockRuntimeClient({ region: REGION });
 import {
   getTop5RisksWithMitigations,
   formatTop5RisksForPrompt,
+  applyIntentScoreToPayload,
   type Top5RisksWithMitigations,
 } from "../../services/getTop5RisksFromAssessmentContext.js";
 import type { FrameworkMappingTableRow } from "../../services/frameworkMappingFromCompliance.js";
@@ -1782,10 +1783,19 @@ export async function generateVendorCotsReport(
     let top5: Top5RisksWithMitigations | null =
       top5RisksWithMitigations ?? null;
     if (top5 == null) {
-      top5 = await getTop5RisksWithMitigations(payload);
+      try {
+        top5 = await getTop5RisksWithMitigations(payload);
+      } catch (top5Err) {
+        console.error(
+          "getTop5RisksWithMitigations failed during vendor report; scoring without RI intent:",
+          top5Err,
+        );
+        top5 = null;
+      }
     }
+    const scoringPayload = applyIntentScoreToPayload(payload, top5?.intentScore);
     const context = buildAssessmentContext(
-      payload,
+      scoringPayload,
       top5,
       attestationFrameworkRows,
     );
@@ -1795,10 +1805,10 @@ export async function generateVendorCotsReport(
     const parsed = parseReportSections(rawReply);
 
     // Sales Risk Score formula runs in Python (same ownership as VTS).
-    // Local calculateSalesRiskScore / buildFormulaInputFromPayload are unused.
+    // Intent from RI is best-effort; scoring must still run when RI/Python is down.
     let formulaResult: PythonCotsVendorScoreResult | null = null;
     try {
-      formulaResult = await scoreCotsVendorWithPython(payload);
+      formulaResult = await scoreCotsVendorWithPython(scoringPayload);
       console.log("srs", formulaResult.sales_risk_score);
       if (formulaResult.rationale?.trim()) {
         console.log(formulaResult.rationale);
@@ -1815,9 +1825,60 @@ export async function generateVendorCotsReport(
       }
     } catch (scoreErr) {
       console.error(
-        "Python sales-risk formula failed; falling back to model score:",
+        "Python sales-risk formula failed; using local Node SRS fallback:",
         scoreErr,
       );
+      try {
+        const formulaInput = buildFormulaInputFromPayload(scoringPayload);
+        const local = calculateSalesRiskScore(formulaInput);
+        const intentRaw = Number(
+          scoringPayload.intent_multiplier_value ??
+            scoringPayload.intentMultiplierValue ??
+            1,
+        );
+        const intent =
+          Number.isFinite(intentRaw) && intentRaw > 0
+            ? Math.min(1.5, Math.max(0.5, intentRaw))
+            : 1;
+        const srs = Math.min(100, Math.max(0, Number((local.sales_risk_score * intent).toFixed(2))));
+        const deal = Math.max(0, Number((100 - srs).toFixed(2)));
+        const interpretation = interpretSalesRiskScore(
+          Math.max(0, Math.min(100, Math.round(deal))),
+        );
+        formulaResult = {
+          sales_risk_score: srs,
+          deal_probability_pct: deal,
+          customer_friction_risk: local.customer_friction_risk,
+          implementation_risk: local.implementation_risk,
+          competitive_risk: local.competitive_risk,
+          grade: interpretation.grade,
+          classification: interpretation.classification,
+          deal_characteristics: interpretation.deal_characteristics,
+          recommended_actions: interpretation.recommended_actions,
+          detail: {
+            ...(local.detail ?? {}),
+            intent_multiplier: {
+              value: intent,
+              profile: String(
+                scoringPayload.intent_profile ??
+                  scoringPayload.intentProfile ??
+                  "Mixed",
+              ),
+            },
+            final_formula: {
+              ...((local.detail as { final_formula?: Record<string, unknown> })?.final_formula ??
+                {}),
+              intent_multiplier: intent,
+              weighted_sum: srs,
+            },
+          },
+          scoring_source: "node-fallback",
+          scoring_version: "srs-node-1.0",
+        };
+        console.log("srs", formulaResult.sales_risk_score, "(node fallback)");
+      } catch (localErr) {
+        console.error("Local Node SRS fallback also failed:", localErr);
+      }
     }
 
     if (!formulaResult) return { ...parsed, raw: rawReply };

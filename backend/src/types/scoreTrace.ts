@@ -37,6 +37,8 @@ export type ScoreTrace = {
     orgReadinessGap?: number;
     integrationRisk?: number;
     vendorTrustScore?: number;
+    /** AI Risk Intellect intent multiplier applied to the IRS risk term (default 1.0). */
+    intentMultiplier?: number;
     /** SCS sub-scores (0–100 each, where higher = better / less risk) */
     customerFrictionScore?: number;
     implementationScore?: number;

@@ -1,6 +1,11 @@
 import { db } from "../database/db.js";
 import { sql, inArray } from "drizzle-orm";
 import { riskTop5Mitigations } from "../schema/risks/riskTop5Mitigations.js";
+import {
+  fetchRisksFromRI,
+  isRiskIntellectConfigured,
+  type RiRiskExportDto,
+} from "./riskIntellect/riskIntellectClient.js";
 
 export interface RiskMappingRow {
   risk_mapping_id: number;
@@ -30,9 +35,28 @@ export interface MitigationRow {
   mitigation_definition: string | null;
 }
 
+/** Intent profile derived for type 2/3 scoring (same bands as VTS intent multiplier). */
+export interface RiIntentScore {
+  intentionalCount: number;
+  unintentionalCount: number;
+  profile: "Intentional" | "Unintentional" | "Mixed";
+  /** Multiplier applied in SRS/IRS: Intentional 1.2, Unintentional 0.7, Mixed 1.0 */
+  value: number;
+  source: "risk_intellect" | "local_db" | "default";
+  /** Human-readable contextual multipliers line */
+  label: string;
+}
+
 export interface Top5RisksWithMitigations {
   top5Risks: RiskMappingRow[];
   mitigationsByRiskId: Record<string, MitigationRow[]>;
+  /** Risks always come from the local AI-Q risk_mappings catalog. */
+  source?: "local_db";
+  /**
+   * Extra: when Controls AI Risk API key is set, intent is calculated from
+   * AI Risk Intellect (matched to local top risks) and used in type 2/3 scores.
+   */
+  intentScore?: RiIntentScore;
 }
 
 function toStr(v: unknown): string {
@@ -40,6 +64,84 @@ function toStr(v: unknown): string {
   if (Array.isArray(v)) return v.length ? v.map(toStr).join(" ") : "";
   if (typeof v === "object") return JSON.stringify(v);
   return String(v).trim();
+}
+
+function classifyIntentToken(raw: string | null | undefined): "intentional" | "unintentional" | null {
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (!s) return null;
+  if (s.includes("unintentional")) return "unintentional";
+  if (s.includes("intentional")) return "intentional";
+  return null;
+}
+
+/**
+ * Same bands as Python/VTS calc_intent_multiplier:
+ * >60% intentional → 1.2, >60% unintentional → 0.7, else Mixed 1.0.
+ */
+export function computeIntentScore(
+  intents: Array<string | null | undefined>,
+  source: RiIntentScore["source"],
+): RiIntentScore {
+  let intentionalCount = 0;
+  let unintentionalCount = 0;
+  for (const raw of intents) {
+    const kind = classifyIntentToken(raw);
+    if (kind === "intentional") intentionalCount += 1;
+    else if (kind === "unintentional") unintentionalCount += 1;
+  }
+  const total = intentionalCount + unintentionalCount;
+  if (total === 0) {
+    return {
+      intentionalCount: 0,
+      unintentionalCount: 0,
+      profile: "Mixed",
+      value: 1.0,
+      source: source === "risk_intellect" ? "risk_intellect" : "default",
+      label: "Intent: Mixed (1.0)",
+    };
+  }
+  const intentionalPct = intentionalCount / total;
+  const unintentionalPct = unintentionalCount / total;
+  let profile: RiIntentScore["profile"] = "Mixed";
+  let value = 1.0;
+  if (intentionalPct > 0.6) {
+    profile = "Intentional";
+    value = 1.2;
+  } else if (unintentionalPct > 0.6) {
+    profile = "Unintentional";
+    value = 0.7;
+  }
+  return {
+    intentionalCount,
+    unintentionalCount,
+    profile,
+    value,
+    source,
+    label: `Intent: ${profile} (${value})`,
+  };
+}
+
+/**
+ * Injects RI-derived intent fields into an assessment payload for type 2/3 scoring.
+ */
+export function applyIntentScoreToPayload(
+  payload: Record<string, unknown>,
+  intentScore: RiIntentScore | undefined,
+): Record<string, unknown> {
+  if (!intentScore) return payload;
+  return {
+    ...payload,
+    intentionalRiskCount: intentScore.intentionalCount,
+    unintentionalRiskCount: intentScore.unintentionalCount,
+    intent_multiplier_value: intentScore.value,
+    intentMultiplierValue: intentScore.value,
+    intent_profile: intentScore.profile,
+    intentProfile: intentScore.profile,
+    contextual_multipliers: intentScore.label,
+    contextualMultipliers: intentScore.label,
+  };
 }
 
 /**
@@ -85,17 +187,102 @@ function extractMappingIds(payload: Record<string, unknown>): number[] {
 }
 
 /**
+ * After local top-5 risks are selected, call AI Risk Intellect (when API key is set)
+ * to resolve Intentional/Unintentional intent for those risks and compute the intent score
+ * used by type 2 (SRS) and type 3 (IRS) formulas.
+ */
+async function enrichIntentFromRiskIntellect(
+  top5: Top5RisksWithMitigations,
+  sector: string,
+): Promise<Top5RisksWithMitigations> {
+  const localFallback = (): Top5RisksWithMitigations => ({
+    ...top5,
+    intentScore: computeIntentScore(
+      top5.top5Risks.map((r) => r.intent),
+      top5.top5Risks.some((r) => classifyIntentToken(r.intent)) ? "local_db" : "default",
+    ),
+  });
+
+  if (!isRiskIntellectConfigured()) {
+    return localFallback();
+  }
+
+  try {
+    const riResult = await fetchRisksFromRI({
+      limit: 50,
+      sector: sector || undefined,
+    });
+    if (!riResult || riResult.risks.length === 0) {
+      return localFallback();
+    }
+
+    const byCatalogId = new Map<string, RiRiskExportDto>();
+    for (const ri of riResult.risks) {
+      const key = (ri.catalogMatchId ?? "").trim();
+      if (key) byCatalogId.set(key, ri);
+    }
+
+    let matchedWithRiIntent = 0;
+    for (const row of top5.top5Risks) {
+      const rid = (row.risk_id ?? "").trim();
+      if (!rid) continue;
+      const match = byCatalogId.get(rid);
+      if (match?.intent) {
+        row.intent = match.intent;
+        matchedWithRiIntent += 1;
+      }
+    }
+
+    const matchedIntents = top5.top5Risks.map((r) => r.intent);
+    const riIntents = riResult.risks.map((r) => r.intent);
+    const intentsForScore =
+      matchedWithRiIntent > 0
+        ? matchedIntents
+        : riIntents.some((i) => classifyIntentToken(i))
+          ? riIntents
+          : matchedIntents;
+
+    const source: RiIntentScore["source"] =
+      matchedWithRiIntent > 0 || riIntents.some((i) => classifyIntentToken(i))
+        ? "risk_intellect"
+        : top5.top5Risks.some((r) => classifyIntentToken(r.intent))
+          ? "local_db"
+          : "default";
+
+    return {
+      ...top5,
+      intentScore: computeIntentScore(intentsForScore, source),
+    };
+  } catch (err) {
+    console.error("enrichIntentFromRiskIntellect failed; using local/default intent:", err);
+    return localFallback();
+  }
+}
+
+/**
  * Human-readable block for LLM prompts (same shape as vendor COTS "Database-matched top risks").
  */
 export function formatTop5RisksForPrompt(top5: Top5RisksWithMitigations | null): string {
   if (!top5 || top5.top5Risks.length === 0) return "";
   const lines: string[] = ["--- Database-matched top risks and mitigations ---"];
+  if (top5.intentScore) {
+    lines.push(
+      `Intent score (${top5.intentScore.source}): ${top5.intentScore.label} ` +
+        `[intentional=${top5.intentScore.intentionalCount}, unintentional=${top5.intentScore.unintentionalCount}]`,
+    );
+  }
   for (const r of top5.top5Risks) {
     lines.push(
       `Risk [${r.risk_id}]: ${r.risk_title ?? "N/A"} | Domain: ${r.domains ?? "N/A"} | Intent: ${r.intent ?? "N/A"} | Timing: ${r.timing ?? "N/A"} | Primary risk: ${r.primary_risk ?? "N/A"}`,
     );
     if (r.description) {
       lines.push(`  Description: ${r.description.slice(0, 300)}${r.description.length > 300 ? "..." : ""}`);
+    }
+    if (r.attack_vector) {
+      lines.push(`  Attack vector: ${r.attack_vector}`);
+    }
+    if (r.evidence_sources) {
+      lines.push(`  Evidence: ${r.evidence_sources}`);
     }
     const mitigations = r.risk_id ? top5.mitigationsByRiskId[r.risk_id] ?? [] : [];
     for (const m of mitigations) {
@@ -109,13 +296,12 @@ export function formatTop5RisksForPrompt(top5: Top5RisksWithMitigations | null):
 }
 
 /**
- * 1. Query risk_mappings table: compare assessment context (domain, timing, intent, primary_risk, secondary_risks)
- *    and get the top 5 matching rows by match score.
- * 2. Compare that data to risk_top5_mitigations table: fetch mitigations for those top 5 risk_ids
- *    and return risks with mitigations by risk_id.
+ * 1. Fetch top risks from the AI-Q local risk_mappings DB (primary).
+ * 2. Extra: when AI Risk Intellect API key is set, calculate intent from RI for those risks.
+ * 3. Intent score is returned for type 2/3 score generation (SRS / IRS).
  */
 export async function getTop5RisksWithMitigations(
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
 ): Promise<Top5RisksWithMitigations> {
   const { domain, intent, timing, primary_risk, secondary_risks } = extractContext(payload);
   const explicitMappingIds = extractMappingIds(payload);
@@ -191,8 +377,11 @@ export async function getTop5RisksWithMitigations(
     }, {});
   }
 
-  return {
+  const fromLocal: Top5RisksWithMitigations = {
     top5Risks: rows,
     mitigationsByRiskId,
+    source: "local_db",
   };
+
+  return enrichIntentFromRiskIntellect(fromLocal, domain);
 }

@@ -3,9 +3,14 @@ import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedroc
 import {
   getTop5RisksWithMitigations,
   formatTop5RisksForPrompt,
+  applyIntentScoreToPayload,
 } from "../../services/getTop5RisksFromAssessmentContext.js";
 import { invokePythonLlmWithVector } from "../../services/pythonAssessmentLlmClient.js";
 import { scoreCotsBuyerWithPython } from "../../services/pythonScoringClient.js";
+import {
+  calculateBuyerImplementationRiskScore,
+  irsFinalScoreFromParts,
+} from "../../services/buyerImplementationRiskScore.js";
 import { getActiveBedrockModelId } from "../../utils/bedrockModelId.js";
 
 const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
@@ -767,14 +772,131 @@ export async function generateBuyerVendorRiskReport(
   productName: string,
 ): Promise<BuyerVendorRiskReport> {
   const hasAttestation = attestationRow != null;
+
+  // Local AI-Q risk DB first; AI Risk Intellect supplies intent for IRS when API key is set.
+  // RI is best-effort — never block or fail the report/score if RI is unreachable.
+  let dbRisksBlock = "";
+  let scoringBuyerPayload = buyerPayload;
+  try {
+    const top5 = await getTop5RisksWithMitigations(buyerPayload);
+    dbRisksBlock = formatTop5RisksForPrompt(top5);
+    scoringBuyerPayload = applyIntentScoreToPayload(buyerPayload, top5.intentScore);
+  } catch (e) {
+    console.error("getTop5RisksWithMitigations (buyer vendor risk report):", e);
+  }
+
   // Implementation Risk Score formula runs in Python (same ownership as VTS).
-  // Local buyerImplementationRiskScore.ts is unused at runtime.
-  const implementationRisk = await scoreCotsBuyerWithPython({
-    buyerPayload,
-    attestationRow,
-    vendorName,
-    productName,
-  });
+  let implementationRisk: Awaited<ReturnType<typeof scoreCotsBuyerWithPython>>;
+  try {
+    implementationRisk = await scoreCotsBuyerWithPython({
+      buyerPayload: scoringBuyerPayload,
+      attestationRow,
+      vendorName,
+      productName,
+    });
+  } catch (scoreErr) {
+    console.error(
+      "Python buyer IRS formula failed; using local Node IRS fallback:",
+      scoreErr,
+    );
+    try {
+      const local = calculateBuyerImplementationRiskScore(
+        scoringBuyerPayload,
+        attestationRow,
+        vendorName,
+        productName,
+      );
+      const intentRaw = Number(
+        scoringBuyerPayload.intent_multiplier_value ??
+          scoringBuyerPayload.intentMultiplierValue ??
+          1,
+      );
+      const intent =
+        Number.isFinite(intentRaw) && intentRaw > 0
+          ? Math.min(1.5, Math.max(0.5, intentRaw))
+          : 1;
+      const parts = irsFinalScoreFromParts(
+        local.breakdown.vendorRisk,
+        local.breakdown.organizationalReadinessGap,
+        local.breakdown.integrationRisk,
+        intent,
+      );
+      const grade =
+        parts.score >= 76
+          ? "A"
+          : parts.score >= 51
+            ? "B"
+            : parts.score >= 26
+              ? "C"
+              : "D";
+      const classification =
+        grade === "A"
+          ? "High Readiness"
+          : grade === "B"
+            ? "Moderate Readiness"
+            : grade === "C"
+              ? "Low Readiness"
+              : "Readiness Review Required";
+      const decision =
+        grade === "A"
+          ? "PROCEED"
+          : grade === "D"
+            ? "DO NOT PROCEED"
+            : "PROCEED WITH CAUTION";
+      implementationRisk = {
+        implementationRiskScore: parts.score,
+        grade,
+        classification,
+        decision,
+        readiness_profile: local.readiness_profile,
+        recommendedAction: local.recommendedAction,
+        formula:
+          "IRS = 100 - (((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30)) × Intent)",
+        breakdown: {
+          vendorRisk: parts.vendorRisk,
+          organizationalReadinessGap: parts.orgGap,
+          integrationRisk: parts.integrationRisk,
+          vendorTrustScore: local.breakdown.vendorTrustScore,
+          intentMultiplier: intent,
+          intentProfile: String(
+            scoringBuyerPayload.intent_profile ??
+              scoringBuyerPayload.intentProfile ??
+              "Mixed",
+          ),
+        },
+        source: local.source,
+        scoring_source: "node-fallback",
+        scoring_version: "irs-node-1.0",
+      };
+    } catch (localErr) {
+      console.error("Local Node IRS fallback also failed; using neutral 50:", localErr);
+      implementationRisk = {
+        implementationRiskScore: 50,
+        grade: "B",
+        classification: "Moderate Readiness",
+        decision: "PROCEED WITH CAUTION",
+        readiness_profile: "Score temporarily unavailable — using neutral fallback.",
+        recommendedAction: "Re-run scoring after the scoring service is available.",
+        formula:
+          "IRS = 100 - ((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30))",
+        breakdown: {
+          vendorRisk: 50,
+          organizationalReadinessGap: 50,
+          integrationRisk: 50,
+          vendorTrustScore: 50,
+          intentMultiplier: 1,
+          intentProfile: "Mixed",
+        },
+        source: {
+          vendorName: vendorName || "Vendor",
+          productName: productName || "Product",
+          usedAttestation: attestationRow != null,
+        },
+        scoring_source: "fallback",
+        scoring_version: "irs-fallback",
+      };
+    }
+  }
   console.log("irs", implementationRisk.implementationRiskScore);
   if (implementationRisk.rationale?.trim()) {
     console.log(implementationRisk.rationale);
@@ -805,19 +927,11 @@ export async function generateBuyerVendorRiskReport(
       }
     : {};
 
-  let dbRisksBlock = "";
-  try {
-    const top5 = await getTop5RisksWithMitigations(buyerPayload);
-    dbRisksBlock = formatTop5RisksForPrompt(top5);
-  } catch (e) {
-    console.error("getTop5RisksWithMitigations (buyer vendor risk report):", e);
-  }
-
   const userPrompt = [
     SYSTEM_PROMPT,
     "",
     "--- Buyer assessment (answers) ---",
-    JSON.stringify(buyerPayload, null, 2).slice(0, 14000),
+    JSON.stringify(scoringBuyerPayload, null, 2).slice(0, 14000),
     "--- Vendor attestation (selected product; may be empty) ---",
     JSON.stringify(attestationSlice, null, 2).slice(0, 12000),
     dbRisksBlock ? `\n${dbRisksBlock}\n` : "",

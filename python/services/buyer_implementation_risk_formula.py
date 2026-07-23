@@ -244,19 +244,76 @@ def _round_half_up(x: float) -> int:
     return int(math.floor(float(x) + 0.5))
 
 
+def _calc_intent_multiplier(p: dict[str, Any]) -> dict[str, Any]:
+    """
+    Intent multiplier for type 3 (IRS), same bands as VTS / AI Risk Intellect enrichment.
+    Intentional increases the risk term (lowers IRS); Unintentional reduces it.
+    """
+    raw_value = p.get("intent_multiplier_value")
+    if raw_value is None:
+        raw_value = p.get("intentMultiplierValue")
+    if raw_value is not None:
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            value = 1.0
+        if not (0.5 <= value <= 1.5):
+            value = 1.0
+        profile = str(p.get("intent_profile") or p.get("intentProfile") or "Mixed")
+        return {
+            "intentional_count": int(p.get("intentionalRiskCount") or 0),
+            "unintentional_count": int(p.get("unintentionalRiskCount") or 0),
+            "profile": profile,
+            "value": value,
+        }
+
+    intentional = int(p.get("intentionalRiskCount") or 0)
+    unintentional = int(p.get("unintentionalRiskCount") or 0)
+    total = intentional + unintentional
+    if total == 0:
+        return {
+            "intentional_count": 0,
+            "unintentional_count": 0,
+            "profile": "Mixed",
+            "value": 1.0,
+        }
+    intentional_pct = intentional / total
+    unintentional_pct = unintentional / total
+    if intentional_pct > 0.6:
+        value, profile = 1.2, "Intentional"
+    elif unintentional_pct > 0.6:
+        value, profile = 0.7, "Unintentional"
+    else:
+        value, profile = 1.0, "Mixed"
+    return {
+        "intentional_count": intentional,
+        "unintentional_count": unintentional,
+        "profile": profile,
+        "value": value,
+    }
+
+
 def _irs_final_from_parts(
     vendor_risk: float,
     org_gap: float,
     integration_risk: float,
+    intent_value: float = 1.0,
 ) -> tuple[int, float, float, float]:
     """
     Canonical IRS: round each risk component to 2 decimals, then half-up to an int score.
-    Keeps Python / Node / Score Trace on the same integer.
+    Intent multiplier scales the composite risk term (from AI Risk Intellect when configured).
     """
+    try:
+        intent_value = float(intent_value)
+    except (TypeError, ValueError):
+        intent_value = 1.0
+    if not (0.5 <= intent_value <= 1.5):
+        intent_value = 1.0
     vr = round(_clamp01(vendor_risk), 2)
     org = round(_clamp01(org_gap), 2)
     integ = round(_clamp01(integration_risk), 2)
-    weighted = 100.0 - (vr * 0.35 + org * 0.35 + integ * 0.30)
+    risk_term = (vr * 0.35 + org * 0.35 + integ * 0.30) * intent_value
+    weighted = 100.0 - risk_term
     return _round_half_up(_clamp01(weighted)), vr, org, integ
 
 
@@ -275,8 +332,9 @@ def calculate_buyer_implementation_risk_score(
     vendor_risk_raw = _clamp01(100 - vendor_trust_score)
     org_raw = _calculate_org_readiness_gap(buyer_payload)
     int_raw = _calculate_integration_risk(buyer_payload)
+    intent = _calc_intent_multiplier(buyer_payload if isinstance(buyer_payload, dict) else {})
     implementation_risk_score, vendor_risk, organizational_readiness_gap, integration_risk = (
-        _irs_final_from_parts(vendor_risk_raw, org_raw, int_raw)
+        _irs_final_from_parts(vendor_risk_raw, org_raw, int_raw, float(intent["value"]))
     )
     interpreted = _interpret(implementation_risk_score)
 
@@ -288,14 +346,18 @@ def calculate_buyer_implementation_risk_score(
         "readiness_profile": interpreted["readiness_profile"],
         "recommendedAction": interpreted["recommendedAction"],
         "formula": (
-            "IRS = 100 - ((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35)"
-            " + (Integration_Risk × 0.30))"
+            "IRS = 100 - (((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35)"
+            " + (Integration_Risk × 0.30)) × Intent)"
         ),
         "breakdown": {
             "vendorRisk": vendor_risk,
             "organizationalReadinessGap": organizational_readiness_gap,
             "integrationRisk": integration_risk,
             "vendorTrustScore": vendor_trust_score,
+            "intentMultiplier": intent["value"],
+            "intentProfile": intent["profile"],
+            "intentionalRiskCount": intent["intentional_count"],
+            "unintentionalRiskCount": intent["unintentional_count"],
         },
         "source": {
             "vendorName": vendor_name or "Vendor",

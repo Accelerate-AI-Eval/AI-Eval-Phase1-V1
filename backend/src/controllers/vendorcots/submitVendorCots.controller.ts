@@ -220,6 +220,14 @@ async function createCustomerRiskReport(
     console.error("getTop5RisksWithMitigations failed:", err);
   }
 
+  // Persist RI-derived intent into contextual multipliers for the report / UI.
+  if (top5RisksWithMitigations?.intentScore?.label) {
+    const intentLabel = top5RisksWithMitigations.intentScore.label;
+    report.contextualMultipliers = intentLabel;
+    payloadCots.contextual_multipliers = intentLabel;
+    payloadCots.contextualMultipliers = intentLabel;
+  }
+
   if (top5RisksWithMitigations) {
     report.dbTop5Risks = {
       top5Risks: top5RisksWithMitigations.top5Risks.map((r) => ({

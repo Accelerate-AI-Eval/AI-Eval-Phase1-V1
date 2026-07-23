@@ -3,7 +3,7 @@
  * Type 1 (VTS): /assessment/score — LLM + formula
  * Type 2 (SRS): /assessment/cots-vendor/score — sales-risk formula
  * Type 3 (IRS): /assessment/cots-buyer/score — buyer implementation-risk formula
- * Env: PYTHON_SCORING_URL (default http://localhost:8000)
+ * Env: PYTHON_SCORING_URL (default http://localhost:5004)
  */
 
 export interface PythonScoreResult {
@@ -69,6 +69,8 @@ export interface PythonCotsBuyerScoreResult {
     organizationalReadinessGap: number;
     integrationRisk: number;
     vendorTrustScore: number;
+    intentMultiplier?: number;
+    intentProfile?: string;
   };
   source: {
     vendorName: string;
@@ -82,21 +84,40 @@ export interface PythonCotsBuyerScoreResult {
 }
 
 function scoringBaseUrl(): string {
-  const raw = (process.env.PYTHON_SCORING_URL ?? "http://localhost:8000").trim();
+  const raw = (process.env.PYTHON_SCORING_URL ?? "http://localhost:5004").trim();
   return raw.replace(/\/+$/, "");
 }
 
-async function postJson(url: string, body: unknown): Promise<Record<string, unknown>> {
+/** Fail fast when Python scoring is down so Node can fall back / finish the report. */
+const DEFAULT_TIMEOUT_MS = 12_000;
+
+async function postJson(
+  url: string,
+  body: unknown,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<Record<string, unknown>> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   let response: Response;
   try {
     response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Python scoring service unreachable at ${url}: ${msg}`);
+    const timedOut =
+      (err instanceof Error && err.name === "AbortError") ||
+      /aborted|timeout/i.test(msg);
+    throw new Error(
+      timedOut
+        ? `Python scoring service timed out at ${url} after ${timeoutMs}ms`
+        : `Python scoring service unreachable at ${url}: ${msg}`,
+    );
+  } finally {
+    clearTimeout(timer);
   }
 
   const text = await response.text();
@@ -235,6 +256,9 @@ export async function scoreCotsBuyerWithPython(options: {
     Math.round(Number(breakdownRaw.organizationalReadinessGap ?? 0) * 100) / 100;
   const integrationRisk = Math.round(Number(breakdownRaw.integrationRisk ?? 0) * 100) / 100;
   const vendorTrustScore = Math.round(Number(breakdownRaw.vendorTrustScore ?? 0) * 100) / 100;
+  const intentRaw = Number(breakdownRaw.intentMultiplier ?? 1);
+  const intentMultiplier =
+    Number.isFinite(intentRaw) && intentRaw > 0 ? Math.min(1.5, Math.max(0.5, intentRaw)) : 1;
 
   return {
     implementationRiskScore,
@@ -250,6 +274,9 @@ export async function scoreCotsBuyerWithPython(options: {
       organizationalReadinessGap,
       integrationRisk,
       vendorTrustScore,
+      intentMultiplier,
+      intentProfile:
+        breakdownRaw.intentProfile != null ? String(breakdownRaw.intentProfile) : undefined,
     },
     source: {
       vendorName: String(sourceRaw.vendorName ?? options.vendorName),

@@ -248,16 +248,23 @@ export function buyerImplementationReadinessGradeFromScore(rawScore: number): "A
   return interpret(rawScore).grade;
 }
 
-/** Canonical IRS from breakdown parts — matches Python `_irs_final_from_parts` / JS Math.round. */
+/** Canonical IRS from breakdown parts — matches Python `_irs_final_from_parts` / JS Math.round.
+ * Optional intentMultiplier (default 1.0) scales the composite risk term when RI intent is present.
+ */
 export function irsFinalScoreFromParts(
   vendorRisk: number,
   orgGap: number,
   integrationRisk: number,
+  intentMultiplier = 1.0,
 ): { score: number; vendorRisk: number; orgGap: number; integrationRisk: number } {
   const vr = Math.round(clamp01(vendorRisk) * 100) / 100;
   const org = Math.round(clamp01(orgGap) * 100) / 100;
   const integ = Math.round(clamp01(integrationRisk) * 100) / 100;
-  const weighted = 100 - (vr * 0.35 + org * 0.35 + integ * 0.3);
+  const intent =
+    Number.isFinite(intentMultiplier) && intentMultiplier > 0
+      ? Math.min(1.5, Math.max(0.5, intentMultiplier))
+      : 1.0;
+  const weighted = 100 - (vr * 0.35 + org * 0.35 + integ * 0.3) * intent;
   const score = Math.round(clamp01(weighted));
   return { score, vendorRisk: vr, orgGap: org, integrationRisk: integ };
 }

@@ -37,6 +37,7 @@ const sqlFiles = [
   "20260426_vendor_self_attestation_user_archive_log.sql",
   "20260714_enrich_generated_profile_reports_vts.sql",
   "20260716_score_rationale_columns.sql",
+  "20260716_document_chunks_pgvector.sql",
   "20260721_llm_model_columns.sql",
   "20260721_general_reports_llm_model.sql",
 ];
