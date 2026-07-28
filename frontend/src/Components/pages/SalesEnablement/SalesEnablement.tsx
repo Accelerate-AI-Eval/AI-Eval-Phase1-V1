@@ -29,6 +29,21 @@ import "./sales_enablement.css";
 const BASE_URL =
   import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
 
+/** Strip Markdown (# headings, **bold**, etc.) so Sales Agent answers show as plain text. */
+function stripMarkdownFromSalesReply(text: string): string {
+  return String(text ?? "")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*\n]+)\*/g, "$1")
+    .replace(/_([^_\n]+)_/g, "$1")
+    .replace(/^>\s?/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .replace(/\*\*/g, "")
+    .replace(/__/g, "")
+    .trim();
+}
+
 interface AssessmentRow {
   assessmentId: number;
   type: string;
@@ -433,7 +448,7 @@ export function SalesEnablement() {
       .then((answer) => {
         setMessages((prev) => [
           ...prev,
-          { role: "agent" as const, text: answer },
+          { role: "agent" as const, text: stripMarkdownFromSalesReply(answer) },
         ]);
       })
       .catch((err) => {

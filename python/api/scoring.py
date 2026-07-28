@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import logging
 import traceback
@@ -93,18 +94,26 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
             "error": retrieved.get("error"),
         }
 
+        # Cap LLM wait so formula VTS still returns before Node's scoring timeout.
+        _LLM_TIMEOUT_SEC = 60
         try:
-            llm = generate_llm_trust_report(
-                vendor_data,
-                formula_context=formula_context,
-                vector_meta=vector_meta,
-            )
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                fut = pool.submit(
+                    generate_llm_trust_report,
+                    vendor_data,
+                    formula_context=formula_context,
+                    vector_meta=vector_meta,
+                )
+                llm = fut.result(timeout=_LLM_TIMEOUT_SEC)
             llm_score = float(llm["overall_score"])
             trust_block = dict(llm.get("trustScore") or {})
             sections = list(llm.get("sections") or [])
             raw = str(llm.get("raw") or "") or None
             scoring_source = "llm+vector" if vector_meta.get("used") else "llm"
             scoring_version = "vts-llm-vector-1.0" if vector_meta.get("used") else "vts-llm-1.0"
+        except concurrent.futures.TimeoutError:
+            llm_error = f"LLM trust score timed out after {_LLM_TIMEOUT_SEC}s"
+            logger.warning("%s; using formula VTS fallback", llm_error)
         except Exception as exc:
             llm_error = str(exc) or type(exc).__name__
             logger.warning("LLM trust score failed; using formula VTS fallback: %s", llm_error)

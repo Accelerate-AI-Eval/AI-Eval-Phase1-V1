@@ -373,12 +373,23 @@ const BuyerAssessment = () => {
       if (buyer && result?.data?.organizationId) {
         sessionStorage.setItem("organizationId", result.data.organizationId);
       }
-      // When editing a draft, do not overwrite form with onboarding — use draft data only.
-      if (isEditDraft) return;
       const patch = mapOnboardingToAssessmentForm(buyer);
-      if (Object.keys(patch).length) {
-        setFormData((prev) => ({ ...prev, ...patch }));
-      }
+      if (!Object.keys(patch).length) return;
+      // New assessment: apply all onboarding fields.
+      // Draft edit: only fill fields that are still empty so saved answers are not overwritten.
+      setFormData((prev) => {
+        if (!isEditDraft) return { ...prev, ...patch };
+        const next = { ...prev };
+        for (const [key, value] of Object.entries(patch)) {
+          const existing = prev[key];
+          const empty =
+            existing == null ||
+            String(existing).trim() === "" ||
+            String(existing).trim() === "[]";
+          if (empty) next[key] = value;
+        }
+        return next;
+      });
     };
 
     const isEditDraft = Boolean(assessmentIdFromUrl);

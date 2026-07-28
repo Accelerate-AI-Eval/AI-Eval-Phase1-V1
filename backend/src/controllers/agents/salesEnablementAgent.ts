@@ -219,7 +219,24 @@ export async function generateSalesEnablement(
 
 const SALES_CHAT_SYSTEM_PROMPT = `You are an AI Sales Enablement Assistant. You help sales teams by answering questions about a specific vendor assessment and its complete analysis report.
 
-Use ONLY the Assessment Analysis Report data provided below to answer the user's question. Be concise and relevant. If the report does not contain enough information to answer, say so and suggest what might be needed. Do not invent data. Focus on compliance, risk, security, deployment, and sales positioning when relevant.`;
+Use ONLY the Assessment Analysis Report data provided below to answer the user's question. Be concise and relevant. If the report does not contain enough information to answer, say so and suggest what might be needed. Do not invent data. Focus on compliance, risk, security, deployment, and sales positioning when relevant.
+
+IMPORTANT: Reply in plain text only. Do NOT use Markdown formatting — no # headings, no **bold**, no __underscores__, no bullet markers like - or *, and no > blockquotes. Use plain paragraphs and numbered lists (1. 2. 3.) only.`;
+
+/** Strip Markdown markers so chat UI shows plain text only. */
+function stripMarkdownFromSalesReply(text: string): string {
+  return String(text ?? "")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*\n]+)\*/g, "$1")
+    .replace(/_([^_\n]+)_/g, "$1")
+    .replace(/^>\s?/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .replace(/\*\*/g, "")
+    .replace(/__/g, "")
+    .trim();
+}
 
 /**
  * Answer a user question about the selected assessment using the complete report.
@@ -238,7 +255,8 @@ export async function answerSalesQuestion(
       "\n\n--- User question ---\n" +
       (question || "No question provided.").trim();
     const reply = await invokeModel(userInput);
-    return reply?.trim() || null;
+    const trimmed = reply?.trim() || null;
+    return trimmed ? stripMarkdownFromSalesReply(trimmed) : null;
   } catch (err) {
     console.error("answerSalesQuestion error:", err);
     return null;

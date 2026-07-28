@@ -712,11 +712,12 @@ function ProductProfileView({
             <div className="page_header_title_block">
               <h1 className="page_header_title">Product Profile</h1>
               <p className="sub_title page_header_subtitle">
-                Your AI product attestation data, trust scores, and directory visibility in one place.
+                Your AI product attestation data, trust scores, and buyer visibility in one place.
               </p>
             </div>
           </div>
           <div className="btn_user_page product_profile_header_actions">
+            {/* Public Directory Listing disabled — product visibility is controlled only by "Visible to buyers"
             {onPublicListingToggle != null && (
               <>
                 <div className="product_profile_toggle_wrap">
@@ -737,6 +738,7 @@ function ProductProfileView({
                 )}
               </>
             )}
+            */}
           </div>
         </div>
       )}
@@ -806,7 +808,13 @@ function ProductProfileView({
                   return withScore === 1 ? "1 product" : `Across ${withScore} products`;
                 })()
               : reportToShow?.trustScore?.summary
-                ? truncate((reportToShow.trustScore.summary || "").replace(/\s*-+\s*$/, "").trim(), 60)
+                ? truncate(
+                    (reportToShow.trustScore.summary || "")
+                      .replace(/\*\*/g, "")
+                      .replace(/\s*-+\s*$/, "")
+                      .trim(),
+                    60,
+                  )
                 : compliancePercent
                   ? `${compliancePercent} compliance`
                   : "No scored products"

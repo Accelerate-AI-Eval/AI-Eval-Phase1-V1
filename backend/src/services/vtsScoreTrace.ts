@@ -3,19 +3,18 @@
  *
  * Builds a ScoreTrace from stored generated_profile_reports data.
  *
- * The VTS formula has many sub-factors (likelihood, impact, 9-step product risk chain,
- * 5 governance sub-components, 5 operational sub-components). The full intermediate
- * detail is NOT stored in generated_profile_reports — only the final trust_score and
- * scoreByCategory (Product / Governance / Operational) are persisted.
+ * Category contributions come from scoreByCategory / risk columns.
+ * Per-factor detail uses stored factorExplanations, or is rebuilt from
+ * formula_detail by getVtsScoreTrace when that field was never persisted.
  *
- * This trace therefore operates at the CATEGORY level:
+ * This trace operates at the CATEGORY level:
  * - Product risk contribution  = ProductRisk × 0.40
  * - Governance risk contribution = GovernanceRisk × 0.30
  * - Operational risk contribution = OperationalRisk × 0.30
  *
  * Each category's contribution to the final VTS is emitted as a component.
- * A warning explains that per-sub-factor detail (cert-level, policy-level, SLA-level)
- * is not available from stored data and would require re-scoring from attestation form data.
+ * Per-factor detail (cert-level, policy-level) comes from stored factorExplanations
+ * or is rebuilt from formula_detail by getVtsScoreTrace when missing.
  *
  * INTERNAL USE ONLY — never return this data to buyer or vendor users.
  */
@@ -62,14 +61,13 @@ export type VtsTraceInput = {
   /** attestation_id from generated_profile_reports (may be null if not linked). */
   attestationId: string | null;
   /**
-   * Factor-level explanations from stored report (formula path only).
-   * When present, warnings about missing per-factor detail are suppressed.
+   * Factor-level explanations from stored report (or rebuilt from formula_detail).
    */
   factorExplanations?: FactorExplanation[];
 };
 
 export function buildVtsScoreTrace(input: VtsTraceInput): ScoreTrace {
-  const { storedTrustScore, scoreByCategory, reportId, attestationId, factorExplanations } = input;
+  const { storedTrustScore, scoreByCategory, reportId, factorExplanations } = input;
   const hasFactorDetail = Array.isArray(factorExplanations) && factorExplanations.length > 0;
   const warnings: string[] = [];
   const missingEvidence: string[] = [];
@@ -167,21 +165,6 @@ export function buildVtsScoreTrace(input: VtsTraceInput): ScoreTrace {
     missingEvidence.push(
       "No scoreByCategory data available — re-generating the profile with formula data would produce a detailed breakdown.",
     );
-  }
-
-  if (!hasFactorDetail) {
-    if (!attestationId) {
-      warnings.push(
-        `This profile report (ID: ${reportId}) was not linked to a vendor self-attestation row. ` +
-          `Per-factor sub-breakdown (certification-level, policy-level) requires the attestation form data and is not available here.`,
-      );
-    } else {
-      warnings.push(
-        `Per-factor sub-breakdown (e.g., which certifications were detected, which policies were present) ` +
-          `is not stored in generated_profile_reports and requires re-scoring from attestation form data. ` +
-          `Attestation ID: ${attestationId}.`,
-      );
-    }
   }
 
   return {

@@ -278,7 +278,9 @@ function CompleteReportsCards({
 
         <div className="complete_rpr_card_risk_block">
           <div className="complete_rpr_card_risk_row">
-            <span className="complete_rpr_card_risk_label">RISK SCORE</span>
+            <span className="complete_rpr_card_risk_label">
+              {isVendorPortalSession() ? "CONFIDENCE SCORE" : "RISK SCORE"}
+            </span>
             <span className="complete_rpr_card_risk_value_wrap">
               {scoreSubtitle != null && scoreSubtitle !== "" ? (
                 <span className="complete_rpr_card_risk_subtitle" style={meterColor ? { color: meterColor } : undefined}>

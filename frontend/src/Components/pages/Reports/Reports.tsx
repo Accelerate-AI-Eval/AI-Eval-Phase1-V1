@@ -261,10 +261,20 @@ function Reports() {
     });
   };
 
-  const handleDownload = (reportId: string, e: React.MouseEvent) => {
+  const handleDownload = (report: CustomerRiskReportItem, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // TODO: trigger PDF download
+    const reportTitle = getReportCardTitle(report.title ?? "");
+    if (report.source === "buyer_vendor_risk" && report.assessmentId) {
+      navigate(
+        `/buyer-vendor-risk-report/${encodeURIComponent(report.assessmentId)}`,
+        { state: { autoExportPdf: true, reportTitle } },
+      );
+      return;
+    }
+    navigate(`/reports/${encodeURIComponent(report.id)}`, {
+      state: { autoExportPdf: true, reportTitle },
+    });
   };
 
   const openDeleteReportModal = (reportId: string, e: React.MouseEvent) => {
@@ -414,7 +424,7 @@ function Reports() {
                 isArchived={isCustomerReportArchived}
                 getExpiryDate={getCompleteReportExpiryDate}
                 onViewReport={handleSelectReport}
-                onDownload={(r, e) => handleDownload(r.id, e)}
+                onDownload={(r, e) => handleDownload(r, e)}
                 showScoreRationaleInfo={isSystemAdmin}
               />
               <ReportsPagination

@@ -67,9 +67,10 @@ export const DirectoryListing = () => {
   const [formState, setFormState] = useState<VendorSelfAttestationFormState | null>(null);
   const [products, setProducts] = useState<ProductProfileProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [publicListing, setPublicListing] = useState(false);
-  const [publicListingUpdating, setPublicListingUpdating] = useState(false);
-  const [publicListingError, setPublicListingError] = useState<string | null>(null);
+  // Public Directory Listing disabled — visibility is per-product via "Visible to buyers"
+  // const [publicListing, setPublicListing] = useState(false);
+  // const [publicListingUpdating, setPublicListingUpdating] = useState(false);
+  // const [publicListingError, setPublicListingError] = useState<string | null>(null);
   const [generatedReport, setGeneratedReport] = useState<GeneratedProductProfileReport | null>(null);
   const [generateLoading, setGenerateLoading] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -83,28 +84,29 @@ export const DirectoryListing = () => {
   /** Product list tab: current (non-expired attestation) vs archived (expired attestation) */
   const [productTab, setProductTab] = useState<"current" | "archived">("current");
 
-  const fetchVendorPublicListing = useCallback(async () => {
-    const token = sessionStorage.getItem("bearerToken");
-    if (!token) return;
-    try {
-      const res = await fetch(`${BASE_URL}/vendorOnboarding`, {
-        method: "GET",
-        credentials: "include",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const text = await res.text();
-      let data: { data?: { publicDirectoryListing?: boolean }; success?: boolean } = {};
-      try {
-        if (text) data = JSON.parse(text);
-      } catch {
-        setPublicListing(false);
-        return;
-      }
-      setPublicListing(Boolean(res.ok && data?.data?.publicDirectoryListing === true));
-    } catch {
-      setPublicListing(false);
-    }
-  }, []);
+  // Public Directory Listing disabled — visibility is per-product via "Visible to buyers"
+  // const fetchVendorPublicListing = useCallback(async () => {
+  //   const token = sessionStorage.getItem("bearerToken");
+  //   if (!token) return;
+  //   try {
+  //     const res = await fetch(`${BASE_URL}/vendorOnboarding`, {
+  //       method: "GET",
+  //       credentials: "include",
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+  //     const text = await res.text();
+  //     let data: { data?: { publicDirectoryListing?: boolean }; success?: boolean } = {};
+  //     try {
+  //       if (text) data = JSON.parse(text);
+  //     } catch {
+  //       setPublicListing(false);
+  //       return;
+  //     }
+  //     setPublicListing(Boolean(res.ok && data?.data?.publicDirectoryListing === true));
+  //   } catch {
+  //     setPublicListing(false);
+  //   }
+  // }, []);
 
   const fetchGeneratedReports = useCallback(async () => {
     const token = sessionStorage.getItem("bearerToken");
@@ -294,51 +296,52 @@ export const DirectoryListing = () => {
     }
   }, []);
 
-  const handlePublicListingToggle = useCallback(async () => {
-    const token = sessionStorage.getItem("bearerToken");
-    if (!token) {
-      setPublicListingError("Please log in to change this setting.");
-      return;
-    }
-    const next = !publicListing;
-    setPublicListingError(null);
-    setPublicListingUpdating(true);
-    try {
-      const res = await fetch(`${BASE_URL}/vendorOnboarding/public-directory-listing`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ enabled: next }),
-      });
-      const text = await res.text();
-      let data: { success?: boolean; message?: string } = {};
-      try {
-        if (text) data = JSON.parse(text);
-      } catch {
-        setPublicListingError(res.ok ? "Invalid response from server." : "Could not update. Try again.");
-        setPublicListingUpdating(false);
-        return;
-      }
-      if (res.ok && data?.success) {
-        setPublicListing(next);
-      } else {
-        const message =
-          res.status === 404
-            ? "Complete vendor onboarding first to enable Public Directory Listing."
-            : res.status === 401
-              ? "Session expired. Please log in again."
-              : (data?.message as string) || "Could not update. Try again.";
-        setPublicListingError(message);
-      }
-    } catch {
-      setPublicListingError("Network error. Check that the server is running and try again.");
-    } finally {
-      setPublicListingUpdating(false);
-    }
-  }, [publicListing]);
+  // Public Directory Listing disabled — visibility is per-product via "Visible to buyers"
+  // const handlePublicListingToggle = useCallback(async () => {
+  //   const token = sessionStorage.getItem("bearerToken");
+  //   if (!token) {
+  //     setPublicListingError("Please log in to change this setting.");
+  //     return;
+  //   }
+  //   const next = !publicListing;
+  //   setPublicListingError(null);
+  //   setPublicListingUpdating(true);
+  //   try {
+  //     const res = await fetch(`${BASE_URL}/vendorOnboarding/public-directory-listing`, {
+  //       method: "PATCH",
+  //       credentials: "include",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //       body: JSON.stringify({ enabled: next }),
+  //     });
+  //     const text = await res.text();
+  //     let data: { success?: boolean; message?: string } = {};
+  //     try {
+  //       if (text) data = JSON.parse(text);
+  //     } catch {
+  //       setPublicListingError(res.ok ? "Invalid response from server." : "Could not update. Try again.");
+  //       setPublicListingUpdating(false);
+  //       return;
+  //     }
+  //     if (res.ok && data?.success) {
+  //       setPublicListing(next);
+  //     } else {
+  //       const message =
+  //         res.status === 404
+  //           ? "Complete vendor onboarding first to enable Public Directory Listing."
+  //           : res.status === 401
+  //             ? "Session expired. Please log in again."
+  //             : (data?.message as string) || "Could not update. Try again.";
+  //       setPublicListingError(message);
+  //     }
+  //   } catch {
+  //     setPublicListingError("Network error. Check that the server is running and try again.");
+  //   } finally {
+  //     setPublicListingUpdating(false);
+  //   }
+  // }, [publicListing]);
 
   const handleUseAttestationData = useCallback(() => {
     setGenerateError(null);
@@ -446,9 +449,9 @@ export const DirectoryListing = () => {
 
   useEffect(() => {
     fetchProductProfileData();
-    fetchVendorPublicListing();
+    // fetchVendorPublicListing(); // Public Directory Listing disabled
     fetchGeneratedReports();
-  }, [fetchProductProfileData, fetchVendorPublicListing, fetchGeneratedReports]);
+  }, [fetchProductProfileData, fetchGeneratedReports]);
 
   /** Refetch products after a short delay so that when user lands from attestation submit,
    *  we pick up the newly generated profile and the average trust score updates without refresh. */
@@ -563,10 +566,7 @@ export const DirectoryListing = () => {
       productTab={productTab}
       onProductTabChange={setProductTab}
       fetchProductDetail={fetchProductDetail}
-      publicListing={publicListing}
-      onPublicListingToggle={viewOnly ? undefined : handlePublicListingToggle}
-      publicListingUpdating={publicListingUpdating}
-      publicListingError={publicListingError}
+      // Public Directory Listing disabled — visibility is per-product via "Visible to buyers"
       onProductVisibilityToggle={viewOnly ? undefined : handleProductVisibilityToggle}
       onSectionVisibilityChange={viewOnly ? undefined : handleSectionVisibilityChange}
       generatedReport={reportToShow}

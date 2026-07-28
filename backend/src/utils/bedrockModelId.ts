@@ -1,6 +1,6 @@
 /**
- * Bedrock cross-region inference profile IDs use a `us.` prefix
- * (e.g. us.anthropic.claude-haiku-4-5-20251001-v1:0).
+ * Bedrock model IDs are used exactly as selected (Controls / env).
+ * No geo prefix is added — e.g. global.anthropic.… or us.anthropic.… as chosen.
  */
 
 /** Default / fallback Bedrock model — keep in sync with python config defaults */
@@ -31,21 +31,25 @@ export function isBedrockProviderModelId(modelId: string): boolean {
   return BEDROCK_MODEL_ID_PATTERN.test(trimmed);
 }
 
+/** Passthrough — use the selected id as-is (no `us.` prepend). */
 export function withUsModelPrefix(modelId: string): string {
   const trimmed = modelId.trim();
   if (!trimmed) return trimmed;
-  if (trimmed.toLowerCase().startsWith("us.")) return trimmed;
-  if (isBedrockProviderModelId(trimmed)) {
-    return `us.${trimmed}`;
-  }
+  // Previously prepended `us.` to foundation-model ids; that broke global.* profiles.
+  // if (trimmed.toLowerCase().startsWith("us.")) return trimmed;
+  // if (isBedrockProviderModelId(trimmed)) {
+  //   return `us.${trimmed}`;
+  // }
   return trimmed;
 }
 
 /** Catalog ids like …:v1:0:200k are not valid for bedrock-runtime invoke. */
 const INVOKE_CONTEXT_SUFFIX = /:(?:28|48|200)k$/i;
 
+/** Use the selected model id directly (no prefix rewrite). */
 export function resolveBedrockInvokeModelId(modelId: string): string {
-  const trimmed = withUsModelPrefix(modelId.trim());
+  const trimmed = modelId.trim();
+  // const trimmed = withUsModelPrefix(modelId.trim());
   if (!trimmed) return trimmed;
   return trimmed.replace(INVOKE_CONTEXT_SUFFIX, "");
 }

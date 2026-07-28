@@ -6,6 +6,7 @@ import { generalReports } from "../../schema/assessments/generalReports.js";
 import { assessments } from "../../schema/assessments/assessments.js";
 import { cotsVendorAssessments } from "../../schema/assessments/cotsVendorAssessments.js";
 import { vendorSelfAttestations } from "../../schema/assessments/vendorSelfAttestations.js";
+import { ensureGeneralReportsLlmColumns } from "../../utils/ensureGeneralReportsLlmColumns.js";
 
 /**
  * GET /generalReports/:id
@@ -14,6 +15,8 @@ import { vendorSelfAttestations } from "../../schema/assessments/vendorSelfAttes
  */
 const getGeneralReportById = async (req: Request, res: Response): Promise<void> => {
   try {
+    await ensureGeneralReportsLlmColumns();
+
     const payload = req.user as { id?: number } | undefined;
     const userId = payload?.id;
     if (userId == null) {

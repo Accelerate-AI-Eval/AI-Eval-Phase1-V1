@@ -38,9 +38,10 @@ export const BUYER_COTS_ASSESSMENT = {
     },
     1: {
       label: "What industry sector does your organization operate in?",
-      placeholder: "Select your organization's primary industry sector",
+      placeholder: "Select all industry sectors that apply (pre-filled from onboarding)",
       required: "true",
       options: INDUSTRY_SECTOR_OPTIONS,
+      multiselect: true,
     },
     2: {
       label: "How many employees does your organization have?",

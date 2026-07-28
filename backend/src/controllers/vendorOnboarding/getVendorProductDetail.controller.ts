@@ -122,6 +122,7 @@ const getVendorProductDetail = async (req: Request, res: Response): Promise<void
       .select({
         id: vendors.id,
         userId: vendors.userId,
+        organizationId: vendors.organizationId,
         publicDirectoryListing: vendors.publicDirectoryListing,
         organizationStatus: createOrganization.organizationStatus,
       })
@@ -139,11 +140,14 @@ const getVendorProductDetail = async (req: Request, res: Response): Promise<void
       vendor.organizationStatus != null &&
       String(vendor.organizationStatus).trim().toLowerCase() === "active";
 
-    const vendorUserId = vendor.userId != null ? Number(vendor.userId) : null;
-    if (vendorUserId == null) {
+    const vendorOrgId = String(vendor.organizationId ?? "").trim();
+    if (!vendorOrgId) {
       res.status(404).json({ success: false, message: "Product not found" });
       return;
     }
+
+    const orgScope = sql`trim(coalesce(${vendorSelfAttestations.organization_id}, '')) = ${vendorOrgId}`;
+    const vendorUserId = vendor.userId != null ? Number(vendor.userId) : null;
 
     let row: Record<string, unknown> | undefined;
 
@@ -151,17 +155,18 @@ const getVendorProductDetail = async (req: Request, res: Response): Promise<void
       const [r] = await db
         .select()
         .from(vendorSelfAttestations)
-        .where(and(eq(vendorSelfAttestations.id, productId), eq(vendorSelfAttestations.user_id, vendorUserId)))
+        .where(and(eq(vendorSelfAttestations.id, productId), orgScope))
         .limit(1);
       row = r as Record<string, unknown> | undefined;
-    } else if (vendor.publicDirectoryListing && orgActive) {
+    } else if (orgActive) {
+      // Public Directory Listing no longer required — product visible_to_buyer is enough
       const [r] = await db
         .select()
         .from(vendorSelfAttestations)
         .where(
           and(
             eq(vendorSelfAttestations.id, productId),
-            eq(vendorSelfAttestations.user_id, vendorUserId),
+            orgScope,
             eq(vendorSelfAttestations.status, "COMPLETED"),
             eq(vendorSelfAttestations.visible_to_buyer, true),
             sql`(${vendorSelfAttestations.expiry_at} IS NULL OR ${vendorSelfAttestations.expiry_at} >= now())`,
@@ -176,6 +181,7 @@ const getVendorProductDetail = async (req: Request, res: Response): Promise<void
       !row &&
       Number.isInteger(viewerUserId) &&
       viewerUserId >= 1 &&
+      vendorUserId != null &&
       (await canViewDirectoryProductViaAssessment(viewerUserId, vendor.id, vendorUserId, productId))
     ) {
       const [r] = await db
@@ -184,7 +190,7 @@ const getVendorProductDetail = async (req: Request, res: Response): Promise<void
         .where(
           and(
             eq(vendorSelfAttestations.id, productId),
-            eq(vendorSelfAttestations.user_id, vendorUserId),
+            orgScope,
             eq(vendorSelfAttestations.status, "COMPLETED"),
             isNull(vendorSelfAttestations.user_archived_at),
           ),

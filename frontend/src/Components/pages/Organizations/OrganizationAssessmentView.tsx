@@ -476,6 +476,24 @@ export default function OrganizationAssessmentView() {
     });
   };
 
+  const handleDownloadCompleteReport = (
+    report: CustomerRiskReportItem,
+    e: React.MouseEvent,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const reportTitle = getReportCardTitle(report.title ?? "");
+    if (report.source === "buyer_vendor_risk" && report.assessmentId) {
+      navigate(`/buyer-vendor-risk-report/${encodeURIComponent(report.assessmentId)}`, {
+        state: { autoExportPdf: true, reportTitle },
+      });
+      return;
+    }
+    navigate(`/reports/${encodeURIComponent(report.id)}`, {
+      state: { autoExportPdf: true, reportTitle },
+    });
+  };
+
   return (
     <div className="sec_user_page org_settings_page product_profile_page" style={{ padding: "1.5rem" }}>
       <Breadcrumbs items={breadcrumbItems} />
@@ -532,6 +550,7 @@ export default function OrganizationAssessmentView() {
                 isArchived={isCompleteReportArchived}
                 getExpiryDate={getCompleteReportExpiry}
                 onViewReport={handleViewCompleteReport}
+                onDownload={handleDownloadCompleteReport}
                 singleCard
               />
               {generalReports.map((report) => {

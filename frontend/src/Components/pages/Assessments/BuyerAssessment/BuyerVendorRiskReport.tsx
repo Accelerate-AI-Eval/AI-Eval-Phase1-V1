@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   CheckCircle2,
@@ -131,6 +131,11 @@ function FrameworkMappingControlsCell({ value }: { value: unknown }) {
 
 export default function BuyerVendorRiskReport() {
   const { assessmentId } = useParams<{ assessmentId: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const autoExportPdf =
+    (location.state as { autoExportPdf?: boolean } | null)?.autoExportPdf === true;
+  const autoExportTriggeredRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -300,6 +305,27 @@ export default function BuyerVendorRiskReport() {
       setPdfExporting(false);
     }
   }, [orgName, productName, vendorName]);
+
+  useEffect(() => {
+    if (!autoExportPdf || loading || pending || error || !report || autoExportTriggeredRef.current) {
+      return;
+    }
+    autoExportTriggeredRef.current = true;
+    navigate(location.pathname, { replace: true, state: {} });
+    const t = window.setTimeout(() => {
+      void handleExportPdf();
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [
+    autoExportPdf,
+    loading,
+    pending,
+    error,
+    report,
+    handleExportPdf,
+    navigate,
+    location.pathname,
+  ]);
 
   const implementationRiskScore = Number(report?.implementationRiskScore ?? NaN);
   const hasImplementationScore = Number.isFinite(implementationRiskScore);

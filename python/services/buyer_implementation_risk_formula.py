@@ -44,6 +44,13 @@ def _parse_list(v: Any) -> list[str]:
 
 
 def _extract_vendor_trust_score(attestation_row: dict[str, Any] | None) -> float:
+    """
+    Same resolution order as Product Profile UI / Node extractVendorTrustScore:
+    1) trustScore.overallScore (> 0)
+    2) latest_trust_score on attestation (> 0)
+    3) formula.vendor_trust_score / report.vendor_trust_score (> 0)
+    4) default 50
+    """
     if not attestation_row:
         return 50.0
     report = attestation_row.get("generated_profile_report")
@@ -51,24 +58,48 @@ def _extract_vendor_trust_score(attestation_row: dict[str, Any] | None) -> float
         report = {}
     trust_score = report.get("trustScore")
     if not isinstance(trust_score, dict):
+        trust_score = report.get("trust_score") if isinstance(report.get("trust_score"), dict) else {}
+    if not isinstance(trust_score, dict):
         trust_score = {}
     formula = report.get("formula")
     if not isinstance(formula, dict):
         formula = {}
-    raw = (
-        trust_score.get("overallScore")
-        if trust_score.get("overallScore") is not None
-        else (
-            formula.get("vendor_trust_score")
-            if formula.get("vendor_trust_score") is not None
-            else report.get("vendor_trust_score")
-        )
-    )
-    try:
-        n = float(raw)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        n = float("nan")
-    return _clamp01(n if math.isfinite(n) else 50.0)
+
+    def _positive(raw: Any) -> float | None:
+        try:
+            n = float(raw)
+        except (TypeError, ValueError):
+            return None
+        if math.isfinite(n) and n > 0:
+            return _clamp01(round(n))
+        return None
+
+    for candidate in (
+        trust_score.get("overallScore"),
+        trust_score.get("overall_score"),
+        attestation_row.get("latest_trust_score"),
+        attestation_row.get("latestTrustScore"),
+        formula.get("vendor_trust_score"),
+        formula.get("formula_vendor_trust_score"),
+        report.get("vendor_trust_score"),
+    ):
+        got = _positive(candidate)
+        if got is not None:
+            return got
+
+    # Explicit 0 only if that is truly all we have
+    for candidate in (
+        trust_score.get("overallScore"),
+        trust_score.get("overall_score"),
+        attestation_row.get("latest_trust_score"),
+    ):
+        try:
+            n = float(candidate)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(n) and n == 0:
+            return 0.0
+    return 50.0
 
 
 def _is_high_stakes(criticality: str) -> bool:

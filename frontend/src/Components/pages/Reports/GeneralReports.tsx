@@ -985,7 +985,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
     navigate(`/reports/general/${encodeURIComponent(report.id)}`);
   };
 
-  const handleDownloadReport = (report: GeneratedReportItem) => {
+  const handleDownloadReport = async (report: GeneratedReportItem) => {
     const formatDate = (iso: string) => {
       try {
         const d = new Date(iso);
@@ -998,12 +998,37 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
     const sanitize = (s: string) =>
       s.replace(/[<>:"/\\|?*]/g, "").replace(/\s+/g, "-").slice(0, 80);
     const dateStr = formatDate(report.generatedAt);
-    const bodyContent =
+
+    let bodyContent =
       typeof report.briefContent === "string"
         ? report.briefContent
         : report.briefContent != null
           ? JSON.stringify(report.briefContent, null, 2)
-          : "This report was generated from the Reports Library. Full report content can be viewed in the application.";
+          : "";
+
+    // List payload may omit body — fetch full report so download is not empty
+    if (!bodyContent.trim()) {
+      try {
+        const token = sessionStorage.getItem("bearerToken");
+        if (token) {
+          const res = await fetch(`${BASE_URL}/generalReports/${encodeURIComponent(report.id)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json().catch(() => ({}));
+          const full = data?.data?.report ?? data?.data ?? data?.report;
+          const content = full?.briefContent ?? full?.content;
+          if (typeof content === "string" && content.trim()) bodyContent = content;
+          else if (content != null) bodyContent = JSON.stringify(content, null, 2);
+        }
+      } catch {
+        // fall through to placeholder
+      }
+    }
+    if (!bodyContent.trim()) {
+      bodyContent =
+        "This report was generated from the Reports Library. Full report content can be viewed in the application.";
+    }
+
     const content = [
       "General Report",
       "—",

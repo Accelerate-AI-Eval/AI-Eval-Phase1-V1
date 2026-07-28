@@ -240,6 +240,21 @@ const listOrgAttestations = async (req: Request, res: Response) => {
             formulaDetail: a.report_formula_detail,
           },
         );
+        const reportPayload =
+          a.generated_profile_report != null &&
+          typeof a.generated_profile_report === "object" &&
+          !Array.isArray(a.generated_profile_report)
+            ? (a.generated_profile_report as Record<string, unknown>)
+            : null;
+        const modelIdFromReport = (() => {
+          if (!reportPayload) return null;
+          for (const key of ["llmModelId", "llm_model_id", "modelId", "model_id"] as const) {
+            const v = reportPayload[key];
+            if (typeof v === "string" && v.trim()) return v.trim();
+          }
+          return null;
+        })();
+
         return {
           id: a.id,
           vendor_self_attestation_id: a.vendor_self_attestation_id,
@@ -260,6 +275,7 @@ const listOrgAttestations = async (req: Request, res: Response) => {
           llm_model_id:
             (a.llm_model_id != null && String(a.llm_model_id).trim()) ||
             (a.report_llm_model_id != null && String(a.report_llm_model_id).trim()) ||
+            modelIdFromReport ||
             null,
           llm_model_label:
             (a.llm_model_label != null && String(a.llm_model_label).trim()) ||

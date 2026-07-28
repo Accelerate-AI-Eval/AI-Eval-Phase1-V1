@@ -12,6 +12,7 @@
  */
 import React, { useState, useEffect, useCallback } from "react";
 import { CircleX, AlertTriangle, TrendingUp, Lock, ChevronDown } from "lucide-react";
+import { AdminLlmModelLabel } from "../../UI/AdminLlmModelInfo";
 import "./score_trace_panel.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -82,6 +83,8 @@ type ScoreTrace = {
   irsFactorExplanations?: IrsFactorExplanation[];
   /** SCS factor-level explanations — Improvement Plan for Type 2. */
   scsFactorExplanations?: ScsFactorExplanation[];
+  /** Stored Bedrock/Controls model id from the score-trace API (when persisted). */
+  llmModelId?: string | null;
   generatedAt: string;
 };
 
@@ -575,14 +578,14 @@ export default function ScoreTracePanel({
   const BASE_URL = (import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1") as string;
 
   useEffect(() => {
-    if (!isOpen || mode === "vendor") return;
-    const fromProp = typeof llmModelName === "string" ? llmModelName.trim() : "";
-    if (fromProp) {
-      setActiveLlmLabel(fromProp);
+    if (!isOpen) {
+      setActiveLlmLabel(null);
       return;
     }
-    // Only show a model that was stored on the assessment/report — do not fall back to live Controls.
-    setActiveLlmLabel(null);
+    if (mode === "vendor") return;
+    const fromProp = typeof llmModelName === "string" ? llmModelName.trim() : "";
+    if (fromProp) setActiveLlmLabel(fromProp);
+    // If prop is empty, fetchTrace will hydrate from API llmModelId.
   }, [isOpen, mode, llmModelName]);
 
   const fetchTrace = useCallback(async () => {
@@ -618,6 +621,10 @@ export default function ScoreTracePanel({
       // Coerce to full ScoreTrace — vendor endpoint omits formula/components/warnings; default to safe empty values
       const d = result.data;
       const raw = d as Record<string, unknown>;
+      const apiLlmModelId =
+        (typeof raw.llmModelId === "string" && raw.llmModelId.trim()) ||
+        (typeof raw.llm_model_id === "string" && raw.llm_model_id.trim()) ||
+        null;
       const coerced: ScoreTrace = {
         scoreType:         d.scoreType         ?? "vendor_trust",
         finalScore:        d.finalScore        ?? 0,
@@ -636,15 +643,22 @@ export default function ScoreTracePanel({
         scsFactorExplanations: Array.isArray(raw.scsFactorExplanations)
           ? (raw.scsFactorExplanations as ScsFactorExplanation[])
           : undefined,
+        llmModelId:        apiLlmModelId,
         generatedAt:       d.generatedAt       ?? new Date().toISOString(),
       };
       setTrace(coerced);
+
+      // Prefer parent prop; otherwise show model id returned by the score-trace API.
+      if (mode !== "vendor") {
+        const fromProp = typeof llmModelName === "string" ? llmModelName.trim() : "";
+        setActiveLlmLabel(fromProp || apiLlmModelId);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unexpected error loading score data");
     } finally {
       setLoading(false);
     }
-  }, [assessmentId, reportId, traceType, mode, vendorAttestationId, BASE_URL]);
+  }, [assessmentId, reportId, traceType, mode, vendorAttestationId, BASE_URL, llmModelName]);
 
   useEffect(() => {
     if (isOpen) void fetchTrace();
@@ -769,13 +783,15 @@ export default function ScoreTracePanel({
             {!isVendorMode && <span className="stp_internal_badge">INTERNAL ONLY</span>}
             <h2 className="stp_title">{drawerTitle}</h2>
             <p className="stp_subtitle" title={assessmentTitle}>{assessmentTitle}</p>
-            {!isVendorMode && activeLlmLabel ? (
-              <p className="stp_llm_model_row" title={`LLM model: ${activeLlmLabel}`}>
-                <span className="stp_llm_model_label">
-                  LLM model: <strong>{activeLlmLabel}</strong>
-                </span>
-              </p>
-            ) : null}
+            {!isVendorMode && (
+              <AdminLlmModelLabel
+                modelName={activeLlmLabel || trace?.llmModelId || null}
+                fallbackToActive
+                preferModelId
+                showIcon={false}
+                className="stp_llm_model_row stp_llm_model_label"
+              />
+            )}
           </div>
           <button type="button" className="stp_close_btn" onClick={onClose} aria-label="Close">
             <CircleX size={22} />

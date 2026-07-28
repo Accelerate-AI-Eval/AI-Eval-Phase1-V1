@@ -9,6 +9,7 @@ import { invokePythonLlmWithVector } from "../../services/pythonAssessmentLlmCli
 import { scoreCotsBuyerWithPython } from "../../services/pythonScoringClient.js";
 import {
   calculateBuyerImplementationRiskScore,
+  extractVendorTrustScore,
   irsFinalScoreFromParts,
 } from "../../services/buyerImplementationRiskScore.js";
 import { getActiveBedrockModelId } from "../../utils/bedrockModelId.js";
@@ -108,9 +109,9 @@ const SYSTEM_PROMPT = `You are an enterprise AI risk analyst. Output ONLY valid 
 
 The JSON must match this structure exactly:
 {
-  "overallRiskScore": <integer 0-100, higher = safer/better fit>,
+  "overallRiskScore": <integer 0-100, higher = safer/better fit for this buyer engagement — do NOT invent Vendor Trust Score here>,
   "recommendationLabel": "<e.g. Recommended for Approval | Conditional Approval | Further Review Required>",
-  "executiveSummary": "<3-5 sentences combining buyer context and vendor attestation; MUST explicitly mention 'Vendor trust score: <overallRiskScore>/100'>",
+  "executiveSummary": "<3-5 sentences combining buyer context and vendor attestation; MUST explicitly mention 'Vendor trust score: <USE_PROVIDED_VENDOR_TRUST_SCORE>/100' using the Vendor Trust Score supplied in the user message — never invent or substitute overallRiskScore>",
   "keyStrengths": ["<6-10 short bullet strings from attestation: certs, SLA, security, compliance>"],
   "areasForImprovement": ["<4-8 caution items: gaps, residual risks, deployment limits>"],
   "riskAnalysis": [
@@ -171,15 +172,52 @@ CRITICAL ORDER: Put actionable "recommendations" BEFORE "implementationNotes" in
 
 If the user message includes a block "--- Database-matched top risks and mitigations ---", those rows come from the same risk_mappings and risk_top5_mitigations database tables used for vendor assessments (matched to this buyer context). You MUST weight overallRiskScore and riskAnalysis against those catalog risks; reference their themes and the listed mitigations in recommendations and implementationNotes where relevant. Do not invent fake risk IDs; narrate using the provided titles/descriptions.
 
-Use only facts inferable from the inputs. If attestation data is sparse, say so in summaries and score conservatively.`;
+Use only facts inferable from the inputs. If attestation data is sparse, say so in summaries and score conservatively.
 
-function ensureExecutiveSummaryHasTrustScore(summary: string, overallRiskScore: number): string {
-  const trustPattern = /vendor\s+trust\s+score\s*:/i;
-  const scoreText = `Vendor trust score: ${overallRiskScore}/100.`;
+CRITICAL: The user message supplies the authoritative Vendor Trust Score from the vendor self-attestation. In executiveSummary you MUST write exactly 'Vendor trust score: <that number>/100' — do not invent a different trust score and do not use overallRiskScore as the Vendor Trust Score.`;
+
+/**
+ * Force executive summary to cite the real Vendor Trust Score (from attestation VTS),
+ * replacing any LLM-invented "Vendor trust score: N/100" text.
+ * When vendorTrustScore is unknown, leave the summary unchanged.
+ */
+function ensureExecutiveSummaryHasTrustScore(
+  summary: string,
+  vendorTrustScore: number | null | undefined,
+): string {
   const cleanSummary = summary.trim();
+  if (vendorTrustScore == null || !Number.isFinite(Number(vendorTrustScore))) {
+    return cleanSummary;
+  }
+  const score = Math.min(100, Math.max(0, Math.round(Number(vendorTrustScore))));
+  const scoreText = `Vendor trust score: ${score}/100.`;
   if (!cleanSummary) return scoreText;
-  if (trustPattern.test(cleanSummary)) return cleanSummary;
+  if (/vendor\s+trust\s+score\s*:/i.test(cleanSummary)) {
+    return cleanSummary
+      .replace(/vendor\s+trust\s+score\s*:\s*\d{1,3}(?:\s*\/\s*100)?\.?/gi, scoreText)
+      .replace(/\.\s*\./g, ".")
+      .replace(/\s{2,}/g, " ")
+      .trim()
+      .slice(0, 4000);
+  }
   return `${scoreText} ${cleanSummary}`.slice(0, 4000);
+}
+
+/** Prefer explicit VTS, then IRS breakdown.vendorTrustScore; undefined when unknown. */
+function resolveVendorTrustScoreForSummary(
+  vendorTrustScore: number | undefined,
+  breakdown: Record<string, unknown> | undefined,
+): number | undefined {
+  if (vendorTrustScore != null && Number.isFinite(vendorTrustScore)) {
+    return Math.min(100, Math.max(0, Math.round(Number(vendorTrustScore))));
+  }
+  const fromBreakdown = Number(
+    breakdown?.vendorTrustScore ?? breakdown?.vendor_trust_score,
+  );
+  if (Number.isFinite(fromBreakdown)) {
+    return Math.min(100, Math.max(0, Math.round(fromBreakdown)));
+  }
+  return undefined;
 }
 
 function vendorProductLabel(vendorName: string, productName: string): string {
@@ -338,15 +376,17 @@ function buildFallbackReport(
   vendorName: string,
   productName: string,
   hasAttestation: boolean,
+  vendorTrustScore = 50,
 ): BuyerVendorRiskReport {
   const now = new Date().toISOString();
   const overallRiskScore = hasAttestation ? 75 : 55;
+  const vts = Math.min(100, Math.max(0, Math.round(vendorTrustScore)));
   const executiveSummaryBase = `This assessment evaluates ${vendorName}'s ${productName} against your stated requirements. ${
     hasAttestation
       ? "Vendor self-attestation data was available and informs this summary."
       : "A matching public vendor attestation was not found; strengthen due diligence with direct vendor evidence."
   } Review recommendations before implementation.`;
-  const executiveSummary = ensureExecutiveSummaryHasTrustScore(executiveSummaryBase, overallRiskScore);
+  const executiveSummary = ensureExecutiveSummaryHasTrustScore(executiveSummaryBase, vts);
   const areasForImprovement = [
     "Confirm data residency and sub-processor alignment with your policies.",
     "Define human-in-the-loop controls for high-stakes AI decisions.",
@@ -604,8 +644,17 @@ function normalizeReport(
   vendorName: string,
   productName: string,
   hasAttestation: boolean,
+  vendorTrustScore?: number,
 ): BuyerVendorRiskReport {
-  const fb = buildFallbackReport(vendorName, productName, hasAttestation);
+  const implementationRiskBreakdownEarly =
+    raw.implementationRiskBreakdown != null && typeof raw.implementationRiskBreakdown === "object"
+      ? (raw.implementationRiskBreakdown as Record<string, unknown>)
+      : undefined;
+  const vts = resolveVendorTrustScoreForSummary(
+    vendorTrustScore,
+    implementationRiskBreakdownEarly,
+  );
+  const fb = buildFallbackReport(vendorName, productName, hasAttestation, vts ?? 50);
   const score = Number(raw.overallRiskScore);
   const recs = Array.isArray(raw.recommendations)
     ? (raw.recommendations as unknown[])
@@ -648,7 +697,7 @@ function normalizeReport(
     : fb.areasForImprovement;
   const executiveSummary = ensureExecutiveSummaryHasTrustScore(
     String(raw.executiveSummary ?? fb.executiveSummary).slice(0, 4000),
-    overallRiskScore,
+    vts,
   );
   const recommendations = recs.length > 0 ? recs : fb.recommendations;
   const riskAnalysis = domains.length >= 5 ? domains : fb.riskAnalysis;
@@ -927,6 +976,8 @@ export async function generateBuyerVendorRiskReport(
       }
     : {};
 
+  const canonicalVendorTrustScore = Math.round(extractVendorTrustScore(attestationRow));
+
   const userPrompt = [
     SYSTEM_PROMPT,
     "",
@@ -936,6 +987,7 @@ export async function generateBuyerVendorRiskReport(
     JSON.stringify(attestationSlice, null, 2).slice(0, 12000),
     dbRisksBlock ? `\n${dbRisksBlock}\n` : "",
     `Vendor display name: ${vendorName}. Product: ${productName}.`,
+    `Vendor Trust Score (from vendor self-attestation; use EXACTLY this value in executiveSummary as 'Vendor trust score: ${canonicalVendorTrustScore}/100'): ${canonicalVendorTrustScore}/100.`,
     "Respond with ONLY the JSON object.",
   ].join("\n");
 
@@ -943,7 +995,13 @@ export async function generateBuyerVendorRiskReport(
     const rawText = await invokeModel(userPrompt);
     const parsed = extractJsonObject(rawText);
     if (parsed) {
-      const normalized = normalizeReport(parsed, vendorName, productName, hasAttestation);
+      const normalized = normalizeReport(
+        parsed,
+        vendorName,
+        productName,
+        hasAttestation,
+        canonicalVendorTrustScore,
+      );
       return {
         ...normalized,
         implementationRiskScore: implementationRisk.implementationRiskScore,
@@ -963,7 +1021,12 @@ export async function generateBuyerVendorRiskReport(
   } catch (e) {
     console.error("generateBuyerVendorRiskReport LLM error:", e);
   }
-  const fallback = buildFallbackReport(vendorName, productName, hasAttestation);
+  const fallback = buildFallbackReport(
+    vendorName,
+    productName,
+    hasAttestation,
+    canonicalVendorTrustScore,
+  );
   return {
     ...fallback,
     implementationRiskScore: implementationRisk.implementationRiskScore,
@@ -1005,15 +1068,32 @@ export function regulatorySnippetFromJson(reg: unknown): string | null {
 /**
  * Ensures stored JSON (including legacy reports) exposes structured buyer-side sections
  * and buyer-linked priority weights when missing.
+ * When vendorTrustScoreOverride is provided (product-profile VTS), executive summary is rewritten to match.
  */
 export function enrichStoredBuyerVendorReport(
   report: Record<string, unknown>,
   vendorName: string,
   productName: string,
   ctx: BuyerReportEnrichContext,
+  vendorTrustScoreOverride?: number | null,
 ): BuyerVendorRiskReport {
   const hasAttestationHint = Array.isArray(report.keyStrengths) && (report.keyStrengths as unknown[]).length >= 2;
-  const normalized = normalizeReport(report, vendorName, productName, hasAttestationHint);
+  const breakdown =
+    report.implementationRiskBreakdown != null &&
+    typeof report.implementationRiskBreakdown === "object"
+      ? (report.implementationRiskBreakdown as Record<string, unknown>)
+      : undefined;
+  const vendorTrustScore =
+    vendorTrustScoreOverride != null && Number.isFinite(Number(vendorTrustScoreOverride))
+      ? Math.min(100, Math.max(0, Math.round(Number(vendorTrustScoreOverride))))
+      : resolveVendorTrustScoreForSummary(undefined, breakdown);
+  const normalized = normalizeReport(
+    report,
+    vendorName,
+    productName,
+    hasAttestationHint,
+    vendorTrustScore,
+  );
   const regSnip = ctx.regulatorySnippet ?? null;
   const priorities =
     parseBuyerPriorities(report.buyerPrioritiesAndWeights) ??

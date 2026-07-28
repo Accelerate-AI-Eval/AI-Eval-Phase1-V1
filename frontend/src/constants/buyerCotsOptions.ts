@@ -1,57 +1,21 @@
-/** Options for dropdown and multiselect fields in Buyer COTS Assessment (aligned with typical Excel/spec) */
+/** Options for dropdown and multiselect fields in Buyer COTS Assessment.
+ * Industry + operating regions match buyer onboarding so auto-fill selects correctly.
+ */
+import {
+  BUYER_INDUSTRY_SECTORS,
+  BUYER_OPERATING_REGIONS,
+} from "./buyerOnboardingData";
 
 export type OptionItem = { label: string; value: string };
 
-export const INDUSTRY_SECTOR_OPTIONS: OptionItem[] = [
-  { label: "Federal Government (US)", value: "Federal Government (US)" },
-  { label: "State Government (US)", value: "State Government (US)" },
-  { label: "Local Government (US)", value: "Local Government (US)" },
-  { label: "Education - K-12", value: "Education - K-12" },
-  {
-    label: "Education - Higher Education",
-    value: "Education - Higher Education",
-  },
-  { label: "Energy & Utilities", value: "Energy & Utilities" },
-  {
-    label: "Financial Services - Banking",
-    value: "Financial Services - Banking",
-  },
-  {
-    label: "Financial Services - Investment Management",
-    value: "Financial Services - Investment Management",
-  },
-  {
-    label: "Financial Services - Insurance",
-    value: "Financial Services - Insurance",
-  },
-  {
-    label: "Healthcare - Hospitals & Health Systems",
-    value: "Healthcare - Hospitals & Health Systems",
-  },
-  {
-    label: "Healthcare - Payers (Insurance)",
-    value: "Healthcare - Payers (Insurance)",
-  },
-  {
-    label: "Healthcare - Pharmaceuticals",
-    value: "Healthcare - Pharmaceuticals",
-  },
-  {
-    label: "Healthcare - Medical Devices",
-    value: "Healthcare - Medical Devices",
-  },
-  { label: "Manufacturing - Industrial", value: "Manufacturing - Industrial" },
-  {
-    label: "Manufacturing - Consumer Goods",
-    value: "Manufacturing - Consumer Goods",
-  },
-  { label: "Professional Services", value: "Professional Services" },
-  { label: "Retail & E-commerce", value: "Retail & E-commerce" },
-  { label: "Technology & Software", value: "Technology & Software" },
-  { label: "Transportation & Logistics", value: "Transportation & Logistics" },
-  // { label: "Education", value: "Education" },
-  { label: "Other", value: "Other" },
-];
+/** Flattened from buyer onboarding sector picker (same values users selected at onboarding). */
+export const INDUSTRY_SECTOR_OPTIONS: OptionItem[] = BUYER_INDUSTRY_SECTORS.flatMap(
+  (group) =>
+    group.options.map((opt) => ({
+      label: opt.label,
+      value: opt.value,
+    })),
+);
 
 export const EMPLOYEE_COUNT_OPTIONS: OptionItem[] = [
   { label: "1-50", value: "1-50" },
@@ -64,17 +28,10 @@ export const EMPLOYEE_COUNT_OPTIONS: OptionItem[] = [
   { label: "50,000+", value: "50,000+" },
 ];
 
-export const OPERATING_REGIONS_OPTIONS: OptionItem[] = [
-  { label: "United States", value: "United States" },
-  { label: "Canada", value: "Canada" },
-  { label: "European Union", value: "European Union" },
-  { label: "United Kingdom", value: "United Kingdom" },
-  { label: "Asia-Pacific", value: "Asia-Pacific" },
-  { label: "Latin America", value: "Latin America" },
-  { label: "Middle East", value: "Middle East" },
-  { label: "Africa", value: "Africa" },
-  { label: "Global (All Regions)", value: "Global (All Regions)" },
-];
+/** Same list as buyer onboarding geography step. */
+export const OPERATING_REGIONS_OPTIONS: OptionItem[] = BUYER_OPERATING_REGIONS.map(
+  (opt) => ({ label: opt.label, value: opt.value }),
+);
 
 export const OWNING_DEPARTMENT_OPTIONS: OptionItem[] = [
   { label: "Customer Service", value: "Customer Service" },

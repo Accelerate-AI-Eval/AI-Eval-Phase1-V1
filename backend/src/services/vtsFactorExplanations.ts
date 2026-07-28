@@ -83,6 +83,71 @@ export interface VtsFormulaResult {
   };
 }
 
+/**
+ * Rebuild factor explanations from stored formula_detail (or scoringResult.detail).
+ * Used when report.trustScore.factorExplanations was never persisted (older reports,
+ * CSV import path, or buildFactorExplanations failed at generation time).
+ */
+export function rebuildFactorExplanationsFromStoredDetail(opts: {
+  storedTrustScore: number;
+  productRisk: number | null;
+  governanceRisk: number | null;
+  operationalRisk: number | null;
+  formulaDetail: unknown;
+  formulaInput?: Record<string, unknown>;
+}): FactorExplanation[] {
+  const detail =
+    opts.formulaDetail != null &&
+    typeof opts.formulaDetail === "object" &&
+    !Array.isArray(opts.formulaDetail)
+      ? (opts.formulaDetail as Record<string, unknown>)
+      : null;
+  if (!detail) return [];
+
+  const gr = detail.governance_risk;
+  const or = detail.operational_risk;
+  const pr = detail.product_risk;
+  if (!gr || typeof gr !== "object" || !or || typeof or !== "object" || !pr || typeof pr !== "object") {
+    return [];
+  }
+
+  const productRisk =
+    opts.productRisk != null && Number.isFinite(opts.productRisk)
+      ? opts.productRisk
+      : Number(
+          (pr as Record<string, unknown>).value ??
+            ((pr as Record<string, unknown>).product_risk as Record<string, unknown> | undefined)?.value ??
+            0,
+        );
+  const governanceRisk =
+    opts.governanceRisk != null && Number.isFinite(opts.governanceRisk)
+      ? opts.governanceRisk
+      : Number((gr as Record<string, unknown>).value ?? 0);
+  const operationalRisk =
+    opts.operationalRisk != null && Number.isFinite(opts.operationalRisk)
+      ? opts.operationalRisk
+      : Number((or as Record<string, unknown>).value ?? 0);
+
+  try {
+    return buildFactorExplanations(
+      {
+        vendor_trust_score: opts.storedTrustScore,
+        product_risk: productRisk,
+        governance_risk: governanceRisk,
+        operational_risk: operationalRisk,
+        detail: {
+          governance_risk: gr as GrDetail,
+          operational_risk: or as OrDetail,
+          product_risk: pr as VtsFormulaResult["detail"]["product_risk"],
+        },
+      },
+      opts.formulaInput ?? {},
+    );
+  } catch {
+    return [];
+  }
+}
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function mkFactor(

@@ -13,6 +13,7 @@ const MULTISELECT_KEYS = [
   "impactedStakeholders",
   "vendorCertifications",
   "operatingRegions",
+  "industrySector",
 ];
 
 type FormData = Record<string, string>;

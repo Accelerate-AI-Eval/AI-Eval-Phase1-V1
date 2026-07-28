@@ -19,6 +19,7 @@ import { generatedProfileReports } from "../../schema/schema.js";
 import { buildIrsScoreTrace } from "../../services/irsScoreTrace.js";
 import { buildIrsFactorExplanations } from "../../services/irsFactorExplanations.js";
 import { buildVtsScoreTrace } from "../../services/vtsScoreTrace.js";
+import { rebuildFactorExplanationsFromStoredDetail } from "../../services/vtsFactorExplanations.js";
 import { buildScsScoreTrace } from "../../services/scsScoreTrace.js";
 import { findAttestationForBuyerVendorProduct } from "../../services/findAttestationForBuyerVendorProduct.js";
 import { scoreCotsBuyerWithPython } from "../../services/pythonScoringClient.js";
@@ -27,6 +28,30 @@ import {
   appendixSalesRiskBreakdown,
   extractOverallRiskScoreFromReport,
 } from "../../utils/mergeScoreRationale.js";
+import { getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
+
+/** Prefer DB column, then report JSON modelId fields, then active Controls model. */
+function resolveStoredLlmModelId(
+  columnId: string | null | undefined,
+  report: Record<string, unknown> | null | undefined,
+): string | null {
+  const fromCol = typeof columnId === "string" ? columnId.trim() : "";
+  if (fromCol) return fromCol;
+  if (report != null && typeof report === "object") {
+    for (const key of ["llmModelId", "llm_model_id", "modelId", "model_id"] as const) {
+      const v = report[key];
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+  }
+  // Older / CSV reports may never have stamped a model — fall back to Controls selection.
+  try {
+    const active = getActiveLlmModelMeta().modelId?.trim();
+    if (active) return active;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
 
 type IrsBreakdown = {
   vendorRisk: number;
@@ -179,6 +204,7 @@ export async function getIrsScoreTrace(req: Request, res: Response): Promise<voi
         vendor_name:                      cotsBuyerAssessments.vendor_name,
         specific_product:                 cotsBuyerAssessments.specific_product,
         vendor_risk_assessment_report:    cotsBuyerAssessments.vendor_risk_assessment_report,
+        llm_model_id:                     cotsBuyerAssessments.llm_model_id,
         // Scoring input fields (DB column names → camelCase keys for scoring)
         digital_maturity:                 cotsBuyerAssessments.digital_maturity,
         governance_maturity:              cotsBuyerAssessments.governance_maturity,
@@ -312,10 +338,11 @@ export async function getIrsScoreTrace(req: Request, res: Response): Promise<voi
     }
 
     const irsFactorExplanations = buildIrsFactorExplanations(probe);
+    const llmModelId = resolveStoredLlmModelId(row.llm_model_id, reportRaw);
 
     res.status(200).json({
       success: true,
-      data: { ...probe, irsFactorExplanations, irsRefreshed },
+      data: { ...probe, irsFactorExplanations, irsRefreshed, llmModelId },
     });
   } catch (e) {
     console.error("getIrsScoreTrace:", e);
@@ -350,6 +377,8 @@ export async function getVtsScoreTrace(req: Request, res: Response): Promise<voi
       product_risk:   generatedProfileReports.product_risk,
       governance_risk: generatedProfileReports.governance_risk,
       operational_risk: generatedProfileReports.operational_risk,
+      formula_detail: generatedProfileReports.formula_detail,
+      llm_model_id:   generatedProfileReports.llm_model_id,
     };
 
     // Primary lookup: reportId is the generated_profile_reports UUID
@@ -410,7 +439,59 @@ export async function getVtsScoreTrace(req: Request, res: Response): Promise<voi
     }
 
     const rawFactorExplanations = trustScoreBlock?.factorExplanations;
-    const factorExplanations = Array.isArray(rawFactorExplanations) ? rawFactorExplanations : undefined;
+    let factorExplanations = Array.isArray(rawFactorExplanations) ? rawFactorExplanations : undefined;
+
+    // Older / CSV-imported reports may lack factorExplanations. Rebuild from stored
+    // formula_detail (or scoringResult.detail) so Score Trace does not warn about re-scoring.
+    if (!factorExplanations?.length) {
+      const scoringResult = report?.scoringResult as Record<string, unknown> | undefined;
+      const detailSource =
+        row.formula_detail ??
+        scoringResult?.detail ??
+        null;
+      const rebuilt = rebuildFactorExplanationsFromStoredDetail({
+        storedTrustScore: Number(row.trust_score ?? 0),
+        productRisk:
+          row.product_risk != null && Number.isFinite(Number(row.product_risk))
+            ? Number(row.product_risk)
+            : null,
+        governanceRisk:
+          row.governance_risk != null && Number.isFinite(Number(row.governance_risk))
+            ? Number(row.governance_risk)
+            : null,
+        operationalRisk:
+          row.operational_risk != null && Number.isFinite(Number(row.operational_risk))
+            ? Number(row.operational_risk)
+            : null,
+        formulaDetail: detailSource,
+      });
+      if (rebuilt.length > 0) {
+        factorExplanations = rebuilt;
+
+        // Persist so subsequent opens skip rebuild and stay consistent with generation path.
+        try {
+          const trustKey = report && "trustScore" in report ? "trustScore" : "trust_score";
+          const prevTrust =
+            trustScoreBlock && typeof trustScoreBlock === "object" ? trustScoreBlock : {};
+          const updatedReport = {
+            ...(report && typeof report === "object" ? report : {}),
+            [trustKey]: {
+              ...prevTrust,
+              factorExplanations: rebuilt,
+            },
+          };
+          await db
+            .update(generatedProfileReports)
+            .set({ report: updatedReport })
+            .where(eq(generatedProfileReports.id, row.id));
+        } catch (persistErr) {
+          console.warn(
+            "getVtsScoreTrace: failed to persist rebuilt factorExplanations:",
+            persistErr instanceof Error ? persistErr.message : persistErr,
+          );
+        }
+      }
+    }
 
     const trace = buildVtsScoreTrace({
       storedTrustScore: Number(row.trust_score ?? 0),
@@ -420,7 +501,12 @@ export async function getVtsScoreTrace(req: Request, res: Response): Promise<voi
       factorExplanations,
     });
 
-    res.status(200).json({ success: true, data: trace });
+    const llmModelId = resolveStoredLlmModelId(
+      row.llm_model_id,
+      report && typeof report === "object" ? report : null,
+    );
+
+    res.status(200).json({ success: true, data: { ...trace, llmModelId } });
   } catch (e) {
     console.error("getVtsScoreTrace:", e);
     res.status(500).json({ error: "Failed to generate VTS score trace" });
@@ -451,6 +537,7 @@ export async function getScsScoreTrace(req: Request, res: Response): Promise<voi
         report: customerRiskAssessmentReports.report,
         title: customerRiskAssessmentReports.title,
         score_rationale: customerRiskAssessmentReports.score_rationale,
+        llm_model_id: customerRiskAssessmentReports.llm_model_id,
       })
       .from(customerRiskAssessmentReports)
       .where(eq(customerRiskAssessmentReports.assessment_id, assessmentId))
@@ -544,7 +631,9 @@ export async function getScsScoreTrace(req: Request, res: Response): Promise<voi
           : null,
     });
 
-    res.status(200).json({ success: true, data: trace });
+    const llmModelId = resolveStoredLlmModelId(row.llm_model_id, report);
+
+    res.status(200).json({ success: true, data: { ...trace, llmModelId } });
   } catch (e) {
     console.error("getScsScoreTrace:", e);
     res.status(500).json({ error: "Failed to generate SCS score trace" });

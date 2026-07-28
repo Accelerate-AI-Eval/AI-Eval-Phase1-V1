@@ -22,7 +22,8 @@ function firstNonEmptyText(...vals: (string | null | undefined)[]): string | und
 /**
  * GET /vendorDirectory/:vendorId/products
  * Returns only products (attestations) that are COMPLETED, visible_to_buyer = true,
- * and not archived (expiry in the future, not user-archived on the attestation). Vendor must have publicDirectoryListing = true.
+ * and not archived (expiry in the future, not user-archived on the attestation).
+ * Public Directory Listing is no longer required — "Visible to buyers" on the product is enough.
  * Query ?all=true (system admin only): returns all attestations for this vendor (any status).
  * Non-admin responses omit products when the vendor organization is inactive (directory visibility).
  */
@@ -62,6 +63,7 @@ const listVendorVisibleProducts = async (req: Request, res: Response): Promise<v
       .select({
         id: vendors.id,
         userId: vendors.userId,
+        organizationId: vendors.organizationId,
         publicDirectoryListing: vendors.publicDirectoryListing,
         organizationStatus: createOrganization.organizationStatus,
       })
@@ -79,16 +81,19 @@ const listVendorVisibleProducts = async (req: Request, res: Response): Promise<v
       vendor.organizationStatus != null &&
       String(vendor.organizationStatus).trim().toLowerCase() === "active";
 
-    if (!allProducts && (!vendor.publicDirectoryListing || !orgActive)) {
+    if (!allProducts && !orgActive) {
       res.status(200).json({ success: true, products: [] });
       return;
     }
 
-    const vendorUserId = vendor.userId != null ? Number(vendor.userId) : null;
-    if (vendorUserId == null) {
+    const vendorOrgId = String(vendor.organizationId ?? "").trim();
+    if (!vendorOrgId) {
       res.status(200).json({ success: true, products: [] });
       return;
     }
+
+    /** Scope products to this vendor's organization — not user_id (CSV imports share one user across orgs). */
+    const orgScope = sql`trim(coalesce(${vendorSelfAttestations.organization_id}, '')) = ${vendorOrgId}`;
 
     const rows =
       allProducts && isSystemAdmin
@@ -107,7 +112,7 @@ const listVendorVisibleProducts = async (req: Request, res: Response): Promise<v
             .from(vendorSelfAttestations)
             .where(
               and(
-                eq(vendorSelfAttestations.user_id, vendorUserId),
+                orgScope,
                 isNull(vendorSelfAttestations.user_archived_at)
               )
             )
@@ -127,7 +132,7 @@ const listVendorVisibleProducts = async (req: Request, res: Response): Promise<v
             .from(vendorSelfAttestations)
             .where(
               and(
-                eq(vendorSelfAttestations.user_id, vendorUserId),
+                orgScope,
                 eq(vendorSelfAttestations.status, "COMPLETED"),
                 eq(vendorSelfAttestations.visible_to_buyer, true),
                 sql`(${vendorSelfAttestations.expiry_at} IS NULL OR ${vendorSelfAttestations.expiry_at} >= now())`,

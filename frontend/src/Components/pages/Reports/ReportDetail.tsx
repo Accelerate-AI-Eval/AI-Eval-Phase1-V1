@@ -326,9 +326,15 @@ function buildAppendixRiskTableRows(
 
 function formatReportValue(val: unknown): string {
   if (val == null || val === "") return "—"
-  if (Array.isArray(val)) return val.map((v) => stripMarkdownBold(String(v))).join(", ")
+  if (Array.isArray(val)) {
+    const joined = val
+      .map((v) => stripMarkdownArtifacts(String(v)))
+      .filter((s) => s.length > 0)
+      .join(", ")
+    return joined || "—"
+  }
   if (typeof val === "object") return JSON.stringify(val)
-  return stripMarkdownBold(String(val))
+  return stripMarkdownArtifacts(String(val)) || "—"
 }
 
 /** ROI time-saved source line: show as "Source: …" unless already prefixed. */
@@ -339,9 +345,21 @@ function formatRoiTimeSavedSourceLine(val: unknown): string {
   return `Source: ${s}`
 }
 
-/** Remove markdown bold markers (**) from report text so they are not shown in the UI. */
+/** Remove markdown bold (**) and horizontal rules (---) from report text so they are not shown in the UI. */
+function stripMarkdownArtifacts(s: string): string {
+  return String(s)
+    .replace(/\*\*/g, "")
+    .replace(/^[ \t]*-{3,}[ \t]*$/gm, "")
+    .replace(/\s*-{3,}\s*/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim()
+}
+
+/** @deprecated use stripMarkdownArtifacts */
 function stripMarkdownBold(s: string): string {
-  return String(s).replace(/\*\*/g, "")
+  return stripMarkdownArtifacts(s)
 }
 
 function partitionComplianceRequirements(
@@ -953,12 +971,15 @@ function ReportDetail() {
   const reportNavState = location.state as {
     reportTitle?: string
     hideFrameworkMapping?: boolean
+    autoExportPdf?: boolean
   } | null
   const reportTitleFromNavState = (reportNavState?.reportTitle ?? "").trim()
   const hideFrameworkMapping = reportNavState?.hideFrameworkMapping === true || isSystemUserRole()
+  const autoExportPdf = reportNavState?.autoExportPdf === true
   const usePortalStyleUi = isVendorViewer() || isSystemUserRole()
   const cachedTitleKey = reportId ? `completeReportTitle:${reportId}` : ""
   const cachedReportTitle = cachedTitleKey ? (sessionStorage.getItem(cachedTitleKey) ?? "").trim() : ""
+  const autoExportTriggeredRef = useRef(false)
   const showExportPdf = !isSystemUserRole()
   const [report, setReport] = useState<{
     id: string
@@ -1083,6 +1104,33 @@ function ReportDetail() {
     }
   }, [report])
 
+  // Card download icon: open report then auto-export PDF once content is ready
+  useEffect(() => {
+    if (!autoExportPdf || loading || notFound || !report || autoExportTriggeredRef.current) return
+    autoExportTriggeredRef.current = true
+    navigate(location.pathname, {
+      replace: true,
+      state: {
+        reportTitle: reportTitleFromNavState || undefined,
+        hideFrameworkMapping: reportNavState?.hideFrameworkMapping,
+      },
+    })
+    const t = window.setTimeout(() => {
+      void handleExportPdf()
+    }, 600)
+    return () => window.clearTimeout(t)
+  }, [
+    autoExportPdf,
+    loading,
+    notFound,
+    report,
+    handleExportPdf,
+    navigate,
+    location.pathname,
+    reportTitleFromNavState,
+    reportNavState?.hideFrameworkMapping,
+  ])
+
   if (loading) {
     return (
       <div className="sec_user_page org_settings_page reports_page report_detail_page">
@@ -1167,7 +1215,7 @@ function ReportDetail() {
   const contextSummaryPreview = (() => {
     const raw = generated?.executiveSummary ?? generated?.summary
     if (raw == null || String(raw).trim() === "") return ""
-    return stripMarkdownBold(String(raw)).replace(/\s*---+\s*/g, " ").replace(/\s+/g, " ").trim()
+    return stripMarkdownBold(String(raw)).replace(/\s+/g, " ").trim()
   })()
 
   const recsWithPriority = generated?.recommendationsWithPriority ?? []
@@ -1404,18 +1452,17 @@ function ReportDetail() {
           {generated?.executiveSummary ? (
             (() => {
               const text = stripMarkdownBold(generated.executiveSummary)
-                .replace(/\s*---+\s*/g, " ")
                 .trim();
               return text
                 ? text
                     .split(/\n\n/)
-                    .map((p) => stripMarkdownBold(p).replace(/\s*---+\s*/g, " ").trim())
+                    .map((p) => stripMarkdownBold(p).trim())
                     .filter((p) => p.length > 0 && !/^\s*-{2,}\s*$/.test(p))
                     .map((p, i) => <p key={i}>{p}</p>)
                 : <p>No executive summary generated.</p>;
             })()
           ) : generated?.summary ? (
-            <p>{stripMarkdownBold(String(generated.summary)).replace(/\s*---+\s*/g, " ").trim()}</p>
+            <p>{stripMarkdownBold(String(generated.summary)).trim()}</p>
           ) : (
             <p>No executive summary generated.</p>
           )}
@@ -1508,8 +1555,14 @@ function ReportDetail() {
           </h2>
           <span className="report_overall_risk_right">
             <span className="report_overall_risk_score_row">
-              <span className="report_overall_risk_score_label">Overall Risk Score</span>
-              <span className="report_overall_risk_score_wrap">{renderRiskScoreCircle(`${overallScore}/100`)}</span>
+              <span className="report_overall_risk_score_label">
+                {usePortalStyleUi ? "Overall Confidence Score" : "Overall Risk Score"}
+              </span>
+              <span className="report_overall_risk_score_wrap">
+                {renderRiskScoreCircle(
+                  `${usePortalStyleUi ? alignmentScoreDisplay : overallScore}/100`,
+                )}
+              </span>
             </span>
             <span
               className={`report_risk_badge ${riskLevelClass(overallLevel)} ${overallRiskBadgeVariantClass(overallLevel)}`}

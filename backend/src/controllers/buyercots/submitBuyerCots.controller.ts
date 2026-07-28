@@ -131,7 +131,22 @@ function buildPayloadCots(body: Record<string, unknown>) {
     organization_id: get("organizationId") != null ? String(get("organizationId")).slice(0, 255) : null,
     organization_name: get("organizationName") != null ? String(get("organizationName")).slice(0, 255) : null,
     industry: get("industry") != null ? String(get("industry")).slice(0, 200) : null,
-    industry_sector: get("industrySector") != null ? String(get("industrySector")).slice(0, 200) : null,
+    industry_sector: (() => {
+      const raw = get("industrySector");
+      if (raw == null) return null;
+      if (Array.isArray(raw)) return raw.map(String).filter(Boolean).join(", ").slice(0, 200);
+      const s = String(raw).trim();
+      if (!s) return null;
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) {
+          return parsed.map(String).filter(Boolean).join(", ").slice(0, 200);
+        }
+      } catch {
+        /* plain string */
+      }
+      return s.slice(0, 200);
+    })(),
     employee_count: get("employeeCount") != null ? String(get("employeeCount")).slice(0, 100) : null,
     geographic_regions: parseJson(get("geographicRegions") ?? get("operatingRegions")),
     pain_point: get("businessPainPoint") != null ? String(get("businessPainPoint")) : null,

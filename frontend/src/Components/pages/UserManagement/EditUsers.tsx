@@ -7,7 +7,7 @@ import Button from "../../UI/Button";
 import "../UserProfile/user_profile.css";
 import "../../../styles/popovers.css";
 
-const EditUsers = ({ isUserId, setIsEdit, isEdit, isSelectedUser }) => {
+const EditUsers = ({ isUserId, setIsEdit, isEdit, isSelectedUser, onUpdated }) => {
   const BASE_URL = import.meta.env.VITE_BASE_URL;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -174,11 +174,15 @@ const EditUsers = ({ isUserId, setIsEdit, isEdit, isSelectedUser }) => {
       if (response.ok) {
         toast.success("User updated successfully! ");
         setIsError("");
-        setIsModalOpen(false);
-        setEmail("");
-        setOrganization("");
-        setIsReason("");
-        setRole("");
+        // Optimistically refresh parent table with new role/status before closing
+        if (typeof onUpdated === "function") {
+          onUpdated({
+            id: isUserId,
+            role,
+            userStatus: isStatus,
+          });
+        }
+        handleCloseModal();
       } else {
         console.error("Server error:", result.message);
         toast.error(result.message);

@@ -559,7 +559,7 @@ const VendorDirectory = () => {
     }
   }, []);
 
-  /** Listed Vendors: only vendors who have turned on Public Directory Listing. */
+  /** Listed Vendors: vendors with at least one product marked Visible to buyers. */
   const fetchListedVendors = useCallback(async () => {
     const token = sessionStorage.getItem("bearerToken");
     if (!token) {
@@ -782,7 +782,16 @@ const VendorDirectory = () => {
           }),
         );
         const flat = results.flat();
-        setDirectoryProducts(flat);
+        // Guard against duplicate cards when multiple vendor rows share ownership data.
+        const seen = new Set<string>();
+        const deduped = flat.filter((dp) => {
+          const key = String(dp.productId ?? "").trim();
+          if (!key) return true;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setDirectoryProducts(deduped);
       } catch {
         setDirectoryProducts([]);
       } finally {
@@ -1009,7 +1018,9 @@ const VendorDirectory = () => {
         const descRaw = canShowBuyerFields
           ? dp.summary?.trim() || dp.productDescription?.trim() || ""
           : "";
-        const desc = descRaw ? truncate(descRaw, 200) : "";
+        const desc = descRaw
+          ? truncate(descRaw.replace(/\*\*/g, "").replace(/\s*-+\s*$/, "").trim(), 200)
+          : "";
         const vendorName = displayVendorName(dp.vendor);
         const sectorTitle =
           formatSectorCard(dp.sector ?? dp.vendor.sector) || "Not specified";
@@ -1178,9 +1189,8 @@ const VendorDirectory = () => {
             <h1 className="page_header_title">AI Vendor Directory</h1>
             <p className="page_header_subtitle">
               Explore premier AI solutions with trust scores, compliance
-              signals, and sector intelligence. Browse vendors who have enabled
-              public directory listing and surface products aligned to your use
-              case.
+              signals, and sector intelligence. Browse vendors with products
+              visible to buyers and surface solutions aligned to your use case.
             </p>
           </div>
         </div>
@@ -1253,7 +1263,7 @@ const VendorDirectory = () => {
         vendors.length === 0 && (
           <div className="vendor_directory_empty">
             {vendorTab === "listed" || (vendorTab === "all" && isBuyer)
-              ? "No vendors have enabled Public Directory Listing yet."
+              ? "No vendors have products visible to buyers yet."
               : "No vendors have completed onboarding yet."}
           </div>
         )}

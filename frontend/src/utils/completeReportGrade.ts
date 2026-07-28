@@ -290,13 +290,13 @@ function hslToRgbString(h: number, sPercent: number, lPercent: number): string {
 
 /**
  * Vendor trust / assessment grade colors on the vendor portal (lowest score → highest).
- * ≥ 90 uses {@link VENDOR_TRUST_ASSESSMENT_GRADE_COLORS}[4] (`#a1ff0a`).
+ * ≥ 90 uses {@link VENDOR_TRUST_ASSESSMENT_GRADE_COLORS}[4] (`#0aff99`).
  */
 export const VENDOR_TRUST_ASSESSMENT_GRADE_COLORS = [
   "#ff6201",
   "#ff8700",
   "#ffba08",
-  "#a1ff0a",
+  "#52b788",
   "#0aff99",
 ] as const;
 

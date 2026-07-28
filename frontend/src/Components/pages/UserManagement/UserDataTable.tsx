@@ -84,9 +84,10 @@ const UserDataTable = ({ refreshKey = 0, viewOnly = false }: { refreshKey?: numb
 
   const LOADER_MIN_MS = 1500; // show loader at least 2–3 seconds
 
-  const usersData = async () => {
+  const usersData = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
     const token = sessionStorage.getItem("bearerToken");
-    setLoading(true);
+    if (!silent) setLoading(true);
     const startTime = Date.now();
     try {
       const response = await fetch(`${BASE_URL}/allUsers`, {
@@ -104,10 +105,12 @@ const UserDataTable = ({ refreshKey = 0, viewOnly = false }: { refreshKey?: numb
     } catch (error) {
       console.log(error);
     } finally {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, LOADER_MIN_MS - elapsed);
-      await new Promise((r) => setTimeout(r, remaining));
-      setLoading(false);
+      if (!silent) {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, LOADER_MIN_MS - elapsed);
+        await new Promise((r) => setTimeout(r, remaining));
+        setLoading(false);
+      }
     }
   };
 
@@ -164,6 +167,44 @@ const UserDataTable = ({ refreshKey = 0, viewOnly = false }: { refreshKey?: numb
       statusLabel.includes(search)
     );
   });
+
+  const handleUserUpdated = (patch?: {
+    id?: string | number;
+    role?: string;
+    userStatus?: string;
+  }) => {
+    // Immediate local update so Role/Status change without a full page refresh
+    if (patch?.id != null) {
+      setTableData((prev) =>
+        prev.map((row) => {
+          if (String(row.id) !== String(patch.id)) return row;
+          return {
+            ...row,
+            ...(patch.role != null && patch.role !== ""
+              ? {
+                  role: patch.role,
+                  // Keep platform role fields in sync for system org roles
+                  ...(String(patch.role).toLowerCase().startsWith("system")
+                    ? { user_platform_role: patch.role }
+                    : {}),
+                }
+              : {}),
+            ...(patch.userStatus != null && patch.userStatus !== ""
+              ? { userStatus: patch.userStatus }
+              : {}),
+          };
+        }),
+      );
+      // If status moved to inactive while viewing Active (or vice versa), switch tab so the row stays visible
+      if (patch.userStatus) {
+        const next = String(patch.userStatus).toLowerCase().trim();
+        if (next === "inactive" && statusScope === "active") setStatusScope("inactive");
+        if (next === "active" && statusScope === "inactive") setStatusScope("active");
+      }
+    }
+    // Silent refetch to stay in sync with server
+    void usersData({ silent: true });
+  };
 
   const updateUser = (row) => {
     setUserId(row.id);
@@ -547,7 +588,13 @@ const UserDataTable = ({ refreshKey = 0, viewOnly = false }: { refreshKey?: numb
       )}
     </div>
     {isEdit && (
-      <EditUsers isUserId={isUserId} setIsEdit={setIsEdit} isEdit={isEdit} isSelectedUser={isSelectedUser} />
+      <EditUsers
+        isUserId={isUserId}
+        setIsEdit={setIsEdit}
+        isEdit={isEdit}
+        isSelectedUser={isSelectedUser}
+        onUpdated={handleUserUpdated}
+      />
     )}
 
     <Modal isOpen={!!resendConfirm} onClose={closeResendConfirm}>

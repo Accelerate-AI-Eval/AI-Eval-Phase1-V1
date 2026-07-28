@@ -63,16 +63,58 @@ function parseList(v: unknown): string[] {
   return [];
 }
 
-function extractVendorTrustScore(attestationRow: Record<string, unknown> | null): number {
+/**
+ * Vendor Trust Score (0–100) — same resolution order as Product Profile UI:
+ * 1) generated_profile_report.trustScore.overallScore (> 0)
+ * 2) attestation.latest_trust_score (> 0) — denormalized from generated_profile_reports
+ * 3) formula.vendor_trust_score / report.vendor_trust_score (> 0)
+ * 4) default 50 when attestation is missing or score unavailable
+ */
+export function extractVendorTrustScore(attestationRow: Record<string, unknown> | null): number {
   if (!attestationRow) return 50;
-  const report = attestationRow.generated_profile_report as Record<string, unknown> | undefined;
-  const trustScore = report?.trustScore as Record<string, unknown> | undefined;
-  const raw =
-    trustScore?.overallScore ??
-    (report?.formula as Record<string, unknown> | undefined)?.vendor_trust_score ??
-    report?.vendor_trust_score;
-  const n = Number(raw);
-  return clamp01(Number.isFinite(n) ? n : 50);
+
+  const report =
+    attestationRow.generated_profile_report != null &&
+    typeof attestationRow.generated_profile_report === "object" &&
+    !Array.isArray(attestationRow.generated_profile_report)
+      ? (attestationRow.generated_profile_report as Record<string, unknown>)
+      : null;
+
+  const trustBlockRaw = report?.trustScore ?? report?.trust_score;
+  const trustBlock =
+    trustBlockRaw != null && typeof trustBlockRaw === "object" && !Array.isArray(trustBlockRaw)
+      ? (trustBlockRaw as Record<string, unknown>)
+      : null;
+
+  const fromOverall = Number(trustBlock?.overallScore ?? trustBlock?.overall_score);
+  if (Number.isFinite(fromOverall) && fromOverall > 0) {
+    return clamp01(Math.round(fromOverall));
+  }
+
+  const fromLatest = Number(
+    attestationRow.latest_trust_score ?? attestationRow.latestTrustScore,
+  );
+  if (Number.isFinite(fromLatest) && fromLatest > 0) {
+    return clamp01(Math.round(fromLatest));
+  }
+
+  const formula =
+    report?.formula != null && typeof report.formula === "object" && !Array.isArray(report.formula)
+      ? (report.formula as Record<string, unknown>)
+      : null;
+  const fromFormula = Number(
+    formula?.vendor_trust_score ??
+      formula?.formula_vendor_trust_score ??
+      report?.vendor_trust_score,
+  );
+  if (Number.isFinite(fromFormula) && fromFormula > 0) {
+    return clamp01(Math.round(fromFormula));
+  }
+
+  // Explicit 0 only if that is truly all we have
+  if (Number.isFinite(fromOverall) && fromOverall === 0) return 0;
+  if (Number.isFinite(fromLatest) && fromLatest === 0) return 0;
+  return 50;
 }
 
 function isHighStakes(criticality: string): boolean {

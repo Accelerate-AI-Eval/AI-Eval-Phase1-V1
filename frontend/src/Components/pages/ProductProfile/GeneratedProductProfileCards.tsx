@@ -76,10 +76,10 @@ export interface SectionVisibilityControl {
   onToggle: (value: boolean) => void;
 }
 
-/** Remove trailing "---", "--", or " -" from summary text for display. */
+/** Remove markdown bold markers (**) and trailing dashes from summary text for display. */
 function summaryForDisplay(summary: string | null | undefined): string {
   if (!summary || typeof summary !== "string") return "";
-  return summary.replace(/\s*-+\s*$/, "").trim();
+  return summary.replace(/\*\*/g, "").replace(/\s*-+\s*$/, "").trim();
 }
 
 /** Section 4 (AI governance / ethics): show "Human Oversight" instead of "Human-in-the-Loop" style labels. */

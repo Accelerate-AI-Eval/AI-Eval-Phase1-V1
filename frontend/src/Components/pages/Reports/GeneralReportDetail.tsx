@@ -228,6 +228,8 @@ function renderBriefLine(
 ): React.ReactNode {
   const trimmed = line.trim();
   if (!trimmed) return null;
+  // Skip markdown horizontal rules (---, ***, ___)
+  if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) return null;
   const bullet = /^\s*[-*]\s+/.test(line);
   if (bullet && (isTopBlockersSectionTitle(sectionTitle) || isTopRisksSectionTitle(sectionTitle))) {
     const { main, severity, likelihood, impact, evidence } = parseTopBlockerLine(line);
@@ -276,6 +278,9 @@ function renderBriefLine(
   let remaining = trimmed.replace(/^\s*[-*]\s+/, "");
   remaining = stripAssumptionLabel(remaining);
   if (stripNumbers) remaining = stripNumberedPrefix(remaining);
+  // Remove leftover markdown horizontal rules from the line
+  remaining = remaining.replace(/\s*-{3,}\s*/g, " ").trim();
+  if (!remaining) return null;
   const boldRegex = /\*\*([^*]+)\*\*/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;

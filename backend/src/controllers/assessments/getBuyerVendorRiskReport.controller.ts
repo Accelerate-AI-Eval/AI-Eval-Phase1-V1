@@ -12,6 +12,8 @@ import {
 } from "../agents/buyerVendorRiskReportAgent.js";
 import { buildBuyerCotsFrameworkMappingRows } from "../../services/buyerCotsFrameworkMapping.js";
 import { mergeLlmModelIntoReport } from "../../utils/activeLlmModelMeta.js";
+import { findAttestationForBuyerVendorProduct } from "../../services/findAttestationForBuyerVendorProduct.js";
+import { extractVendorTrustScore } from "../../services/buyerImplementationRiskScore.js";
 
 /**
  * GET /buyerCotsAssessment/:id/vendor-risk-report
@@ -158,15 +160,31 @@ const getBuyerVendorRiskReport = async (req: Request, res: Response): Promise<vo
       typeof (row as { llmModelLabel?: string | null }).llmModelLabel === "string"
         ? String((row as { llmModelLabel?: string | null }).llmModelLabel).trim()
         : "";
+    // Use the same product-profile VTS the Product Profile page displays.
+    let productProfileVts: number | null = null;
+    try {
+      const attestation = await findAttestationForBuyerVendorProduct(vendorName, productName);
+      if (attestation) {
+        productProfileVts = extractVendorTrustScore(attestation);
+      }
+    } catch (e) {
+      console.error("getBuyerVendorRiskReport: product-profile VTS lookup failed:", e);
+    }
     const enriched = mergeLlmModelIntoReport(
-      enrichStoredBuyerVendorReport(reportObj, vendorName, productName, {
-        criticality: row.criticality,
-        riskAppetite: row.risk_appetite,
-        dataSensitivity: row.data_sensitivity,
-        governanceMaturity: row.governance_maturity,
-        targetTimeline: row.target_timeline,
-        regulatorySnippet: regulatorySnippetFromJson(row.regulatory_requirments),
-      }) as Record<string, unknown>,
+      enrichStoredBuyerVendorReport(
+        reportObj,
+        vendorName,
+        productName,
+        {
+          criticality: row.criticality,
+          riskAppetite: row.risk_appetite,
+          dataSensitivity: row.data_sensitivity,
+          governanceMaturity: row.governance_maturity,
+          targetTimeline: row.target_timeline,
+          regulatorySnippet: regulatorySnippetFromJson(row.regulatory_requirments),
+        },
+        productProfileVts,
+      ) as Record<string, unknown>,
       llmModelId || null,
       llmModelLabel || null,
     );

@@ -88,8 +88,12 @@ function scoringBaseUrl(): string {
   return raw.replace(/\/+$/, "");
 }
 
-/** Fail fast when Python scoring is down so Node can fall back / finish the report. */
-const DEFAULT_TIMEOUT_MS = 12_000;
+/**
+ * VTS `/assessment/score` runs Bedrock LLM then returns (with formula fallback on LLM error).
+ * 12s was too short — Node aborted before Python could respond, so submit saved COMPLETED
+ * with no trust score and Product Profile showed "—".
+ */
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 async function postJson(
   url: string,

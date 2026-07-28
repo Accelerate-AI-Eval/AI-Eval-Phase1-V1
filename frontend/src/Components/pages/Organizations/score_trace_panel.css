@@ -97,7 +97,22 @@
   white-space: nowrap;
 }
 
-.stp_llm_model_label strong {
+.stp_llm_model_label strong,
+.stp_llm_model_row .admin_llm_model_label_text,
+.stp_llm_model_row .admin_llm_model_label_text strong {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.stp_llm_model_row .admin_llm_model_label_text {
+  color: #475569;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stp_llm_model_label strong,
+.stp_llm_model_row .admin_llm_model_label_text strong {
   font-weight: 600;
   color: #0f172a;
 }

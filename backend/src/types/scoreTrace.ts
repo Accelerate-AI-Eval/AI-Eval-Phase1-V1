@@ -62,6 +62,11 @@ export type ScoreTrace = {
    * SCS factor-level explanations — Improvement Plan for Vendor COTS / Sales Confidence.
    */
   scsFactorExplanations?: import("../services/scsFactorExplanations.js").ScsFactorExplanation[];
+  /**
+   * Bedrock / Controls model id that produced the stored report (when persisted).
+   * Used by explainability UI — prefer this over live Controls selection.
+   */
+  llmModelId?: string | null;
   generatedAt: string;
   internalOnly: true;
 };

@@ -3,7 +3,7 @@ import * as path from "node:path";
 import {
   normalizeBedrockModelAlias,
   stripUsModelPrefix,
-  withUsModelPrefix,
+  // withUsModelPrefix,
 } from "../utils/bedrockModelId.js";
 import { backendRoot } from "../utils/backendRoot.js";
 
@@ -87,7 +87,9 @@ function buildCache(): void {
   for (const model of parsed.models) {
     if (!isTextGenerationModel(model)) continue;
 
-    const resolvedId = withUsModelPrefix(model.modelId);
+    // Use catalog modelId as-is (no us. prepend).
+    // const resolvedId = withUsModelPrefix(model.modelId);
+    const resolvedId = model.modelId;
     byId.set(model.modelId, model);
     byId.set(resolvedId, model);
     options.push({
@@ -123,7 +125,7 @@ export function getCatalogModel(modelId: string): BedrockCatalogModel | undefine
   const candidates = [
     normalized,
     stripUsModelPrefix(normalized),
-    withUsModelPrefix(stripUsModelPrefix(normalized)),
+    // withUsModelPrefix(stripUsModelPrefix(normalized)),
   ];
 
   for (const candidate of candidates) {
@@ -143,7 +145,8 @@ export function findCatalogOption(modelId: string): LlmModelOption | undefined {
   const model = getCatalogModel(modelId);
   if (!model) return undefined;
   return {
-    id: withUsModelPrefix(model.modelId),
+    // id: withUsModelPrefix(model.modelId),
+    id: model.modelId,
     label: optionLabel(model),
     backend: "bedrock",
   };
@@ -153,5 +156,6 @@ export function resolveBedrockModelId(modelId: string): string {
   const normalized = normalizeBedrockModelAlias(modelId);
   const catalog = getCatalogModel(normalized);
   const base = catalog?.modelId ?? normalized;
-  return withUsModelPrefix(base);
+  // return withUsModelPrefix(base);
+  return base;
 }
