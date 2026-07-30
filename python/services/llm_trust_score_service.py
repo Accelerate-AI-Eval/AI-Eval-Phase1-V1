@@ -42,6 +42,11 @@ TRUST_SCORE_KNOWN_CATEGORIES = [
 ]
 
 
+def _strip_markdown_bold(value: str) -> str:
+    """Return generated report text without Markdown bold delimiters."""
+    return value.replace("**", "").strip()
+
+
 def _bedrock_client():
     kwargs: dict[str, Any] = {"region_name": settings.AWS_REGION}
     if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
@@ -96,8 +101,8 @@ def _parse_bullet_items(text: str) -> dict[str, str]:
         re.MULTILINE,
     )
     for m in bullet_regex.finditer(text):
-        label = m.group(1).strip()
-        value = re.sub(r"\n", " ", m.group(2)).strip()
+        label = _strip_markdown_bold(m.group(1))
+        value = _strip_markdown_bold(re.sub(r"\n", " ", m.group(2)))
         if label and value:
             items[label] = value
     return items
@@ -152,7 +157,11 @@ def parse_trust_score_block(section_text: str) -> dict[str, Any]:
 
     match = re.search(r"(\d+)\s*[(\[]?\s*([^)\]]*)", overall)
     overall_score = min(100, max(0, int(match.group(1)))) if match else 0
-    label = (match.group(2).strip() if match and match.group(2) else "") or "Not specified"
+    label = (
+        _strip_markdown_bold(match.group(2))
+        if match and match.group(2)
+        else ""
+    ) or "Not specified"
     if overall_score > 0 and (not label or label == "Not specified") and re.search(r"\([^)]+\)", section_text):
         paren = re.search(
             r"\*\*Overall Trust Score\*\*:\s*\d+\s*\(([^)]+)\)",
@@ -160,7 +169,7 @@ def parse_trust_score_block(section_text: str) -> dict[str, Any]:
             re.I,
         ) or re.search(r"\d+\s*\(([^)]+)\)", section_text)
         if paren:
-            label = paren.group(1).strip()
+            label = _strip_markdown_bold(paren.group(1))
 
     summary = items.get("Summary") or ""
     if not summary and re.search(r"Summary", section_text, re.I):
@@ -182,7 +191,7 @@ def parse_trust_score_block(section_text: str) -> dict[str, Any]:
             )
         )
         if sm:
-            summary = re.sub(r"\n+", " ", sm.group(1)).strip()
+            summary = _strip_markdown_bold(re.sub(r"\n+", " ", sm.group(1)))
 
     score_by_category = _parse_category_scores(section_text, items)
     result: dict[str, Any] = {
@@ -201,7 +210,7 @@ def extract_summary_from_raw_reply(raw_reply: str) -> str:
 
     def clean(s: str) -> str:
         t = re.sub(r"\s*\n\s*", " ", s).strip()
-        no_asterisks = re.sub(r"^\*+|\*+$", "", t).strip()
+        no_asterisks = re.sub(r"^\*+|\*+$", "", _strip_markdown_bold(t)).strip()
         if no_asterisks and not re.match(r"^\*+$", no_asterisks):
             return no_asterisks
         return t if t and not re.match(r"^\*+$", t) else ""
@@ -242,7 +251,7 @@ def parse_report_sections(raw_reply: str) -> dict[str, Any]:
     section_regex = re.compile(r"##\s*(\d+)\.?\s*([^\n]*)\n([\s\S]*?)(?=##\s*\d|$)")
     for m in section_regex.finditer(raw_reply):
         section_id = int(m.group(1))
-        title_line = m.group(2).strip()
+        title_line = _strip_markdown_bold(m.group(2))
         body = m.group(3).strip()
         title = SECTION_TITLES.get(section_id) or title_line or f"Section {section_id}"
         subtitle = title_line if title_line and title_line != title else None
@@ -316,7 +325,7 @@ def parse_report_sections(raw_reply: str) -> dict[str, Any]:
                     **trust_score,
                     "overallScore": n,
                     "label": (
-                        with_label.group(2).strip()
+                        _strip_markdown_bold(with_label.group(2))
                         if trust_score.get("label") == "Not specified"
                         else trust_score.get("label")
                     )
@@ -382,7 +391,7 @@ def generate_llm_trust_report(
     return {
         "trustScore": trust,
         "sections": parsed["sections"],
-        "raw": raw,
+        "raw": _strip_markdown_bold(raw),
         "overall_score": overall,
         "vector": vector_meta or {
             "used": bool((formula_context or "").strip()),

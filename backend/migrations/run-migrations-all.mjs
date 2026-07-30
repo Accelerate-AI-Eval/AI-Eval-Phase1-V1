@@ -40,6 +40,7 @@ const sqlFiles = [
   "20260716_document_chunks_pgvector.sql",
   "20260721_llm_model_columns.sql",
   "20260721_general_reports_llm_model.sql",
+  "20260730_vendor_import_long_text.sql",
 ];
 
 const pool = new pg.Pool({ connectionString });

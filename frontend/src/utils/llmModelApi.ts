@@ -14,6 +14,10 @@ export type LlmModelConfig = {
   options: LlmModelOption[];
   requiresPythonRestart?: boolean;
   pythonSynced?: boolean;
+  /** Model the Python scoring service reports as active. */
+  pythonModelId?: string;
+  /** Why Python is not on the same model as Node. */
+  pythonSyncError?: string;
   inferenceProfiles?: boolean;
 };
 
@@ -93,6 +97,8 @@ export async function fetchLlmModelConfig(): Promise<
       options: data.options,
       requiresPythonRestart: data.requiresPythonRestart,
       pythonSynced: data.pythonSynced,
+      pythonModelId: data.pythonModelId,
+      pythonSyncError: data.pythonSyncError,
       inferenceProfiles: data.inferenceProfiles,
     };
     if (config.modelId || config.modelLabel) {
@@ -173,6 +179,8 @@ export async function applyLlmModel(
       options: Array.isArray(data.options) ? data.options : [],
       requiresPythonRestart: data.requiresPythonRestart,
       pythonSynced: data.pythonSynced,
+      pythonModelId: data.pythonModelId,
+      pythonSyncError: data.pythonSyncError,
       inferenceProfiles: data.inferenceProfiles,
     };
     if (config.modelId || config.modelLabel) {

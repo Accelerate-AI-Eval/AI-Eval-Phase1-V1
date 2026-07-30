@@ -4,6 +4,7 @@ import {
   applyLlmModel,
   fetchLlmModelConfig,
   testLlmModel,
+  type LlmModelConfig,
   type LlmModelOption,
 } from "../../../utils/llmModelApi";
 import { subscribeActiveLlmModel } from "../../../utils/activeLlmModelStore";
@@ -19,6 +20,18 @@ type ApplyResult = "success" | "failure" | null;
 type ModelCompatibilityCheckerProps = {
   idPrefix: string;
 };
+
+/**
+ * Vendor Trust Score is scored in Python, which keeps its own active model.
+ * When Python is unreachable or on a different model, scoring ignores this selection.
+ */
+function pythonSyncWarningFor(config: LlmModelConfig): string {
+  if (config.pythonSynced !== false) return "";
+  return (
+    config.pythonSyncError?.trim() ||
+    "Python scoring service is not on the selected model, so Vendor Trust Score still uses its previous model."
+  );
+}
 
 function modelLabelFor(options: LlmModelOption[], modelId: string): string {
   if (!modelId) return "";
@@ -50,6 +63,7 @@ export function ModelCompatibilityChecker({
   const [testStatusMessage, setTestStatusMessage] = useState("");
   const [applyResult, setApplyResult] = useState<ApplyResult>(null);
   const [applyStatusMessage, setApplyStatusMessage] = useState("");
+  const [pythonSyncWarning, setPythonSyncWarning] = useState("");
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [testDialogResult, setTestDialogResult] =
     useState<ModelTestDialogState | null>(null);
@@ -79,6 +93,7 @@ export function ModelCompatibilityChecker({
       setAppliedModelLabel(result.config.modelLabel);
       setApplyResult(null);
       setApplyStatusMessage("");
+      setPythonSyncWarning(pythonSyncWarningFor(result.config));
     } finally {
       setOptionsLoading(false);
     }
@@ -197,6 +212,7 @@ export function ModelCompatibilityChecker({
     setIsApplying(true);
     setApplyResult(null);
     setApplyStatusMessage("");
+    setPythonSyncWarning("");
 
     try {
       const result = await applyLlmModel(selectedModel);
@@ -210,22 +226,33 @@ export function ModelCompatibilityChecker({
       setAppliedModelLabel(result.config.modelLabel);
       setSelectedModel(result.config.modelId);
       setSelectedModelLabel(result.config.modelLabel);
-      setApplyResult("success");
       setTestStatusMessage("");
-      setApplyStatusMessage(`Active model set to ${result.config.modelLabel}.`);
       console.log("[LLM] model changed (Controls Apply)", {
         modelId: result.config.modelId,
         modelLabel: result.config.modelLabel,
         backend: result.config.backend,
         pythonSynced: result.config.pythonSynced,
+        pythonModelId: result.config.pythonModelId,
+        pythonSyncError: result.config.pythonSyncError,
       });
 
-      if (result.config.pythonSynced === false) {
-        setApplyStatusMessage("Warning: Python service sync failed.");
+      const warning = pythonSyncWarningFor(result.config);
+      setPythonSyncWarning(warning);
+
+      if (warning) {
         setApplyResult("failure");
-      } else if (result.config.requiresPythonRestart) {
-        setApplyStatusMessage("Restart the Python service to apply the change.");
+        setApplyStatusMessage(
+          `Active model set to ${result.config.modelLabel} for this app, but the Python sync failed.`,
+        );
+        return;
       }
+
+      setApplyResult("success");
+      setApplyStatusMessage(
+        result.config.requiresPythonRestart
+          ? "Restart the Python service to apply the change."
+          : `Active model set to ${result.config.modelLabel}.`,
+      );
     } finally {
       setIsApplying(false);
     }
@@ -354,6 +381,16 @@ export function ModelCompatibilityChecker({
         {applyStatusMessage ? (
           <p className={applyStatusClassName} role="status" aria-live="polite">
             {applyStatusMessage}
+          </p>
+        ) : null}
+
+        {pythonSyncWarning ? (
+          <p
+            className="adminPage__modelStatus adminPage__modelStatus--error"
+            role="alert"
+            aria-live="polite"
+          >
+            {pythonSyncWarning}
           </p>
         ) : null}
       </div>

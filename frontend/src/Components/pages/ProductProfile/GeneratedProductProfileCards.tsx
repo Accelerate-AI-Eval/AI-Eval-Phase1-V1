@@ -101,6 +101,22 @@ function shouldOmitLegacyOperationsRow(sectionId: number, label: string): boolea
   return /^change\s*management$/i.test(String(label ?? "").trim());
 }
 
+/** Evidence & Trust (11): attestation fields only — hide score-calculation / formula rows. */
+const EVIDENCE_TRUST_ALLOWED_LABELS = new Set([
+  "usage / interaction telemetry",
+  "audit logs (siem export)",
+  "supporting testing and policy documentation",
+  "model / safety testing results (under nda)",
+]);
+
+function shouldOmitScoreCalcFromEvidenceTrust(sectionId: number, label: string): boolean {
+  if (sectionId !== 11) return false;
+  const key = String(label ?? "").trim().toLowerCase();
+  if (EVIDENCE_TRUST_ALLOWED_LABELS.has(key)) return false;
+  // Drop anything else (score calc, formula, category coverage, etc.)
+  return true;
+}
+
 function pickSectionField(
   items: Record<string, string>,
   hints: string[],
@@ -475,6 +491,7 @@ function GeneratedProductProfileCards({
                       .filter(([label]) => {
                         if (shouldOmitHumanOversightFromModelSection(sec.id, label)) return false;
                         if (shouldOmitLegacyOperationsRow(sec.id, label)) return false;
+                        if (shouldOmitScoreCalcFromEvidenceTrust(sec.id, label)) return false;
                         return true;
                       })
                       .filter(([, value]) => {

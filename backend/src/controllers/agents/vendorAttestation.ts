@@ -163,6 +163,7 @@ Then continue with the detailed sections below.
 - **Vendor SLAs:** [key SLAs from critical vendors]
 
 ## 11. Evidence & Trust
+Use only vendor attestation facts for this section. Do NOT include score calculation data, VTS formula details, category scores, risk units, factor explanations, rationale, or scoring rubrics.
 - **Usage / Interaction Telemetry:** [telemetry scope and availability]
 - **Audit Logs (SIEM Export):** [availability and export capability]
 - **Supporting Testing and Policy Documentation:** [uploaded evidence files]
@@ -698,10 +699,13 @@ export async function generateVendorAttestationReport(
       ? summaryFromLlm
       : buildSummaryFromAssessmentData(formulaPayload);
 
-  const sections =
+  let sections =
     Array.isArray(formula.sections) && formula.sections.length > 0
       ? (formula.sections as ReportSection[])
       : buildSectionsFromPayload(formulaPayload);
+
+  // Evidence & Trust must stay attestation-only — never LLM/score-calculation narrative.
+  sections = applyEvidenceTrustFromAttestation(sections, formulaPayload);
 
   return {
     trustScore: {
@@ -938,6 +942,18 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
     supportsHipaaWorkflows: lower(get("sector")).includes("health"),
     technicalAccountManager: "standard_support",
   };
+}
+
+function applyEvidenceTrustFromAttestation(
+  sections: ReportSection[],
+  payload: Record<string, unknown>,
+): ReportSection[] {
+  const evidence = buildSectionsFromPayload(payload).find((s) => s.id === 11);
+  if (!evidence) return sections;
+  const next = sections.filter((s) => s.id !== 11);
+  next.push(evidence);
+  next.sort((a, b) => a.id - b.id);
+  return next;
 }
 
 function buildSectionsFromPayload(payload: Record<string, unknown>): ReportSection[] {

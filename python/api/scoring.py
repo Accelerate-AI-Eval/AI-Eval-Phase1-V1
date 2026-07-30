@@ -31,10 +31,63 @@ router = APIRouter(
 )
 
 
+def _text(value: object) -> str:
+    if value is None:
+        return "Not specified"
+    if isinstance(value, list):
+        parts = [str(x).strip() for x in value if str(x).strip()]
+        return ", ".join(parts) if parts else "Not specified"
+    s = str(value).strip()
+    return s if s else "Not specified"
+
+
+def _evidence_testing_policy_label(payload: dict) -> str:
+    doc_uploads = payload.get("document_uploads")
+    if not isinstance(doc_uploads, dict):
+        doc_uploads = payload.get("documentUpload")
+    if not isinstance(doc_uploads, dict):
+        return "Not uploaded"
+    raw = doc_uploads.get("evidenceTestingPolicy")
+    if isinstance(raw, list):
+        names = [str(x).strip() for x in raw if isinstance(x, str) and str(x).strip()]
+        if names:
+            return ", ".join(names)
+    return "Not uploaded"
+
+
+def _build_evidence_trust_section(payload: dict | None) -> dict:
+    """Attestation-only Evidence & Trust — never score-calculation fields."""
+    p = payload if isinstance(payload, dict) else {}
+    return {
+        "id": 11,
+        "title": "Evidence & Trust",
+        "items": {
+            "Usage / Interaction Telemetry": _text(
+                p.get("interaction_data_available") or p.get("available_usage_data")
+            ),
+            "Audit Logs (SIEM Export)": _text(
+                p.get("audit_logs_available") or p.get("audit_logs")
+            ),
+            "Supporting Testing and Policy Documentation": _evidence_testing_policy_label(p),
+            "Model / Safety Testing Results (Under NDA)": _text(
+                p.get("testing_results_available") or p.get("test_results")
+            ),
+        },
+    }
+
+
+def _apply_evidence_trust_from_payload(sections: list, payload: dict | None) -> list:
+    evidence = _build_evidence_trust_section(payload)
+    next_sections = [s for s in sections if not (isinstance(s, dict) and s.get("id") == 11)]
+    next_sections.append(evidence)
+    next_sections.sort(key=lambda s: int(s.get("id") or 0) if isinstance(s, dict) else 0)
+    return next_sections
+
+
 def _build_sections_from_payload(payload: dict | None) -> list[dict]:
     """Minimal sections so Node can persist a usable report when LLM is unavailable."""
     if not payload or not isinstance(payload, dict):
-        return []
+        return [_build_evidence_trust_section(payload)]
     cp = payload.get("companyProfile") if isinstance(payload.get("companyProfile"), dict) else {}
     product_name = (
         str(payload.get("product_name") or payload.get("productName") or cp.get("productName") or "").strip()
@@ -45,7 +98,8 @@ def _build_sections_from_payload(payload: dict | None) -> list[dict]:
             "id": 1,
             "title": "Product Information",
             "items": {"Product Name": product_name},
-        }
+        },
+        _build_evidence_trust_section(payload),
     ]
 
 
@@ -80,7 +134,8 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
         scoring_source = "formula"
         scoring_version = "vts-1.0"
         llm_error: str | None = None
-        vector_meta: dict = {"used": False, "chunks": []}
+        # size constraint for the chuncking of data
+        vector_meta: dict = {"used": False, "chunks": []} 
 
         # Retrieve formula / scoring rubric chunks from pgvector for the LLM
         retrieved = retrieve_vts_formula_context(vendor_data)
@@ -152,6 +207,8 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
 
         if not sections:
             sections = _build_sections_from_payload(payload)
+        # Evidence & Trust must stay attestation-only — drop LLM/score-calculation narrative.
+        sections = _apply_evidence_trust_from_payload(sections, payload)
 
         detail = dict(formula.get("detail") or {})
         detail["llm"] = {

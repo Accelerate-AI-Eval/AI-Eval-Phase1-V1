@@ -2,7 +2,7 @@
 
 VENDOR_ATTESTATION_PROMPT = """You are a vendor attestation analyst. Generate a structured vendor attestation report from the vendor data below. When SCORING FORMULAS & GUIDANCE FROM VECTOR DATABASE is provided, you MUST use those retrieved formulas/rubrics to compute the Trust Score (apply formula logic to the vendor facts). For factual details not in the vendor data, infer reasonably or write "Not specified".
 
-Output the report in the following sections with clear headings and bullet points. Use the exact section titles and item labels below. Write concise, professional descriptions (1–2 sentences per item where appropriate).
+Output the report in the following sections with clear headings and bullet points. Use the exact section titles and item labels below. Write concise, professional descriptions (1–2 sentences per item where appropriate). Use Markdown bold only for the exact item labels shown below; never put `**` or other Markdown formatting inside generated values or descriptions (write `Critical gap: ...`, not `**Critical gap:** ...`).
 
 ## 0. Trust Score
 First, compute an overall **Trust Score** (0–100) for this vendor. Prefer vector-DB formula guidance when present (e.g. VTS / product-governance-operational risk weights). Otherwise consider: security posture, compliance and certifications, data practices and privacy, AI governance and safety, operations and reliability, and company maturity. Output:
@@ -93,6 +93,7 @@ Then continue with the detailed sections below.
 - **Vendor SLAs:** [key SLAs from critical vendors]
 
 ## 11. Evidence & Trust
+Use only vendor attestation facts for this section. Do NOT include score calculation data, VTS formula details, category scores, risk units, factor explanations, rationale, or scoring rubrics.
 - **Usage / Interaction Telemetry:** [telemetry scope and availability]
 - **Audit Logs (SIEM Export):** [availability and export capability]
 - **Supporting Testing and Policy Documentation:** [uploaded evidence files]

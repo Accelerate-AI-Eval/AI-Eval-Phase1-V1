@@ -5,7 +5,11 @@ import {
   resolveBedrockModelId,
   type LlmModelOption as CatalogModelOption,
 } from "../../config/modelsCatalog.js";
-import { normalizeBedrockModelAlias, isBedrockProviderModelId } from "../../utils/bedrockModelId.js";
+import {
+  normalizeBedrockModelAlias,
+  isBedrockProviderModelId,
+  resolveBedrockInvokeModelId,
+} from "../../utils/bedrockModelId.js";
 import { upsertEnvFile } from "../../utils/envFile.js";
 import { backendRoot } from "../../utils/backendRoot.js";
 import {
@@ -245,14 +249,28 @@ function pythonUrl(): string {
   ).replace(/\/$/, "");
 }
 
-/**
- * Best-effort sync to Python `/config/llm-model`.
- * AI-Q Python may not expose this endpoint yet — failures do not block apply.
- */
-async function syncPythonModel(modelId: string): Promise<{
+/** Same model once context-window suffixes / casing are normalized. */
+function sameModelId(a: string, b: string): boolean {
+  const norm = (v: string) => resolveBedrockInvokeModelId(v.trim()).toLowerCase();
+  const left = norm(a);
+  const right = norm(b);
+  return left !== "" && left === right;
+}
+
+type PythonSyncOutcome = {
   ok: boolean;
   requiresPythonRestart?: boolean;
-}> {
+  pythonModelId?: string;
+  error?: string;
+};
+
+/**
+ * Sync to Python `/config/llm-model`.
+ * Failures do not block the Node apply, but they are reported so Controls can warn:
+ * Python keeps its own BEDROCK_MODEL_ID, so a missed sync silently leaves VTS scoring
+ * on the previous model.
+ */
+async function syncPythonModel(modelId: string): Promise<PythonSyncOutcome> {
   const url = `${pythonUrl()}/config/llm-model`;
   try {
     const res = await fetch(url, {
@@ -262,18 +280,81 @@ async function syncPythonModel(modelId: string): Promise<{
       signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) {
-      return { ok: false };
+      const detail = (await res.text().catch(() => "")).trim();
+      return {
+        ok: false,
+        error:
+          `Python scoring service rejected the model (HTTP ${res.status})` +
+          (detail ? `: ${detail.slice(0, 200)}` : ""),
+      };
     }
     const data = (await res.json()) as {
+      modelId?: string;
       requiresPythonRestart?: boolean;
     };
     return {
       ok: true,
       requiresPythonRestart: data.requiresPythonRestart,
+      pythonModelId: typeof data.modelId === "string" ? data.modelId.trim() : undefined,
     };
-  } catch {
-    return { ok: false };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      error: `Python scoring service unreachable at ${url}: ${message}`,
+    };
   }
+}
+
+/** Read the model Python is actually scoring with, to detect drift from Node. */
+async function probePythonModel(): Promise<{ modelId?: string; error?: string }> {
+  const url = `${pythonUrl()}/config/llm-model`;
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) {
+      return { error: `Python scoring service returned HTTP ${res.status} for ${url}` };
+    }
+    const data = (await res.json()) as { modelId?: string };
+    const modelId = typeof data.modelId === "string" ? data.modelId.trim() : "";
+    if (!modelId) {
+      return { error: `Python scoring service did not report a model at ${url}` };
+    }
+    return { modelId };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: `Python scoring service unreachable at ${url}: ${message}` };
+  }
+}
+
+/**
+ * Compare Node's active Bedrock model against Python's.
+ * Only Bedrock is synced to Python; other backends are scored in Node only.
+ */
+async function resolvePythonSyncState(
+  backend: LlmBackend,
+  nodeModelId: string,
+): Promise<Pick<LlmModelConfig, "pythonSynced" | "pythonModelId" | "pythonSyncError">> {
+  if (backend !== "bedrock") {
+    return { pythonSynced: true };
+  }
+  const probe = await probePythonModel();
+  if (probe.error != null || !probe.modelId) {
+    return { pythonSynced: false, pythonSyncError: probe.error };
+  }
+  if (!sameModelId(probe.modelId, nodeModelId)) {
+    return {
+      pythonSynced: false,
+      pythonModelId: probe.modelId,
+      pythonSyncError:
+        `Python scoring service is still using ${probe.modelId}. ` +
+        "VTS scoring will not use the model selected here until the sync succeeds.",
+    };
+  }
+  return { pythonSynced: true, pythonModelId: probe.modelId };
 }
 
 export type LlmModelConfig = {
@@ -281,7 +362,12 @@ export type LlmModelConfig = {
   modelId: string;
   modelLabel: string;
   options: LlmModelOption[];
+  /** True only when Python confirmed the same active model. */
   pythonSynced: boolean;
+  /** Model Python reports as active, when reachable. */
+  pythonModelId?: string;
+  /** Why Python is not in sync, for display in Controls. */
+  pythonSyncError?: string;
   requiresPythonRestart: boolean;
   inferenceProfiles?: boolean;
 };
@@ -313,12 +399,14 @@ export async function getLlmModelConfigAsync(): Promise<LlmModelConfig> {
     option = findOption(modelId) ?? findCatalogOption(modelId);
   }
 
+  const pythonState = await resolvePythonSyncState(backend, rawModelId);
+
   return {
     backend,
     modelId: option?.id ?? modelId,
     modelLabel: option?.label ?? modelId,
     options,
-    pythonSynced: false,
+    ...pythonState,
     requiresPythonRestart: backend === "local",
     inferenceProfiles:
       inferenceProfilesEnabled() &&
@@ -340,7 +428,9 @@ export function getLlmModelConfig(): LlmModelConfig {
     modelId: option?.id ?? modelId,
     modelLabel: option?.label ?? modelId,
     options: listOptions(),
+    // Python state needs a network call; use getLlmModelConfigAsync when it matters.
     pythonSynced: false,
+    pythonSyncError: "Python sync state was not checked.",
     requiresPythonRestart: backend === "local",
     inferenceProfiles: inferenceProfilesEnabled(),
   };
@@ -456,15 +546,22 @@ export async function setLlmModel(modelId: string): Promise<LlmModelConfig> {
     activeAfterApply: getActiveBedrockModelIdSafe(),
   });
 
-  // Python sync is optional in AI-Q (endpoint may not exist). Node env apply is the source of truth.
+  // Python holds its own BEDROCK_MODEL_ID for VTS scoring, so a failed sync must be
+  // reported — otherwise Controls shows the new model while Python keeps scoring on the old one.
   const python = await syncPythonModel(updates.BEDROCK_MODEL ?? trimmed);
   console.log("[LLM] Python sync after model change:", {
     ok: python.ok,
     modelSynced: updates.BEDROCK_MODEL ?? trimmed,
+    pythonModelId: python.pythonModelId ?? null,
     requiresPythonRestart: python.requiresPythonRestart ?? null,
+    error: python.error ?? null,
   });
+
   const config = await getLlmModelConfigAsync();
-  config.pythonSynced = true;
+  if (!python.ok) {
+    config.pythonSynced = false;
+    config.pythonSyncError = python.error ?? "Python scoring service sync failed.";
+  }
   if (python.ok && python.requiresPythonRestart != null) {
     config.requiresPythonRestart = python.requiresPythonRestart;
   }

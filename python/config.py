@@ -4,9 +4,13 @@ import os
 import re
 
 
+_ENV_PATH = Path(__file__).resolve().parent / ".env"
+
+
 class Settings(BaseSettings):
+    # Absolute path so the model / AWS config loads no matter which cwd uvicorn starts from.
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_ENV_PATH),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -18,12 +22,13 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSIONS: int = 1024
     # How many pgvector formula/scoring chunks to inject into VTS LLM prompt
     VTS_VECTOR_TOP_K: int = 6
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/vendor_ai"
+    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/ai_q_vendor_updated_db"
     S3_BUCKET: str = "vendor-documents"
     LOG_LEVEL: str = "INFO"
 
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_SESSION_TOKEN: str = ""
     MAX_CHUNK_SIZE: int = 3500
     OVERLAP_SIZE: int = 250
     TEMPERATURE: float = 0
@@ -33,7 +38,42 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-_ENV_PATH = Path(__file__).resolve().parent / ".env"
+
+def _export_aws_credentials_to_environ() -> None:
+    """
+    Publish configured AWS credentials to the process environment.
+
+    Some Bedrock clients (BedrockService, langchain_aws) are built without explicit
+    credential kwargs and rely on the boto3 default chain, which otherwise fails with
+    "Unable to locate credentials" even though python/.env has keys.
+    """
+    exported = {
+        "AWS_ACCESS_KEY_ID": settings.AWS_ACCESS_KEY_ID,
+        "AWS_SECRET_ACCESS_KEY": settings.AWS_SECRET_ACCESS_KEY,
+        "AWS_SESSION_TOKEN": settings.AWS_SESSION_TOKEN,
+        "AWS_DEFAULT_REGION": settings.AWS_REGION,
+        "AWS_REGION": settings.AWS_REGION,
+    }
+    for key, value in exported.items():
+        cleaned = (value or "").strip()
+        if cleaned and not (os.environ.get(key) or "").strip():
+            os.environ[key] = cleaned
+
+
+_export_aws_credentials_to_environ()
+
+
+def aws_credentials_configured() -> bool:
+    """True when Bedrock has usable static credentials or an ambient provider."""
+    if settings.AWS_ACCESS_KEY_ID.strip() and settings.AWS_SECRET_ACCESS_KEY.strip():
+        return True
+    return bool(
+        (os.environ.get("AWS_ACCESS_KEY_ID") or "").strip()
+        or (os.environ.get("AWS_PROFILE") or "").strip()
+        or (os.environ.get("AWS_BEARER_TOKEN_BEDROCK") or "").strip()
+        or (os.environ.get("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI") or "").strip()
+        or (os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE") or "").strip()
+    )
 
 
 def get_bedrock_model_id() -> str:
