@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
+from urllib.parse import quote_plus
 import os
 import re
 
@@ -20,20 +21,48 @@ class Settings(BaseSettings):
     BEDROCK_MODEL_ID: str = "anthropic.claude-3-sonnet-20240229-v1:0"
     EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
     EMBEDDING_DIMENSIONS: int = 1024
+    # boto3 default read_timeout is 60s; large assessment invokes often need longer
+    BEDROCK_READ_TIMEOUT: int = 300
+    BEDROCK_CONNECT_TIMEOUT: int = 10
+    # Map-reduce chunking for large prompts — applies to every Bedrock model
+    LLM_CHUNK_ENABLED: bool = True
+    # If (prefix + payload) exceeds this many words, split payload and merge
+    LLM_PROMPT_CHUNK_THRESHOLD: int = 2400
     # How many pgvector formula/scoring chunks to inject into VTS LLM prompt
     VTS_VECTOR_TOP_K: int = 6
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/ai_q_vendor_updated_db"
+
+    # Same discrete vars as backend/src/database/db.ts
+    DATABASE_USER: str = "postgres"
+    DATABASE_PASSWORD: str = "Postgresql123"
+    DATABASE_HOST: str = "127.0.0.1"
+    DATABASE_PORT: str = "5432"
+    DATABASE_NAME: str = "ai_q_db"
+
     S3_BUCKET: str = "vendor-documents"
     LOG_LEVEL: str = "INFO"
 
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_SESSION_TOKEN: str = ""
-    MAX_CHUNK_SIZE: int = 3500
-    OVERLAP_SIZE: int = 250
+    # Chunk sizes are measured in words (whitespace-separated)
+    MAX_CHUNK_SIZE: int = 700
+    OVERLAP_SIZE: int = 50
     TEMPERATURE: float = 0
     MAX_TOKENS: int = 4096
     DOWNLOAD_DIRECTORY: str = "downloads"
+
+    @property
+    def DATABASE_URL(self) -> str:
+        """SQLAlchemy / psycopg2 DSN built from discrete DATABASE_* settings."""
+        user = (self.DATABASE_USER or "postgres").strip()
+        password = self.DATABASE_PASSWORD if self.DATABASE_PASSWORD is not None else "Postgresql123"
+        host = (self.DATABASE_HOST or "127.0.0.1").strip()
+        port = (self.DATABASE_PORT or "5432").strip()
+        name = (self.DATABASE_NAME or "ai_q_db").strip()
+        return (
+            f"postgresql://{quote_plus(user)}:{quote_plus(password)}"
+            f"@{host}:{port}/{name}"
+        )
 
 
 settings = Settings()

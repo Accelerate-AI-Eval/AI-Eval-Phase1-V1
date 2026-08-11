@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import contextvars
 import json
 import logging
 import traceback
@@ -10,8 +11,10 @@ import traceback
 from fastapi import APIRouter
 
 from exceptions.custom_exceptions import RiskCalculationException, raise_http_exception
+from config import settings
 from schemas.scoring_schema import ScoreRequest, ScoreResponse
 from services.llm_trust_score_service import generate_llm_trust_report
+from services.llm_usage_actor import clear_usage_actor, set_usage_actor
 from services.scoring_service import (
     build_formula_input_from_payload,
     calculate_vendor_trust_score,
@@ -111,6 +114,13 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
     3) If LLM fails (bad creds / Bedrock error), fall back to formula VTS so Node can still store & display a score.
     """
     try:
+        set_usage_actor(
+            user_id=body.actor_user_id,
+            user_name=body.actor_user_name,
+            organization_id=body.actor_organization_id,
+            organization_name=body.actor_organization_name,
+        )
+
         if body.formula_input and isinstance(body.formula_input, dict):
             formula_input = body.formula_input
             payload = body.payload if isinstance(body.payload, dict) else None
@@ -134,7 +144,7 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
         scoring_source = "formula"
         scoring_version = "vts-1.0"
         llm_error: str | None = None
-        # size constraint for the chuncking of data
+        # size constraint handled in assessment_llm_service (LLM_PROMPT_CHUNK_THRESHOLD)
         vector_meta: dict = {"used": False, "chunks": []} 
 
         # Retrieve formula / scoring rubric chunks from pgvector for the LLM
@@ -150,10 +160,14 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
         }
 
         # Cap LLM wait so formula VTS still returns before Node's scoring timeout.
-        _LLM_TIMEOUT_SEC = 60
+        # Chunked multi-invoke runs need more headroom than a single call.
+        # copy_context keeps usage actor available inside the worker thread.
+        _LLM_TIMEOUT_SEC = int(getattr(settings, "BEDROCK_READ_TIMEOUT", 300) or 300)
         try:
+            ctx = contextvars.copy_context()
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 fut = pool.submit(
+                    ctx.run,
                     generate_llm_trust_report,
                     vendor_data,
                     formula_context=formula_context,
@@ -261,3 +275,5 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
         raise_http_exception(exc.message, status_code=400)
     except Exception as exc:
         raise_http_exception(str(exc) or "Scoring failed", status_code=500)
+    finally:
+        clear_usage_actor()

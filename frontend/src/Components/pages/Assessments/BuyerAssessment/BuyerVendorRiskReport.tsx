@@ -336,7 +336,7 @@ export default function BuyerVendorRiskReport() {
   if (loading && !report && !error) {
     return (
       <div className="bvr_page">
-        <LoadingMessage message="Loading your report…" />
+        <LoadingMessage message="Loading your report…" className="loading_message_wrapper--page" />
       </div>
     );
   }

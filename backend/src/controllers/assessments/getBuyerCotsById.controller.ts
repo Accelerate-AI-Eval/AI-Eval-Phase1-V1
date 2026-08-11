@@ -135,7 +135,23 @@ const getBuyerCotsById = async (req: Request, res: Response) => {
       updatedAt: (r as { updated_at?: unknown }).updated_at,
       expiryAt: (r as { expiry_at?: unknown }).expiry_at,
       organizationName: r.organization_name ?? "",
-      industrySector: r.industry_sector ?? "",
+      industrySector: (() => {
+        const raw = r.industry_sector;
+        if (raw == null || String(raw).trim() === "") return [];
+        const s = String(raw).trim();
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) {
+            return parsed.map(String).map((x) => x.trim()).filter(Boolean);
+          }
+        } catch {
+          /* comma-separated varchar */
+        }
+        return s
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean);
+      })(),
       employeeCount: r.employee_count ?? "",
       operatingRegions,
       businessPainPoint: r.pain_point ?? "",

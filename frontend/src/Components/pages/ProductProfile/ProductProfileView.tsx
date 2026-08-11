@@ -51,17 +51,6 @@ function productInitials(name: string): string {
   return s ? s.toUpperCase() : "Dr";
 }
 
-/** Chip accent for product status — matches Risk & Controls chip vocabulary (MyVendors.css). */
-function productStatusToRiskChipClass(status: string): string {
-  const s = String(status ?? "").toLowerCase().trim();
-  if (s === "completed") return "risk_mapping_chip_mitigated";
-  if (s === "draft") return "risk_mapping_chip_medium";
-  if (s === "expired") return "risk_mapping_chip_open";
-  if (s === "rejected") return "risk_mapping_chip_critical";
-  if (s === "submitted" || s === "pending") return "risk_mapping_chip_low";
-  return "risk_mapping_chip_low";
-}
-
 const SECTOR_KEYS_ORDER = ["public_sector", "private_sector", "non_profit_sector"] as const;
 
 /** Format sector for display: only the values from arrays that have data (e.g. "Defense & Military"). Handles object or JSON string. */
@@ -333,18 +322,29 @@ function ProductProfileProductListCard({
   trustScoreDisplay,
   onView,
 }: ProductProfileProductListCardProps) {
-  const statusChipClass = productStatusToRiskChipClass(product.status);
+  const statusLabel = String(product.status ?? "").trim() || "—";
+  const statusLower = statusLabel.toLowerCase();
+  const isCompleted = statusLower === "completed";
+  const isExpired = statusLower === "expired";
+  const statusPillClass = isCompleted
+    ? "pill_status_active"
+    : isExpired
+      ? "pill_status_inactive"
+      : "pill_status_pending";
+  const showStatusDot = isCompleted || isExpired;
   const hasTrustScore = trustScoreDisplay !== "—";
   return (
-    <div className="risk_mapping_risk_card">
-      <div className="risk_mapping_risk_top product_profile_card_risk_top_with_trust">
-        <div className="risk_mapping_chip_row">
-          <span className="risk_mapping_chip risk_mapping_chip_id" aria-hidden>
+    <article className="product_profile_premium_card">
+      <div className="product_profile_premium_card_top">
+        <div className="product_profile_premium_card_identity">
+          <span className="product_profile_premium_avatar" aria-hidden>
             {productInitials(product.productName)}
           </span>
-          <span className={`risk_mapping_chip ${statusChipClass}`}>{product.status}</span>
         </div>
-        <div className="product_profile_card_trust_block" aria-label={`Trust score ${trustScoreDisplay}`}>
+        <div
+          className="product_profile_card_trust_block"
+          aria-label={`Trust score ${trustScoreDisplay}`}
+        >
           <span className="product_profile_card_trust_label_top">Trust score</span>
           <span
             className={
@@ -357,25 +357,32 @@ function ProductProfileProductListCard({
           </span>
         </div>
       </div>
-      <div className="risk_mapping_risk_body">
-        <h4 className="risk_mapping_risk_title">{product.productName}</h4>
-        <p className="risk_mapping_risk_desc">
+      <div className="product_profile_premium_card_body">
+        <h4 className="product_profile_premium_card_title">{product.productName}</h4>
+        <p className="product_profile_premium_card_desc">
           Review attestation detail, trust breakdown, and buyer visibility.
         </p>
       </div>
-      <div className="risk_mapping_risk_footer_product">
-        {/* <span className="risk_mapping_owner">Product attestation</span> */}
+      <div className="product_profile_premium_card_footer">
+        <span
+          className={`pill pill_status ${statusPillClass}${
+            showStatusDot ? " pill_status_with_dot" : ""
+          }`}
+        >
+          {showStatusDot ? <span className="pill_status_dot" aria-hidden /> : null}
+          {statusLabel}
+        </span>
         <button
           type="button"
-          className="product_profile_product_card_view_btn"
+          className="dash_view_all_btn product_profile_product_card_view_btn"
           onClick={() => onView(product)}
           aria-label={`View details for ${product.productName}`}
         >
           View details
-          <ChevronRight size={16} aria-hidden />
+          <ChevronRight size={15} strokeWidth={2.25} aria-hidden />
         </button>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -695,9 +702,6 @@ function ProductProfileView({
                   {viewProductMeta?.productName ?? "Product details"}
                 </h1>
               </nav>
-              <p className="sub_title page_header_subtitle product_profile_breadcrumb_subtitle">
-                Attestation status, trust breakdown, and what buyers can see.
-              </p>
             </div>
           </div>
         </div>
@@ -866,10 +870,15 @@ function ProductProfileView({
                 Back to products
               </button>
               <div className="product_profile_detail_on_page_body">
-                {viewProductLoading && <LoadingMessage message="Loading…" />}
+                {viewProductLoading && (
+                  <LoadingMessage
+                    message="Loading…"
+                    className="product_profile_detail_loader"
+                  />
+                )}
                 {!viewProductLoading && viewProductMeta && (
                   <>
-                    <div className="attestation_visible_status">
+                    <div className="product_profile_detail_status_bar attestation_visible_status">
                       <div className="product_profile_modal_status_row">
                         <span className="product_profile_modal_status_label">
                           Attestation status
@@ -1103,11 +1112,12 @@ function ProductProfileView({
           ) : (
             <>
           <header className="product_profile_products_intro">
-            <h2 className="product_profile_products_section_title">Products</h2>
-            <p className="product_profile_products_section_lead">
-              Review trust scores, attestation status, and buyer visibility. Search by product name, then open a
-              product for full details.
-            </p>
+            <div className="product_profile_products_intro_text">
+              <h2 className="product_profile_products_section_title">Products</h2>
+              <p className="product_profile_products_section_lead">
+                Search products to review trust scores, status, and visibility.
+              </p>
+            </div>
           </header>
           {onProductTabChange ? (
             <div

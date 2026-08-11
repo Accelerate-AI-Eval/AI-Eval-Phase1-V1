@@ -1,13 +1,14 @@
 /* Reusable popover panel (dropdown content) */
 .popover_panel {
-  background: #ffffff;
+  background: var(--surface-color, #f5f7fa);
   border-radius: 5px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-elevated, 0 8px 24px rgba(0, 0, 0, 0.12));
   padding: 12px 16px;
   z-index: 10000;
   min-width: 220px;
   max-width: 320px;
   font-size: 0.875rem;
+  color: var(--text-primary, inherit);
 }
 
 /* Profile detail popover content (used in user dropdown and in profile modal) */
@@ -54,7 +55,7 @@
   padding: 0.35rem 0.5rem;
   font-size: 0.875rem;
   color: #1e293b;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   border: 1px solid #e2e8f0;
   border-radius: 4px;
   box-sizing: border-box;
@@ -102,7 +103,7 @@
 }
 
 .profile_modal_content {
-  background: #fff;
+  background: var(--app-bg-color, #f8f4ed);
   border-radius: 5px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   width: 100%;

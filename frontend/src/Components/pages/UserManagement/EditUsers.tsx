@@ -130,13 +130,22 @@ const EditUsers = ({ isUserId, setIsEdit, isEdit, isSelectedUser, onUpdated }) =
     value: org.id,
   })) ?? [];
 
+  const roleChanged =
+    String(role ?? "").trim().toLowerCase() !==
+    String(initialRole ?? "").trim().toLowerCase();
+  const statusChanged =
+    String(isStatus ?? "").trim().toLowerCase() !==
+    String(initialStatus ?? "").trim().toLowerCase();
+  const hasChange = roleChanged || statusChanged;
+  const canUpdate =
+    hasChange &&
+    String(role ?? "").trim().length > 0 &&
+    String(isStatus ?? "").trim().length > 0 &&
+    String(isReason ?? "").trim().length > 0;
+
   const updateUser = async (e) => {
     e.preventDefault();
     setIsError("");
-
-    const roleChanged = String(role ?? "").trim().toLowerCase() !== String(initialRole ?? "").trim().toLowerCase();
-    const statusChanged = String(isStatus ?? "").trim().toLowerCase() !== String(initialStatus ?? "").trim().toLowerCase();
-    const hasChange = roleChanged || statusChanged;
 
     if (!hasChange) {
       setIsError("No changes");
@@ -312,7 +321,7 @@ const EditUsers = ({ isUserId, setIsEdit, isEdit, isSelectedUser, onUpdated }) =
                   value={isReason}
                   onChange={(e) => setIsReason(e.target.value)}
                   rows={3}
-                  style={{ resize: "vertical", minHeight: "4em" }}
+                  style={{ resize: "vertical", minHeight: "4rem" }}
                 />
               </div>
             </div>
@@ -322,7 +331,7 @@ const EditUsers = ({ isUserId, setIsEdit, isEdit, isSelectedUser, onUpdated }) =
                 <Ban size={16} aria-hidden />
                 Cancel
               </Button>
-              <Button type="submit" className="orgCreateBtn">
+              <Button type="submit" className="orgCreateBtn" disabled={!canUpdate}>
                 <CircleArrowUp size={16} aria-hidden />
                 Update
               </Button>

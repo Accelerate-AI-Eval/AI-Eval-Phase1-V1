@@ -346,7 +346,7 @@ export default function MitigationActionPlanReportBody({ data }: { data: Mitigat
               {(csvExport.fieldDefinitions.length > 0 ? csvExport.fieldDefinitions : []).map((fd, i) => (
                 <tr key={`${fd.fieldName}-${i}`}>
                   <td>
-                    <code style={{ fontSize: "0.9em" }}>{fd.fieldName}</code>
+                    <code style={{ fontSize: "0.9rem" }}>{fd.fieldName}</code>
                   </td>
                   <td>{fd.description}</td>
                 </tr>

@@ -4,6 +4,7 @@ import { Building2, CircleChevronLeft, Plus, Sparkles } from "lucide-react";
 import type { GeneratedProductProfileReport } from "../../../types/generatedProductProfile";
 import { mergeMissingProfileSectionsFromAttestation } from "../../../utils/mergeProductProfileReportFromAttestation";
 import GeneratedProductProfileCards from "../ProductProfile/GeneratedProductProfileCards";
+import LoadingMessage from "../../UI/LoadingMessage";
 import "../../../styles/card.css";
 import "./VendorDirectory.css";
 
@@ -217,7 +218,7 @@ const VendorDirectoryIntelligence = () => {
         )}
       </div>
 
-      {loading && <div className="vendor_directory_loading">Loading product intelligence...</div>}
+      {loading && <LoadingMessage message="Loading product intelligence…" />}
       {error && !loading && <div className="vendor_directory_error">{error}</div>}
       {!loading && !error && !visibleReport && (
         <div className="vendor_directory_empty">No intelligence report is available for this product.</div>

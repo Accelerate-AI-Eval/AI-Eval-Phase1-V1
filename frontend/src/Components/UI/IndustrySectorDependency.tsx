@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { INDUSTRY_SECTORS } from "../../constants/vendorOnboardingData";
 import ChipMultiSelect from "./ChipMultiSelect";
-import PublicSectorCheckboxes from "./PublicSectorCheckboxes";
 import "../../styles/industry_sector_dependency.css";
 
 export interface SectorValue {
@@ -87,6 +86,7 @@ function IndustrySectorDependency({
         value={selectedCategory}
         onChange={(e) => setSelectedCategory(e.target.value)}
         aria-label="Sector category"
+        required={required}
       >
         <option value="">{defaultCategoryOption}</option>
         {categoryOptions.map((label) => (
@@ -96,22 +96,13 @@ function IndustrySectorDependency({
         ))}
       </select>
 
-      {selectedCategory === "Public Sector" && (
-        <PublicSectorCheckboxes
+      {activeSectorNode && activeSectorNode.options.length > 0 ? (
+        <ChipMultiSelect
+          options={activeSectorNode.options}
           value={selectedValues}
           onChange={handleSectorOptionsChange}
-          aria-label="Public sector options"
         />
-      )}
-      {activeSectorNode &&
-        activeSectorNode.options.length > 0 &&
-        selectedCategory !== "Public Sector" && (
-          <ChipMultiSelect
-            options={activeSectorNode.options}
-            value={selectedValues}
-            onChange={handleSectorOptionsChange}
-          />
-        )}
+      ) : null}
     </div>
   );
 }

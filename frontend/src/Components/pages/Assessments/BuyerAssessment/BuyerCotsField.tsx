@@ -5,6 +5,28 @@ import FieldError from "../../../UI/FieldError";
 
 const defaultOption = "Select";
 
+/** Parse multiselect form value: JSON array, plain array, or comma-separated string (draft DB format). */
+function parseMultiselectValue(raw: unknown): string[] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) {
+    return raw.map((x) => String(x).trim()).filter(Boolean);
+  }
+  const s = String(raw).trim();
+  if (!s) return [];
+  try {
+    const parsed = JSON.parse(s);
+    if (Array.isArray(parsed)) {
+      return parsed.map((x) => String(x).trim()).filter(Boolean);
+    }
+  } catch {
+    /* comma-separated draft storage */
+  }
+  return s
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 /** Renders input, single select, or multiselect based on field config. Multiselect values stored as JSON array string. */
 const BuyerCotsField = ({
   fieldKey,
@@ -23,15 +45,7 @@ const BuyerCotsField = ({
   // Read-only from onboarding: show value only (no dropdown) so geographic regions / tech stack display as plain text
   if (readOnly) {
     if (options && multiselect) {
-      let displayText = "";
-      try {
-        if (typeof safeValue === "string" && safeValue.trim()) {
-          const parsed = JSON.parse(safeValue);
-          displayText = Array.isArray(parsed) ? parsed.join(", ") : String(safeValue);
-        }
-      } catch {
-        displayText = typeof safeValue === "string" ? safeValue : String(safeValue ?? "");
-      }
+      const displayText = parseMultiselectValue(safeValue).join(", ");
       return (
         <>
           <FormField label={label} mandatory={required} tooltipText={placeholder}>
@@ -97,15 +111,7 @@ const BuyerCotsField = ({
   }
 
   if (options && multiselect) {
-    let selected: string[] = [];
-    try {
-      if (typeof safeValue === "string" && safeValue.trim()) {
-        selected = JSON.parse(safeValue);
-        if (!Array.isArray(selected)) selected = [];
-      }
-    } catch {
-      selected = [];
-    }
+    const selected = parseMultiselectValue(safeValue);
     return (
       <>
         <FormField label={label} mandatory={required} tooltipText={placeholder}>

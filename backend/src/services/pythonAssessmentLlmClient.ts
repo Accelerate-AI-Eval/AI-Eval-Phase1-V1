@@ -4,7 +4,9 @@
  * Env: PYTHON_SCORING_URL (default http://localhost:5004)
  */
 
+import { resolveActorSnapshot } from "./observability/llmUsage.service.js";
 import { getActiveBedrockModelId } from "../utils/bedrockModelId.js";
+import { getRequestActor } from "../utils/requestActorContext.js";
 
 export type AssessmentLlmType =
   | "vendor_self_attestation"
@@ -43,6 +45,8 @@ export async function invokePythonLlmWithVector(options: {
 }): Promise<PythonLlmWithVectorResult> {
   const url = `${scoringBaseUrl()}/assessment/llm-with-vector`;
   const modelId = options.modelId?.trim() || getActiveBedrockModelId();
+  // Resolve org/user before the Python call so usage events get names.
+  const actor = await resolveActorSnapshot(getRequestActor().userId ?? null);
   let response: Response;
   try {
     response = await fetch(url, {
@@ -55,6 +59,10 @@ export async function invokePythonLlmWithVector(options: {
         max_tokens: options.maxTokens ?? 8192,
         temperature: options.temperature ?? 0.3,
         model_id: modelId,
+        actor_user_id: actor.userId,
+        actor_user_name: actor.userName,
+        actor_organization_id: actor.organizationId,
+        actor_organization_name: actor.organizationName,
       }),
     });
   } catch (err) {

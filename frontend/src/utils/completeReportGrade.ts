@@ -667,7 +667,7 @@ function buildIrsRationaleFallback(
       name: "Integration risk",
       risk: integ,
       weight: 0.3,
-      tip: "Reduce system integrations, close requirement gaps, add rollback/monitoring/testing",
+      tip: "Reduce system integrations, gain product familiarity, add rollback/monitoring/testing",
     },
     {
       name: "Org readiness gap",

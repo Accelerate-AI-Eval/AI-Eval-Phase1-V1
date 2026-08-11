@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import type { z } from "zod";
 import "./vendor_onboarding.css";
 import Button from "../../UI/Button";
+import LoadingMessage from "../../UI/LoadingMessage";
 import StepCompanyProfile from "./StepCompanyProfile";
 import StepContactInformation from "./StepContactInformation";
 import StepCompanyScale from "./StepCompanyScale";
@@ -587,9 +588,6 @@ export default function VendorMainForm({ type }: { type: string }) {
     return disabled;
   }, [formVendorData]);
 
-  const handleBackToSelection = () =>
-    navigate(`/onboarding/${onboardingToken}`);
-
   const handleSubmitPreview = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!onboardingToken) return;
@@ -669,9 +667,10 @@ export default function VendorMainForm({ type }: { type: string }) {
 
   if (!onboardingGateReady) {
     return (
-      <div className="form_card_centered">
-        <p style={{ textAlign: "center", color: "#64748b" }}>Loading…</p>
-      </div>
+      <LoadingMessage
+        message="Loading…"
+        className="loading_message_wrapper--page onboarding_page_loader"
+      />
     );
   }
 
@@ -715,11 +714,11 @@ export default function VendorMainForm({ type }: { type: string }) {
           {/* Navigation buttons */}
         <div className="vendor_action_btns">
           {/* Show back button only if confirmation is NOT shown */}
-          {!allStepsFilled && (
+          {!allStepsFilled && currentStep > 0 && (
             <div className="action_back">
               <Button
                 type="button"
-                onClick={currentStep === 0 ? handleBackToSelection : handleBack}
+                onClick={handleBack}
                 className="back_btn"
               >
                 <span>

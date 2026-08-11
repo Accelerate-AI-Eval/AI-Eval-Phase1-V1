@@ -4,6 +4,13 @@
   padding: 1rem 1.25rem 3rem;
 }
 
+.bvr_page > .loading_message_wrapper--page {
+  min-height: calc(100dvh - var(--top-nav-height, 64px) - 3rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .bvr_archived_banner {
   margin: 1rem 0;
   padding: 0.75rem 1rem;
@@ -18,20 +25,26 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 .bvr_matrix_table th,
 .bvr_matrix_table td {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e8edf5;
   padding: 0.65rem 0.75rem;
   vertical-align: top;
   text-align: left;
+  color: #475569;
 }
 
 .bvr_matrix_table th {
-  background: #f8fafc;
+  background: #f7f9fc;
   font-weight: 600;
-  color: #334155;
+  font-size: 0.75rem;
+  letter-spacing: 0.03rem;
+  text-transform: uppercase;
+  color: #64748b;
   width: 22%;
 }
 
@@ -42,9 +55,9 @@
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e8edf5;
+  background: var(--surface-color);
 }
 
 .map_action_table {
@@ -197,7 +210,7 @@
   font-size: 0.72rem;
   font-weight: 800;
   color: #0f172a;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.02rem;
   pointer-events: none;
 }
 
@@ -320,18 +333,13 @@
   color: #fff;
   font-size: 16px;
   font-weight: 600;
-  border-radius: var(--ui-border-radius);
+  border-radius: 0;
   cursor: pointer;
   flex-shrink: 0;
 }
 
-.bvr_export_btn:hover {
-  background: #013f94;
-  border-color: #013f94;
-}
-
 .bvr_document {
-  background: #fff;
+  background: var(--surface-color);
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   padding: 1.75rem 2rem;
@@ -478,7 +486,7 @@
   font-size: 0.95rem;
   font-weight: 600;
   color: #111827;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.02rem;
 }
 
 .bvr_recommendation_sub {
@@ -609,7 +617,7 @@
   padding: 0.28rem 0.7rem;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.06rem;
   text-transform: uppercase;
   border-radius: 9999px;
   border: 1px solid transparent;
@@ -647,7 +655,7 @@
 
 .bvr_risk_block {
   padding: 1rem;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   border-radius: 8px;
   border-left: none;
 }
@@ -686,7 +694,7 @@
 
 .bvr_recommendations_card {
   border-color: #bfdbfe;
-  background: #f8fafc;
+  background: var(--surface-elevated);
 }
 
 .bvr_reco_intro {
@@ -714,7 +722,7 @@
   padding: 0.55rem 0.75rem;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.06rem;
   text-transform: uppercase;
   color: #1e3a8a;
   border-right: 1px solid #dbeafe;
@@ -787,7 +795,7 @@
   border: 1px solid transparent;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.06rem;
   text-transform: uppercase;
 }
 
@@ -853,7 +861,7 @@
 }
 
 .bvr_impl_card {
-  background: #fafafa;
+  background: var(--surface-muted);
 }
 
 .bvr_impl_text {
@@ -903,7 +911,7 @@
   font-weight: 600;
   color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.03rem;
 }
 
 .crs_rag_arrow {
@@ -1033,7 +1041,7 @@
 
 .ira_breakdown_card {
   padding: 0.85rem;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   border-radius: 8px;
   border: 1px solid #e2e8f0;
 }

@@ -4,17 +4,19 @@
  */
 import React, { useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate, useLocation } from "react-router-dom";
-import { FileText, ChevronRight } from "lucide-react";
 import Breadcrumbs from "../../UI/Breadcrumbs";
 import AssessmentPreviewModalContent from "../Assessments/AssessmentPreviewModalContent";
 import LoadingMessage from "../../UI/LoadingMessage";
 import { formatDateDDMMMYYYY } from "../../../utils/formatDate.js";
 import CompleteReportsCards from "../Reports/CompleteReportsCards";
+import GeneralReportsCards from "../Reports/GeneralReportsCards";
 import type { CustomerRiskReportItem } from "../Reports/Reports";
+import type { GeneratedReportItem } from "../Reports/GeneralReports";
 import "../UserManagement/user_management.css";
 import "../Assessments/assessments.css";
 import "../VendorAttestationDetails/vendor_attestation_details.css";
 import "../VendorDirectory/VendorDirectory.css";
+import "../Dashboard/dashboard.css";
 import "../Reports/general_reports.css";
 import "../Reports/reports.css";
 import {
@@ -53,45 +55,10 @@ function isCompleteReportArchived(r: CustomerRiskReportItem): boolean {
   }
 }
 
-function isGeneralReportArchived(r: GeneralReportItem): boolean {
-  const expiryAt = r.expiryAt ?? r.attestationExpiryAt;
-  if (expiryAt == null || String(expiryAt).trim() === "") return false;
-  try {
-    const d = new Date(expiryAt);
-    if (Number.isNaN(d.getTime())) return false;
-    return d.setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
-  } catch {
-    return false;
-  }
-}
-
 function getCompleteReportExpiry(r: CustomerRiskReportItem): string {
   const raw = r.expiryAt ?? r.attestationExpiryAt;
   if (raw == null || String(raw).trim() === "") return "—";
   return formatDateDDMMMYYYY(raw);
-}
-
-function getGeneralReportExpiry(r: GeneralReportItem): string {
-  const raw = r.expiryAt ?? r.attestationExpiryAt;
-  if (raw == null || String(raw).trim() === "") return "—";
-  return formatDateDDMMMYYYY(raw);
-}
-
-function getReportTypeLabel(reportType: string): string {
-  const labels: Record<string, string> = {
-    executive_stakeholder_brief: "Executive Stakeholder Brief",
-    implementation_roadmap: "Implementation Roadmap Proposal",
-    sales_brief: "Sales Brief",
-    "Compliance & Risk Summary": "Compliance & Risk Summary",
-    "Implementation Risk Assessment": "Implementation Risk Assessment",
-    "Mitigation Action Plan": "Mitigation Action Plan",
-    "Vendor Comparison Matrix": "Vendor Comparison Matrix",
-    compliance_risk_summary: "Compliance & Risk Summary",
-    implementation_risk_assessment: "Implementation Risk Assessment",
-    mitigation_action_plan: "Mitigation Action Plan",
-    vendor_comparison_matrix: "Vendor Comparison Matrix",
-  };
-  return labels[reportType] ?? reportType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function mapBuyerVendorRiskListItem(r: Record<string, unknown>): CustomerRiskReportItem {
@@ -157,7 +124,7 @@ function mapBuyerVendorRiskFromVendorReportApi(
   };
 }
 
-export default function OrganizationAssessmentView() {
+function OrganizationAssessmentView() {
   const { assessmentId } = useParams<{ assessmentId: string }>();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -431,7 +398,7 @@ export default function OrganizationAssessmentView() {
 
   if (error) {
     return (
-      <div className="sec_user_page org_settings_page" style={{ padding: "1.5rem" }}>
+      <div className="sec_user_page org_settings_page" style={{ padding: "1.5rem 1rem 0 0" }}>
         <Breadcrumbs items={breadcrumbItems} />
         <p role="alert" style={{ marginTop: "1rem", color: "var(--color-error, #dc2626)" }}>
           {error}
@@ -450,7 +417,7 @@ export default function OrganizationAssessmentView() {
 
   if (loading && !previewRow) {
     return (
-      <div className="sec_user_page org_settings_page" style={{ padding: "1.5rem" }}>
+      <div className="sec_user_page org_settings_page" style={{ padding: "1.5rem 1rem 0 0" }}>
         <Breadcrumbs items={breadcrumbItems} />
         <LoadingMessage message="Loading assessment…" />
       </div>
@@ -495,7 +462,7 @@ export default function OrganizationAssessmentView() {
   };
 
   return (
-    <div className="sec_user_page org_settings_page product_profile_page" style={{ padding: "1.5rem" }}>
+    <div className="sec_user_page org_settings_page product_profile_page" style={{ padding: "1.5rem 1rem 0 0" }}>
       <Breadcrumbs items={breadcrumbItems} />
       <div className="vendor_attestation_preview_modal_body" style={{ marginTop: "1.5rem", maxWidth: "900px" }}>
         <AssessmentPreviewModalContent
@@ -553,54 +520,22 @@ export default function OrganizationAssessmentView() {
                 onDownload={handleDownloadCompleteReport}
                 singleCard
               />
-              {generalReports.map((report) => {
-                const archived = isGeneralReportArchived(report);
-                return (
-                  <article
-                    key={`general-${report.id}`}
-                    className={`vendor_directory_card general_rpr_card${archived ? " general_rpr_card_archived" : ""}`}
-                  >
-                    <div className="general_report_card_header">
-                      <p className="vendor_directory_card_products general_rpr_card_report_type">
-                        <span className="general_rpr_card_report_type_icon" aria-hidden>
-                          <FileText size={16} />
-                        </span>
-                        {getReportTypeLabel(report.reportType)}
-                      </p>
-                    </div>
-                    <div className="general_rpr_title">
-                      <div className="vendor_directory_card_header_text">
-                        <h2 className="vendor_directory_card_name general_rpr_card_title_clamp">
-                          {report.assessmentLabel ?? `Report ${report.id}`}
-                        </h2>
-                      </div>
-                    </div>
-                    <div className="general_rpr_card_footer">
-                      <div className="general_rpr_card_dates">
-                        <div className="general_rpr_card_date_row">
-                          {archived ? (
-                            <span className="general_rpr_card_status general_rpr_card_status_archived">Archived</span>
-                          ) : (
-                            <>
-                              <span className="general_rpr_card_date_label_expiry">Expires on:</span>
-                              <span className="general_rpr_card_date_value_expiry">{getGeneralReportExpiry(report)}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="view_rpr_btn vendor_directory_card_action_btn"
-                        onClick={() => navigate(`/reports/general/${report.id}`)}
-                        aria-label={`View ${getReportTypeLabel(report.reportType)}`}
-                      >
-                        View Report
-                        <ChevronRight size={16} aria-hidden />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
+              <GeneralReportsCards
+                reports={generalReports.map(
+                  (report): GeneratedReportItem => ({
+                    id: report.id,
+                    assessmentId: report.assessmentId,
+                    assessmentLabel: report.assessmentLabel ?? `Report ${report.id}`,
+                    reportType: report.reportType,
+                    generatedAt: report.generatedAt ?? new Date().toISOString(),
+                    expiryAt: report.expiryAt ?? null,
+                    attestationExpiryAt: report.attestationExpiryAt ?? null,
+                  }),
+                )}
+                onViewReport={(report) => navigate(`/reports/general/${report.id}`)}
+                singleCard
+                viewEnabledWhenArchived
+              />
             </div>
           )}
         </section>
@@ -608,3 +543,5 @@ export default function OrganizationAssessmentView() {
     </div>
   );
 }
+
+export default OrganizationAssessmentView;

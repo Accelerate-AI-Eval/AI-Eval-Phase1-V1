@@ -14,6 +14,11 @@ class ScoreRequest(BaseModel):
     formula_input: dict[str, Any] | None = None
     # Free-text / structured dump used by the Bedrock trust-score agent (Node-equivalent).
     vendor_data: str | None = None
+    # Optional actor for Observability usage events
+    actor_user_id: int | None = None
+    actor_user_name: str | None = None
+    actor_organization_id: int | None = None
+    actor_organization_name: str | None = None
 
 
 class ScoreResponse(BaseModel):

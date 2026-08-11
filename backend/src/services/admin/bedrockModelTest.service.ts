@@ -21,6 +21,7 @@ import {
   printModelFulfillmentToTerminal,
   type ModelFulfillmentResponse,
 } from "../../utils/modelFulfillmentResponse.js";
+import { recordLlmUsageAsync } from "../observability/llmUsage.service.js";
 
 const TEST_PROMPT = "Hi";
 const PROFILE_TEST_PROMPT = "Hi";
@@ -246,6 +247,18 @@ export async function invokeBedrockModelPrompt(input: {
       outputTokens: response.usage?.outputTokens,
       totalTokens: response.usage?.totalTokens,
     };
+    if (
+      (usage.inputTokens != null && usage.inputTokens > 0) ||
+      (usage.outputTokens != null && usage.outputTokens > 0) ||
+      (usage.totalTokens != null && usage.totalTokens > 0)
+    ) {
+      recordLlmUsageAsync({
+        modelId: trimmed,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        totalTokens: usage.totalTokens,
+      });
+    }
     const latencyMs = Date.now() - startedAt;
     const fulfillmentResponse = buildModelFulfillmentResponse({
       success: true,

@@ -9,6 +9,11 @@ import {
   getAiRiskApiKeyHandler,
   setAiRiskApiKeyHandler,
 } from "../controllers/admin/aiRiskApiKey.controller.js";
+import {
+  getLlmUsageByIdHandler,
+  getLlmUsageEventsHandler,
+  getLlmUsageHandler,
+} from "../controllers/admin/observability.controller.js";
 
 const adminRouter = express.Router();
 
@@ -40,6 +45,24 @@ adminRouter.put(
   "/services/ai-risk-api-key",
   authenticateToken,
   setAiRiskApiKeyHandler,
+);
+
+adminRouter.get(
+  "/services/llm-usage",
+  authenticateToken,
+  getLlmUsageHandler,
+);
+
+adminRouter.get(
+  "/services/llm-usage/:id/events",
+  authenticateToken,
+  getLlmUsageEventsHandler,
+);
+
+adminRouter.get(
+  "/services/llm-usage/:id",
+  authenticateToken,
+  getLlmUsageByIdHandler,
 );
 
 export default adminRouter;

@@ -44,3 +44,6 @@ export {
 export { risks, riskTop5Mitigations, riskMappings } from "./risks/index.js";
 
 export { sectors, industries } from "./lookup/index.js";
+
+export { llmModelUsage } from "./observability/llmModelUsage.js";
+export { llmModelUsageEvents } from "./observability/llmModelUsageEvents.js";

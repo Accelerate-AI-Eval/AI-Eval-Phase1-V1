@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import "../../styles/layout/topNav.css";
-import { Bell } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import UserProfile from "../pages/UserProfile/UserProfile";
+import AccountSettingsModal from "../pages/MyAccount/AccountSettingsModal";
 import NotificationsPopover from "../UI/NotificationsPopover";
 
 interface MeUser {
@@ -43,7 +44,9 @@ function formatRoleForDisplay(role: string | null | undefined): string {
 const TopNavBar = () => {
   const [isPopupVisible, setIsPopupVisible] = useState(false);
   const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [user, setUser] = useState<MeUser | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const userRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -147,6 +150,11 @@ const TopNavBar = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
+      const el = event.target as Element | null;
+      /* Modals portaled to body — don't tear down the profile menu while they are open */
+      if (el?.closest?.(".profile_modal_overlay")) {
+        return;
+      }
       if (
         popupRef.current &&
         !popupRef.current.contains(target) &&
@@ -175,6 +183,27 @@ const TopNavBar = () => {
   return (
     <>
       <div className="top_nav_content">
+        <div className="nav_left_spacer" aria-hidden />
+
+        <form
+          className="nav_search"
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+          }}
+        >
+          <Search size={18} className="nav_search_icon" aria-hidden />
+          <input
+            type="search"
+            className="nav_search_input"
+            placeholder="Search…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search"
+            autoComplete="off"
+          />
+        </form>
+
         <div className="nav_right_content">
           <div className="notifications_icon_sec" ref={notifRef}>
             <Bell
@@ -218,8 +247,18 @@ const TopNavBar = () => {
       {/* POPUP */}
       {isPopupVisible && (
         <div ref={popupRef}>
-          <UserProfile onClose={() => setIsPopupVisible(false)} />
+          <UserProfile
+            onClose={() => setIsPopupVisible(false)}
+            onOpenSettings={() => {
+              setIsPopupVisible(false);
+              setIsSettingsOpen(true);
+            }}
+          />
         </div>
+      )}
+
+      {isSettingsOpen && (
+        <AccountSettingsModal onClose={() => setIsSettingsOpen(false)} />
       )}
     </>
   );

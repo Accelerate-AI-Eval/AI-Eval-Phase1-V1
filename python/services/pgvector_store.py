@@ -39,10 +39,24 @@ CREATE INDEX IF NOT EXISTS document_chunks_source_path_idx
 
 class PgVectorStore:
     def __init__(self, database_url: str | None = None) -> None:
-        self.database_url = database_url or settings.DATABASE_URL
+        # Prefer explicit URL when passed (ingest CLI); otherwise discrete DATABASE_*.
+        self.database_url = database_url
+        self._conn_kwargs = {
+            "user": (settings.DATABASE_USER or "postgres").strip(),
+            "password": settings.DATABASE_PASSWORD
+            if settings.DATABASE_PASSWORD is not None
+            else "Postgresql123",
+            "host": (settings.DATABASE_HOST or "127.0.0.1").strip(),
+            "port": int((settings.DATABASE_PORT or "5432").strip()),
+            "dbname": (settings.DATABASE_NAME or "ai_q_db").strip(),
+            "connect_timeout": 10,
+        }
 
     def _connect(self):
-        conn = psycopg2.connect(self.database_url)
+        if self.database_url:
+            conn = psycopg2.connect(self.database_url)
+        else:
+            conn = psycopg2.connect(**self._conn_kwargs)
         register_vector(conn)
         return conn
 

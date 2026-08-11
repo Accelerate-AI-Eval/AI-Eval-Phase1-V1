@@ -13,8 +13,9 @@ from services.pgvector_store import PgVectorStore
 
 class VectorIngestService:
     def __init__(self, database_url: str | None = None) -> None:
-        self.database_url = database_url or settings.DATABASE_URL
-        self.store = PgVectorStore(self.database_url)
+        # None => PgVectorStore uses discrete DATABASE_* from settings (same as Node Pool).
+        self.database_url = database_url
+        self.store = PgVectorStore(database_url)
 
     def ensure_schema(self) -> None:
         self.store.ensure_schema()
@@ -22,7 +23,7 @@ class VectorIngestService:
     def ingest_file(self, path: str | Path, document_id: str | None = None) -> dict:
         result = run_chunk_ingest(
             path=path,
-            database_url=self.database_url,
+            database_url=self.database_url or settings.DATABASE_URL,
             document_id=document_id,
         )
         logger.info(

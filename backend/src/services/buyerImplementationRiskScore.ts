@@ -219,8 +219,9 @@ function calculateIntegrationRisk(buyerPayload: Record<string, unknown>): number
   });
   risk += Math.min(30, systems.length * 6);
 
-  const gaps = String(buyerPayload.requirementGaps ?? "").trim();
-  if (gaps.length > 0) risk += 12;
+  // requirementGaps field: "Are you currently using the product?" (Yes/No)
+  const currentlyUsing = norm(buyerPayload.requirementGaps);
+  if (currentlyUsing.startsWith("no")) risk += 12;
 
   const rollback = norm(buyerPayload.rollbackCapability);
   if (rollback.startsWith("none") || rollback.includes("no rollback") || rollback === "no") {

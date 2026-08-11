@@ -393,16 +393,16 @@ function traceIntegrationRisk(
     );
   }
 
-  // Requirement gaps
-  const gaps = String(buyerPayload.requirementGaps ?? "").trim();
-  if (gaps.length > 0) {
+  // Currently using product? (stored as requirementGaps; Yes/No)
+  const currentlyUsing = norm(buyerPayload.requirementGaps);
+  if (currentlyUsing.startsWith("no")) {
     risk += 12;
     components.push(
       component(
-        "Requirement Gaps Present",
+        "Not Currently Using Product",
         "Integration",
         -(12 * W_INT),
-        "Requirement gaps were specified — adds 12 to integration risk.",
+        "Buyer is not currently using the product — adds 12 to integration risk.",
         "assessment_answer",
         "field: requirementGaps",
       ),

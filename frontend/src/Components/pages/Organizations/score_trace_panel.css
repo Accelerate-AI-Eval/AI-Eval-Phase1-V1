@@ -17,7 +17,7 @@
 .stp_panel {
   width: min(640px, 96vw);
   height: 100%;
-  background: #fff;
+  background: var(--surface-color);
   display: flex;
   flex-direction: column;
   box-shadow: -6px 0 36px rgba(0, 0, 0, 0.16);
@@ -39,7 +39,7 @@
   gap: 1rem;
   padding: 1.125rem 1.5rem;
   border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   flex-shrink: 0;
 }
 
@@ -56,7 +56,7 @@
   border-radius: 4px;
   font-size: 9.5px;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.1rem;
   background: #fef3c7;
   color: #92400e;
   border: 1px solid #fde68a;
@@ -190,7 +190,7 @@
   align-items: center;
   gap: 1.25rem;
   padding: 1.125rem 1.25rem;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   border: 1px solid #e2e8f0;
   border-radius: 8px;
 }
@@ -222,7 +222,7 @@
   font-size: 0.63rem;
   font-weight: 600;
   opacity: 0.65;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.02rem;
 }
 
 .stp_score_meta {
@@ -270,7 +270,7 @@
 .stp_section_title {
   font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.09rem;
   color: #64748b;
   text-transform: uppercase;
   margin: 0;
@@ -294,7 +294,7 @@
   align-items: center;
   justify-content: center;
   padding: 0.75rem 0.5rem 0.625rem;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   gap: 0.15rem;
@@ -339,7 +339,7 @@
   align-items: center;
   gap: 0.625rem;
   padding: 0.625rem 0.875rem;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   border-bottom: 1px solid #e2e8f0;
   flex-wrap: wrap;
 }
@@ -353,7 +353,7 @@
   font-size: 0.8rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.01rem;
 }
 
 .stp_impact_positive { background: #dcfce7; color: #15803d; }
@@ -373,7 +373,7 @@
   flex-shrink: 0;
   font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.07rem;
   text-transform: uppercase;
   color: #475569;
   background: #e2e8f0;
@@ -387,7 +387,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .stp_card_reason_text {
@@ -418,7 +418,7 @@
   width: 8rem;
   font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.05rem;
   text-transform: uppercase;
   color: #94a3b8;
   line-height: 1.4;
@@ -471,7 +471,7 @@
   gap: 0.5rem;
   flex-wrap: wrap;
   padding: 0.75rem 1.5rem;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   border-top: 1px solid #e2e8f0;
   font-size: 0.7rem;
   color: #94a3b8;
@@ -483,7 +483,7 @@
 .stp_internal_footer_badge {
   font-size: 0.63rem;
   font-weight: 800;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.07rem;
   background: #fef3c7;
   color: #92400e;
   border: 1px solid #fde68a;
@@ -499,7 +499,7 @@
   padding: 4px 8px;
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.02rem;
   color: #475569;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
@@ -523,7 +523,7 @@
   border-radius: 20px;
   font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.04rem;
   width: fit-content;
   margin: 0.1rem 0;
 }
@@ -574,7 +574,7 @@
   gap: 0.35rem;
   font-size: 0.65rem;
   font-weight: 800;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.09rem;
   color: #92400e;
   margin-bottom: 0.2rem;
 }
@@ -637,7 +637,7 @@
   border: 1px solid #bbf7d0;
   border-left: 3px solid #22c55e;
   overflow: hidden;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .stp_improve_card_top {
@@ -686,7 +686,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  background: #fff;
+  background: var(--surface-color);
 }
 
 .stp_improve_meta_row {
@@ -726,7 +726,7 @@
   padding: 0.625rem 1rem;
   border-top: 1px solid #f1f5f9;
   border-bottom: 1px solid #f1f5f9;
-  background: #f8fafc;
+  background: var(--surface-elevated);
 }
 
 .aiq_vts_score_left {
@@ -752,7 +752,7 @@
   font-size: 0.7rem;
   font-weight: 600;
   color: #94a3b8;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.02rem;
 }
 
 .aiq_vts_score_right {
@@ -765,7 +765,7 @@
 .aiq_vts_score_label {
   font-size: 0.65rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.06rem;
   text-transform: uppercase;
   color: #64748b;
 }
@@ -786,14 +786,14 @@
 .aiq_vts_score_version {
   font-size: 0.6rem;
   color: #94a3b8;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.03rem;
 }
 
 .aiq_vts_score_pending {
   font-size: 0.72rem;
   color: #94a3b8;
   font-weight: 500;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.03rem;
 }
 
 /* ── Action row: Eye + Explain Score button spacing ───────────────────────── */
@@ -813,7 +813,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   border: 1px solid #e2e8f0;
   border-radius: 9px;
   padding: 1.125rem 1.25rem;
@@ -849,7 +849,7 @@
 .stp_exec_meta_label {
   font-size: 0.63rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.06rem;
   text-transform: uppercase;
   color: #94a3b8;
 }
@@ -884,7 +884,7 @@
 .stp_ai_insight_label {
   font-size: 0.63rem;
   font-weight: 800;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.09rem;
   text-transform: uppercase;
   color: #94a3b8;
 }
@@ -906,7 +906,7 @@
 }
 
 .stp_cat_card {
-  background: #fff;
+  background: var(--surface-color);
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 0.75rem 0.875rem;
@@ -924,7 +924,7 @@
 .stp_cat_name {
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.04rem;
   text-transform: uppercase;
   color: #475569;
 }
@@ -960,7 +960,7 @@
 .stp_cat_rating_label {
   font-size: 0.64rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.04rem;
 }
 
 /* Card + progress color variants by rating */
@@ -1067,7 +1067,7 @@
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.05rem;
   white-space: nowrap;
 }
 
@@ -1083,7 +1083,7 @@
 .stp_improve_group_header {
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.07rem;
   text-transform: uppercase;
   color: #64748b;
   padding: 6px 2px 3px;
@@ -1099,7 +1099,7 @@
    SECTION C — Score Waterfall
 ══════════════════════════════════════════════════════════════════════════ */
 .stp_waterfall {
-  background: #f8fafc;
+  background: var(--surface-elevated);
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
@@ -1196,7 +1196,7 @@
 .stp_projected_label {
   font-size: 0.63rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.06rem;
   text-transform: uppercase;
   color: #64748b;
   text-align: center;
@@ -1268,10 +1268,10 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.625rem 0.875rem;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.06rem;
   text-transform: uppercase;
   color: #64748b;
   cursor: pointer;
@@ -1352,7 +1352,7 @@ details[open] .stp_methodology_chevron {
   background: #f1f5f9;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.06rem;
   text-transform: uppercase;
   color: #475569;
 }
@@ -1365,13 +1365,13 @@ details[open] .stp_methodology_chevron {
   font-size: 0.72rem;
   border-top: 1px solid #f1f5f9;
 }
-.stp_factor_row_ok      { background: #fafafa; }
+.stp_factor_row_ok      { background: var(--surface-muted); }
 .stp_factor_row_missing { background: #fff5f5; }
 .stp_factor_row_partial { background: #fffbeb; }
 .stp_factor_row_name { color: #374151; font-weight: 500; }
 .stp_factor_internal_tag { font-size: 0.65rem; color: #94a3b8; font-weight: 400; }
 .stp_factor_row_pts  { color: #6b7280; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.stp_factor_row_status { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.stp_factor_row_status { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04rem; }
 .stp_factor_status_strong  { color: #16a34a; }
 .stp_factor_status_present { color: #2563eb; }
 .stp_factor_status_weak    { color: #d97706; }
@@ -1405,7 +1405,7 @@ details[open] .stp_methodology_chevron {
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.06rem;
   padding: 2px 6px;
   border-radius: 4px;
   background: #f1f5f9;
@@ -1424,7 +1424,7 @@ details[open] .stp_methodology_chevron {
 .stp_irs_factor_improvement {
   font-size: 0.72rem;
   color: #475569;
-  background: #f8fafc;
+  background: var(--surface-elevated);
   border-left: 2px solid #cbd5e1;
   padding: 0.3rem 0.5rem;
   border-radius: 0 4px 4px 0;

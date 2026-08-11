@@ -3,6 +3,7 @@ import * as path from "node:path";
 import {
   normalizeBedrockModelAlias,
   stripUsModelPrefix,
+  stripBedrockGeoPrefix,
   // withUsModelPrefix,
 } from "../utils/bedrockModelId.js";
 import { backendRoot } from "../utils/backendRoot.js";
@@ -124,6 +125,7 @@ export function getCatalogModel(modelId: string): BedrockCatalogModel | undefine
 
   const candidates = [
     normalized,
+    stripBedrockGeoPrefix(normalized),
     stripUsModelPrefix(normalized),
     // withUsModelPrefix(stripUsModelPrefix(normalized)),
   ];
@@ -131,6 +133,13 @@ export function getCatalogModel(modelId: string): BedrockCatalogModel | undefine
   for (const candidate of candidates) {
     const exact = cachedById!.get(candidate);
     if (exact) return exact;
+  }
+
+  // Cross-region profile ids embed the foundation model id after the geo prefix.
+  const geoStripped = stripBedrockGeoPrefix(normalized);
+  if (geoStripped && geoStripped !== normalized) {
+    const embedded = cachedById!.get(geoStripped);
+    if (embedded) return embedded;
   }
 
   return undefined;

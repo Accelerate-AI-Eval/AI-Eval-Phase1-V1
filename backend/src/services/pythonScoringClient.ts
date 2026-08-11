@@ -6,6 +6,9 @@
  * Env: PYTHON_SCORING_URL (default http://localhost:5004)
  */
 
+import { resolveActorSnapshot } from "./observability/llmUsage.service.js";
+import { getRequestActor } from "../utils/requestActorContext.js";
+
 export interface PythonScoreResult {
   vendor_trust_score: number;
   product_risk: number;
@@ -93,7 +96,7 @@ function scoringBaseUrl(): string {
  * 12s was too short — Node aborted before Python could respond, so submit saved COMPLETED
  * with no trust score and Product Profile showed "—".
  */
-const DEFAULT_TIMEOUT_MS = 120_000;
+const DEFAULT_TIMEOUT_MS = 320_000;
 
 async function postJson(
   url: string,
@@ -151,9 +154,14 @@ export async function scoreVendorAttestationWithPython(
   vendorData?: string,
 ): Promise<PythonScoreResult> {
   const url = `${scoringBaseUrl()}/assessment/score`;
+  const actor = await resolveActorSnapshot(getRequestActor().userId ?? null);
   const r = await postJson(url, {
     payload,
     vendor_data: typeof vendorData === "string" && vendorData.trim() ? vendorData : undefined,
+    actor_user_id: actor.userId,
+    actor_user_name: actor.userName,
+    actor_organization_id: actor.organizationId,
+    actor_organization_name: actor.organizationName,
   });
 
   const vendorTrustScore = Number(r.vendor_trust_score);

@@ -38,6 +38,7 @@ import "../Organizations/organization.css";
 import "../UserManagement/user_management.css";
 import "../UserProfile/user_profile.css";
 import "../VendorDirectory/VendorDirectory.css";
+import { premiumDataTableStyles } from "../../../styles/dataTableStyles";
 import "../Reports/general_reports.css";
 import "../../preview/preview_table.css";
 import "./assessments.css";
@@ -45,6 +46,7 @@ import { toast } from "react-toastify";
 import { ReportsPagination } from "../Reports/ReportsPagination";
 import AssessmentPreviewModalContent from "./AssessmentPreviewModalContent";
 import AssessmentsLedgerPanel, {
+  type AssessmentStatusScope,
   type LedgerRowVM,
 } from "./AssessmentsLedgerPanel";
 
@@ -350,7 +352,9 @@ function mapRowToLedgerVM(
     statusKind,
     progressPct,
     leadName,
+    riskScore: reportScore,
     riskDisplay,
+    riskGradeProfile: isBuyerRow ? "buyer" : "vendor",
     dateLine1,
     dateLine2,
     icon,
@@ -535,6 +539,10 @@ const Assessments = () => {
   const [assessmentSearch, setAssessmentSearch] = useState("");
   const [showArchivedBuyer, setShowArchivedBuyer] = useState(false);
   const [showArchivedVendor, setShowArchivedVendor] = useState(false);
+  const [buyerStatusScope, setBuyerStatusScope] =
+    useState<AssessmentStatusScope>("all");
+  const [vendorStatusScope, setVendorStatusScope] =
+    useState<AssessmentStatusScope>("all");
   const [deleteModal, setDeleteModal] = useState<{
     assessmentId: string | number | null;
     type: "draft" | "expired" | null;
@@ -563,7 +571,15 @@ const Assessments = () => {
     setMyCardPage(1);
     setBuyerArchivedCardPage(1);
     setVendorArchivedCardPage(1);
-  }, [assessmentSearch]);
+  }, [assessmentSearch, buyerStatusScope, vendorStatusScope, showArchivedBuyer, showArchivedVendor]);
+
+  function matchesStatusScope(row, scope: AssessmentStatusScope) {
+    if (scope === "all") return true;
+    const isDraft = String(row.status || "").toLowerCase() === "draft";
+    if (scope === "in_progress") return isDraft;
+    if (scope === "completed") return getAssessmentStatusLabel(row) === "Completed";
+    return true;
+  }
 
   useEffect(() => {
     const token = sessionStorage.getItem("bearerToken");
@@ -978,15 +994,10 @@ const Assessments = () => {
   };
 
   const customStyles = {
-    table: {
-      style: {
-        width: "100%",
-        backgroundColor: "#f8f8f8",
-        border: "1px solid lightgray",
-      },
-    },
+    ...premiumDataTableStyles,
     cells: {
       style: {
+        ...premiumDataTableStyles.cells.style,
         "&:last-of-type": {
           paddingRight: "12px",
         },
@@ -1087,6 +1098,13 @@ const Assessments = () => {
 
   return (
     <div className="sec_user_page org_settings_page">
+      {loading ? (
+        <LoadingMessage
+          message="Loading assessments…"
+          className="loading_message_wrapper--page"
+        />
+      ) : (
+        <>
       {!isBuyer && !isVendor && !isSystemUser && (
         <div
           className="org_settings_header page_header_align heading_user_page"
@@ -1444,19 +1462,24 @@ const Assessments = () => {
             const base = showArchivedBuyer
               ? archivedBuyerAssessments
               : nonExpiredBuyer;
+            const scoped = showArchivedBuyer
+              ? base
+              : base.filter((row) => matchesStatusScope(row, buyerStatusScope));
             const filtered =
               q === ""
-                ? base
-                : base.filter((row) =>
+                ? scoped
+                : scoped.filter((row) =>
                     getAssessmentTitle(row, true).toLowerCase().includes(q),
                   );
             const emptyMessage = showArchivedBuyer
               ? archivedBuyerAssessments.length === 0
-                ? "No archived assessments."
-                : "No archived assessments match your search."
+                ? "Archived assessments will appear here once moved from Current."
+                : "Try a different search term to find archived assessments."
               : nonExpiredBuyer.length === 0
-                ? "No assessments yet."
-                : "No assessments match your search.";
+                ? "Create your first assessment to get started."
+                : buyerStatusScope !== "all"
+                  ? "No assessments match this status filter."
+                  : "No assessments match your search.";
             const currentPage = showArchivedBuyer
               ? buyerArchivedCardPage
               : buyerCardPage;
@@ -1478,8 +1501,15 @@ const Assessments = () => {
               <AssessmentsLedgerPanel
                 inProgressCount={buyerLedgerInProgress}
                 completedCount={buyerLedgerCompleted}
+                currentCount={nonExpiredBuyer.length}
+                archivedCount={archivedBuyerAssessments.length}
                 showArchived={showArchivedBuyer}
-                onShowArchivedChange={setShowArchivedBuyer}
+                onShowArchivedChange={(archived) => {
+                  setShowArchivedBuyer(archived);
+                  if (archived) setBuyerStatusScope("all");
+                }}
+                statusScope={buyerStatusScope}
+                onStatusScopeChange={setBuyerStatusScope}
                 search={assessmentSearch}
                 onSearchChange={setAssessmentSearch}
                 loading={loading}
@@ -1515,19 +1545,26 @@ const Assessments = () => {
             const base = showArchivedVendor
               ? archivedVendorAssessments
               : nonExpiredVendor;
+            const scoped = showArchivedVendor
+              ? base
+              : base.filter((row) =>
+                  matchesStatusScope(row, vendorStatusScope),
+                );
             const filtered =
               q === ""
-                ? base
-                : base.filter((row) =>
+                ? scoped
+                : scoped.filter((row) =>
                     getAssessmentTitle(row, false).toLowerCase().includes(q),
                   );
             const emptyMessage = showArchivedVendor
               ? archivedVendorAssessments.length === 0
-                ? "No archived assessments."
-                : "No archived assessments match your search."
+                ? "Archived assessments will appear here once moved from Current."
+                : "Try a different search term to find archived assessments."
               : nonExpiredVendor.length === 0
-                ? "No vendor assessments yet."
-                : "No assessments match your search.";
+                ? "Create your first assessment to get started."
+                : vendorStatusScope !== "all"
+                  ? "No assessments match this status filter."
+                  : "No assessments match your search.";
             const currentPage = showArchivedVendor
               ? vendorArchivedCardPage
               : vendorCardPage;
@@ -1549,8 +1586,15 @@ const Assessments = () => {
               <AssessmentsLedgerPanel
                 inProgressCount={vendorLedgerInProgress}
                 completedCount={vendorLedgerCompleted}
+                currentCount={nonExpiredVendor.length}
+                archivedCount={archivedVendorAssessments.length}
                 showArchived={showArchivedVendor}
-                onShowArchivedChange={setShowArchivedVendor}
+                onShowArchivedChange={(archived) => {
+                  setShowArchivedVendor(archived);
+                  if (archived) setVendorStatusScope("all");
+                }}
+                statusScope={vendorStatusScope}
+                onStatusScopeChange={setVendorStatusScope}
                 search={assessmentSearch}
                 onSearchChange={setAssessmentSearch}
                 loading={loading}
@@ -1572,7 +1616,7 @@ const Assessments = () => {
                 assessmentViewOnly={isAssessmentViewOnly}
                 showNewAssessment={!isAssessmentViewOnly}
                 onNewAssessment={() => navigate("/vendorcots")}
-                newAssessmentLabel="Customer Assessment"
+                newAssessmentLabel="Assessment"
               />
             );
           })()}
@@ -1600,6 +1644,8 @@ const Assessments = () => {
                 data={assessmentsList}
                 pagination
                 persistTableHead
+                striped
+                highlightOnHover={false}
               />
             )}
           </div>
@@ -1711,7 +1757,7 @@ const Assessments = () => {
                   placeholder="Please provide a reason..."
                   rows={3}
                   disabled={deleteSubmitting}
-                  style={{ resize: "none", minHeight: "4em" }}
+                  style={{ resize: "none", minHeight: "4rem" }}
                 />
               </div>
             </div>
@@ -1811,7 +1857,7 @@ const Assessments = () => {
                   placeholder="Please provide a reason for this change…"
                   rows={3}
                   disabled={userArchiveSubmitting}
-                  style={{ resize: "none", minHeight: "4em" }}
+                  style={{ resize: "none", minHeight: "4rem" }}
                 />
               </div>
             </div>
@@ -1854,6 +1900,8 @@ const Assessments = () => {
           </div>
         </div>
       </Modal>
+        </>
+      )}
     </div>
   );
 };

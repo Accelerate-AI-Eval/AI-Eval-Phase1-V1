@@ -7,14 +7,12 @@ Uses boto3 InvokeModel (no langchain) so scoring works even when extraction stac
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
-import boto3
-
 from config import get_bedrock_model_id, settings
 from prompts.vendor_attestation_prompt import VENDOR_ATTESTATION_PROMPT
+from services.assessment_llm_service import invoke_bedrock_with_chunking
 
 SECTION_TITLES = {
     0: "Trust Score",
@@ -47,51 +45,23 @@ def _strip_markdown_bold(value: str) -> str:
     return value.replace("**", "").strip()
 
 
-def _bedrock_client():
-    kwargs: dict[str, Any] = {"region_name": settings.AWS_REGION}
-    if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
-        kwargs["aws_access_key_id"] = settings.AWS_ACCESS_KEY_ID
-        kwargs["aws_secret_access_key"] = settings.AWS_SECRET_ACCESS_KEY
-    return boto3.client("bedrock-runtime", **kwargs)
-
-
 def invoke_vendor_attestation_llm(
     vendor_data: str,
     *,
     formula_context: str = "",
 ) -> str:
-    """Invoke Claude on Bedrock with attestation prompt + optional pgvector formula context."""
-    # Formula/rubric context from vector DB first, then prompt, then vendor facts.
-    user_input = (
-        (formula_context or "")
-        + VENDOR_ATTESTATION_PROMPT
-        + (vendor_data or "")
+    """Invoke Bedrock with attestation prompt + optional pgvector formula context.
+
+    Large vendor_data is chunked for every model (same path as assessment LLM).
+    """
+    prefix = ((formula_context or "") + VENDOR_ATTESTATION_PROMPT).strip()
+    return invoke_bedrock_with_chunking(
+        stable_prefix=prefix,
+        payload=(vendor_data or "").strip(),
+        max_tokens=int(settings.MAX_TOKENS or 4096),
+        temperature=0.3,
+        model_id=get_bedrock_model_id(),
     )
-    body = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": int(settings.MAX_TOKENS or 4096),
-        "temperature": 0.3,
-        "messages": [
-            {
-                "role": "user",
-                "content": [{"type": "text", "text": user_input}],
-            }
-        ],
-    }
-    client = _bedrock_client()
-    model_id = get_bedrock_model_id()
-    print(f"[LLM] vendor attestation invoke using model: {model_id}")
-    response = client.invoke_model(
-        modelId=model_id,
-        contentType="application/json",
-        accept="application/json",
-        body=json.dumps(body),
-    )
-    result = json.loads(response["body"].read())
-    content = result.get("content") or []
-    if content and isinstance(content[0], dict):
-        return str(content[0].get("text") or "")
-    return ""
 
 
 def _parse_bullet_items(text: str) -> dict[str, str]:

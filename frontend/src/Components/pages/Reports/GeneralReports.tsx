@@ -2,9 +2,10 @@ import React from "react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Select from "../../UI/Select";
-import { CircleX, Loader2 } from "lucide-react";
+import { CircleX } from "lucide-react";
 import Modal from "../../UI/Modal";
 import LoadingMessage from "../../UI/LoadingMessage";
+import SubmitProgressOverlay from "../../UI/SubmitProgressOverlay";
 import './general_reports.css'
 import GeneralReportsTypesPopup, {
   REPORT_TYPE_ERROR,
@@ -12,7 +13,6 @@ import GeneralReportsTypesPopup, {
 import Button from "../../UI/Button";
 import GeneralReportsCards from "./GeneralReportsCards";
 import { ReportsPagination } from "./ReportsPagination";
-import "../VendorAttestations/vendor_attestation_preview.css";
 
 const BASE_URL =
   import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
@@ -1050,7 +1050,12 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
   };
 
   if (showArchivedOnly !== true && loading) {
-    return <LoadingMessage message="Loading reports…" />;
+    return (
+      <LoadingMessage
+        message="Loading reports…"
+        className="loading_message_wrapper--page"
+      />
+    );
   }
 
   return (
@@ -1134,18 +1139,13 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
         </p>
       )}
       {briefGenerating && (
-        <div
-          className="vendor_attestation_submit_overlay"
-          role="status"
-          aria-live="polite"
-          aria-label="Generating report"
-        >
-          <div className="vendor_attestation_submit_overlay_content">
-            <Loader2 size={32} className="vendor_attestation_submit_overlay_loader" aria-hidden />
-            <p>Generating report…</p>
-            <p className="vendor_attestation_submit_overlay_hint">Please wait. Do not close or refresh.</p>
-          </div>
-        </div>
+        <SubmitProgressOverlay
+          variant="assessment"
+          tagline="Generating report"
+          headline="Building a brief that can explain itself"
+          description="Gathering assessment context, synthesizing findings, and composing your report for review."
+          ariaLabel="Generating report"
+        />
       )}
       <section>
         {showArchivedOnly && renderArchivedListOnly ? null : (() => {
@@ -1174,13 +1174,27 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
           const isEmpty = filteredList.length === 0;
           return (
             <>
-              {isEmpty && !showArchivedOnly ? (
+              {isEmpty ? (
                 <div className="report_detail_empty" role="status">
-                  <h2 className="report_detail_empty_title">No reports</h2>
-                  {canGenerateReports && (
+                  <h2 className="report_detail_empty_title">
+                    {showArchivedOnly
+                      ? searchQuery.trim()
+                        ? "No reports match your search"
+                        : "No archived assessment analysis reports"
+                      : "No reports"}
+                  </h2>
+                  {showArchivedOnly ? (
                     <p className="report_detail_empty_text">
-                      Choose an assessment above to generate a report.
+                      {searchQuery.trim()
+                        ? "Try a different search (org name, product name)."
+                        : "Archived assessment analysis reports will appear here when assessments expire or are archived."}
                     </p>
+                  ) : (
+                    canGenerateReports && (
+                      <p className="report_detail_empty_text">
+                        Choose an assessment above to generate a report.
+                      </p>
+                    )
                   )}
                 </div>
               ) : (
@@ -1189,6 +1203,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
                     reports={paginatedList}
                     onViewReport={handleViewReport}
                     onDownload={showArchivedOnly ? undefined : handleDownloadReport}
+                    viewEnabledWhenArchived={showArchivedOnly === true}
                   />
                   <ReportsPagination
                     totalItems={filteredList.length}

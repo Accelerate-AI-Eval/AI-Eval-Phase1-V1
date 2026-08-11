@@ -16,12 +16,22 @@ export function normalizeBedrockModelAlias(modelId: string): string {
   return trimmed;
 }
 
+/**
+ * Strip Bedrock geo / cross-region inference prefixes
+ * (us., global., eu., apac., …) so catalog ids match.
+ */
+export function stripBedrockGeoPrefix(modelId: string): string {
+  let id = modelId.trim();
+  // e.g. global.anthropic.… → anthropic.… ; us.amazon.… → amazon.…
+  id = id.replace(
+    /^(us|global|eu|eusc|apac|ap|jp|ca|me|sa|il|af)\./i,
+    "",
+  );
+  return id;
+}
+
 export function stripUsModelPrefix(modelId: string): string {
-  const trimmed = modelId.trim();
-  if (trimmed.toLowerCase().startsWith("us.")) {
-    return trimmed.slice(3);
-  }
-  return trimmed;
+  return stripBedrockGeoPrefix(modelId);
 }
 
 /** True for provider-style Bedrock ids (anthropic.*, meta.*, …), not short aliases. */

@@ -12,9 +12,10 @@ import {
   FileCheck,
   Info,
   X,
-  Loader2,
 } from "lucide-react";
 import Modal from "../../UI/Modal";
+import LoadingMessage from "../../UI/LoadingMessage";
+import SubmitProgressOverlay from "../../UI/SubmitProgressOverlay";
 import { toast } from "react-toastify";
 import MultiStepTabs from "../../UI/MultiStepTabs";
 import StepVendorSelfAttestationPrev, {
@@ -852,7 +853,7 @@ const VendorAttestationsMainForm = () => {
           content: (() => {
             if (index === 0) {
               return currentStep === 0 && !fetchDone ? (
-                <p style={{ padding: "1rem" }}>Loading company profile…</p>
+                <LoadingMessage message="Loading company profile…" compact />
               ) : (
                 <TabCompanyProfile
                   companyProfile={formState.companyProfile}
@@ -1265,20 +1266,7 @@ const VendorAttestationsMainForm = () => {
 
   return (
     <div className="sec_user_page org_settings_page">
-      {submitting && (
-        <div
-          className="vendor_attestation_submit_overlay"
-          role="status"
-          aria-live="polite"
-          aria-label="Submitting attestation and generating product profile"
-        >
-          <div className="vendor_attestation_submit_overlay_content">
-            <Loader2 size={32} className="vendor_attestation_submit_overlay_loader" aria-hidden />
-            <p>Submitting attestation and generating product profile…</p>
-            <p className="vendor_attestation_submit_overlay_hint">Please wait. Do not close or refresh.</p>
-          </div>
-        </div>
-      )}
+      {submitting && <SubmitProgressOverlay variant="attestation" />}
 
       <Modal
         isOpen={documentViewerOpen}
@@ -1302,10 +1290,7 @@ const VendorAttestationsMainForm = () => {
           </div>
           <div className="vendor_attestation_doc_viewer_body">
             {documentViewerLoading ? (
-              <div className="vendor_attestation_doc_viewer_loading">
-                <Loader2 size={32} className="spin" aria-hidden />
-                <p>Loading document…</p>
-              </div>
+              <LoadingMessage message="Loading document…" compact />
             ) : documentViewerUrl ? (
               <iframe
                 title={documentViewerFileName ?? "Document"}

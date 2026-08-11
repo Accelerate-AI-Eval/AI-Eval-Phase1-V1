@@ -10,6 +10,7 @@ import {
   TECH_STACK_OPTIONS,
   MATURITY_LEVEL_OPTIONS,
   YES_NO_OPTIONS,
+  BINARY_YES_NO_OPTIONS,
   IMPLEMENTATION_TEAM_OPTIONS,
   DATA_SENSITIVITY_OPTIONS,
   REGULATORY_OPTIONS,
@@ -112,11 +113,10 @@ export const BUYER_COTS_ASSESSMENT = {
       required: "true",
     },
     2: {
-      label:
-        "What gaps exist between your requirements and the vendor's product features?",
-      placeholder:
-        "Example: Product lacks native integration with our EHR system. Missing role-based access controls for our compliance needs. No support for batch processing of historical data.",
+      label: "Are you currently using the product?",
+      placeholder: "Select Yes or No",
       required: "true",
+      options: BINARY_YES_NO_OPTIONS,
     },
     3: {
       label: "What systems does this AI solution need to integrate with?",

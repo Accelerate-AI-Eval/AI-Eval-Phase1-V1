@@ -35,7 +35,7 @@
 
 .goBack {
   margin-top: 15px;
-  font-size: 1.2em;
+  font-size: 1.2rem;
 }
 
 .goBack a {
@@ -49,7 +49,7 @@
 .goBack {
   text-align: center;
   margin-top: 15px;
-  font-size: 1.2em;
+  font-size: 1.2rem;
 }
 .goBack a,
 .page-not .goBack .page-not-home-link {

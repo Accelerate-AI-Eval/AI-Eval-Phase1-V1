@@ -11,6 +11,7 @@ import {
 } from "@aws-sdk/client-bedrock-runtime";
 import { backendRoot } from "../../utils/backendRoot.js";
 import { formatBedrockTestError } from "../../utils/bedrockErrors.js";
+import { recordLlmUsageAsync } from "../observability/llmUsage.service.js";
 
 export type InferenceProfile = InferenceProfileSummary & {
   profileType?: string;
@@ -470,6 +471,22 @@ async function testModelTarget(
         latencyMs: Date.now() - startedAt,
         error: "Model responded without text output.",
       };
+    }
+
+    const inputTokens = response.usage?.inputTokens;
+    const outputTokens = response.usage?.outputTokens;
+    const totalTokens = response.usage?.totalTokens;
+    if (
+      (inputTokens != null && inputTokens > 0) ||
+      (outputTokens != null && outputTokens > 0) ||
+      (totalTokens != null && totalTokens > 0)
+    ) {
+      recordLlmUsageAsync({
+        modelId: value,
+        inputTokens,
+        outputTokens,
+        totalTokens,
+      });
     }
 
     return {

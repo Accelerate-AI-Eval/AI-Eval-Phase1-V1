@@ -1,5 +1,4 @@
 import "dotenv/config";
-import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import {
   getTop5RisksWithMitigations,
   formatTop5RisksForPrompt,
@@ -12,10 +11,7 @@ import {
   extractVendorTrustScore,
   irsFinalScoreFromParts,
 } from "../../services/buyerImplementationRiskScore.js";
-import { getActiveBedrockModelId } from "../../utils/bedrockModelId.js";
-
-const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
-const client = new BedrockRuntimeClient({ region: REGION });
+import { invokeBedrockAnthropicText } from "../../utils/invokeBedrockWithUsage.js";
 
 export type VendorRiskRecommendation = {
   priority: "High" | "Medium" | "Low";
@@ -768,21 +764,11 @@ function normalizeReport(
 }
 
 async function invokeModelLocal(prompt: string): Promise<string> {
-  const body = JSON.stringify({
-    anthropic_version: "bedrock-2023-05-31",
-    max_tokens: 8192,
+  return invokeBedrockAnthropicText({
+    prompt,
+    maxTokens: 8192,
     temperature: 0.35,
-    messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
   });
-  const command = new InvokeModelCommand({
-    modelId: getActiveBedrockModelId(),
-    contentType: "application/json",
-    accept: "application/json",
-    body,
-  });
-  const response = await client.send(command);
-  const result = JSON.parse(new TextDecoder().decode(response.body));
-  return result.content?.[0]?.text ?? "";
 }
 
 /** Type 3 (cots_buyer): prefer Python LLM + pgvector formulas; fall back to local Bedrock. */

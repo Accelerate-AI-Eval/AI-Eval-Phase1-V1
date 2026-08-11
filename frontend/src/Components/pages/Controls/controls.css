@@ -1,37 +1,110 @@
-/* Controls page — follows the shared application settings layout */
+/* Controls — premium settings layout aligned with app design tokens */
 .controlsPage {
-  --adm-border: #e2e8f0;
-  --adm-text: #0f172a;
-  --adm-muted: #64748b;
-  --adm-input-bg: #fff;
-  --adm-input-border: #cbd5e1;
-  --adm-outline: #94a3b8;
-  --adm-primary: var(--main-auth-button-color, #1cb0d4);
-  --adm-primary-strong: var(--main-auth-button-color-strong, #149bb8);
+  --adm-border: var(--border-subtle, #e2e8f0);
+  --adm-text: var(--text-primary, #0f172a);
+  --adm-muted: var(--text-muted, #64748b);
+  --adm-input-bg: var(--input-bg, var(--auth-signin-input-bg, #f2f6fc));
+  --adm-input-border: var(--input-border, var(--auth-signin-input-border, #b8c9f3));
+  --adm-outline: var(--border-strong, #cbd5e1);
+  --adm-primary: var(--main-auth-button-color, #225bff);
+  --adm-primary-strong: var(--main-auth-button-color-strong, #1a47e0);
+  --adm-accent: var(--nav-active, #225bff);
+  --adm-focus-ring: var(--focus-ring, rgba(1, 74, 173, 0.18));
+  --adm-chip-bg: #dbeafe;
+  --adm-surface: var(--surface-color, #fff);
+  --adm-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
 
   width: 100%;
   display: flex;
   flex-direction: column;
+  gap: 0;
+}
+
+.controlsPage__tabs {
+  margin-bottom: 1.25rem;
 }
 
 .controlsPage__cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem;
-  align-items: start;
+  gap: 1.25rem;
+  align-items: stretch;
   width: 100%;
 }
 
-.controlsPage__card {
+.controlsPage__comingSoon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.65rem;
+  min-height: 14rem;
+  padding: 3rem 1.75rem;
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--ui-border-radius, 0);
+  box-shadow: var(--adm-shadow);
+}
+
+.controlsPage__comingSoonIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 0.25rem;
+  color: var(--adm-accent);
+  background-color: var(--adm-chip-bg);
+  border-radius: var(--ui-border-radius, 0);
+  box-shadow: inset 0 0 0 1px rgba(34, 91, 255, 0.1);
+}
+
+.controlsPage__comingSoonTitle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 650;
+  letter-spacing: -0.025rem;
+  color: var(--adm-text);
+  line-height: 1.3;
+}
+
+.controlsPage__comingSoonDesc {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--adm-muted);
+  font-weight: 400;
+}
+
+.controlsPage__card.org_settings_card,
+.controlsPage .org_settings_card.controlsPage__card {
   width: 100%;
-  margin-bottom: 0;
   min-width: 0;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 1.35rem 1.4rem 1.4rem;
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--ui-border-radius, 8px);
+  box-shadow: var(--adm-shadow);
 }
 
 .controlsPage__cardHead {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.85rem;
+  margin-bottom: 0;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--adm-border);
+}
+
+.controlsPage__cardHeadText {
+  min-width: 0;
+  flex: 1;
 }
 
 @media (max-width: 960px) {
@@ -47,24 +120,31 @@
   flex-shrink: 0;
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: var(--ui-border-radius, 5px);
-  color: var(--main-auth-button-color, #2463eb);
-  background-color: #e6edf7;
+  border-radius: var(--ui-border-radius, 8px);
+  color: var(--adm-accent);
+  background-color: var(--adm-chip-bg);
+  line-height: 0;
+}
+
+.controlsPage__cardIconWrap svg {
+  display: block;
 }
 
 .controlsPage__cardTitle {
-  margin: 0 0 0.25rem;
-  font-size: 1.1rem;
+  margin: 0 0 0.3rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--adm-text);
-  line-height: 1.35;
+  line-height: 1.3;
+  letter-spacing: -0.015rem;
 }
 
 .controlsPage__cardHint {
   margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.45;
+  font-size: 0.8125rem;
+  line-height: 1.5;
   color: var(--adm-muted);
+  max-width: 36rem;
 }
 
 .controlsPage__apiKeyInputWrap {
@@ -75,30 +155,35 @@
 
 .controlsPage__apiKeyInput {
   width: 100%;
-  height: 40px;
-  padding: 0 2.5rem 0 0.75rem;
-  border-radius: var(--ui-border-radius, 5px);
+  height: 42px;
+  padding: 0 2.65rem 0 0.85rem;
+  border-radius: var(--ui-border-radius, 8px);
   border: 1px solid var(--adm-input-border);
   background: var(--adm-input-bg);
   color: var(--adm-text);
   font: inherit;
   font-size: 0.875rem;
   box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .controlsPage__apiKeyInput:hover:not(:disabled) {
-  border-color: #94a3b8;
+  border-color: #93b4f0;
 }
 
 .controlsPage__apiKeyInput:focus {
   outline: none;
-  border-color: var(--main-auth-button-color, #014aad);
-  box-shadow: 0 0 0 2px rgba(1, 74, 173, 0.15);
+  border-color: var(--adm-primary);
+  box-shadow: 0 0 0 3px var(--adm-focus-ring);
 }
 
 .controlsPage__apiKeyInput:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.controlsPage__apiKeyInput::placeholder {
+  color: #6477a3;
 }
 
 .controlsPage__apiKeyToggle {
@@ -112,15 +197,16 @@
   width: 2rem;
   height: 2rem;
   border: none;
-  border-radius: 5px;
+  border-radius: var(--ui-border-radius, 8px);
   background: transparent;
   color: var(--adm-muted);
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .controlsPage__apiKeyToggle:hover:not(:disabled) {
-  background: #f1f5f9;
-  color: var(--adm-text);
+  background: #eff6ff;
+  color: var(--adm-accent);
 }
 
 .controlsPage__apiKeyToggle:disabled {
@@ -128,41 +214,44 @@
   cursor: not-allowed;
 }
 
-/* Model field */
+/* Model / API field block */
 .adminPage__modelField {
   max-width: none;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--adm-border);
+  margin-top: 1.15rem;
+  padding-top: 0;
+  border-top: none;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.75rem;
+  flex: 1;
 }
 
 .adminPage__modelLabelRow {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.35rem 0.65rem;
+  gap: 0.45rem 0.75rem;
 }
 
 .adminPage__modelLabel {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--adm-text);
+  letter-spacing: 0.01rem;
 }
 
 .adminPage__modelCurrent {
   display: inline-flex;
   align-items: center;
-  max-width: min(100%, 18rem);
-  padding: 4px 10px;
-  border-radius: var(--ui-border-radius, 5px);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.35;
-  color: #1d4ed8;
-  background-color: #dbeafe;
+  max-width: min(100%, 20rem);
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--ui-border-radius, 8px);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--adm-accent);
+  background-color: var(--adm-chip-bg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -171,7 +260,7 @@
 .adminPage__modelControls {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.65rem;
 }
 
 .adminPage__modelPickerRow {
@@ -182,25 +271,27 @@
 .adminPage__modelActions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: 0.6rem;
   width: 100%;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
 }
 
 .adminPage__modelApplyBtn,
 .adminPage__modelTestBtn {
   width: 100%;
   min-width: 0;
-  min-height: 40px;
+  min-height: 42px;
   margin-top: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  border-radius: 0 !important;
+  box-shadow: var(--btn-3d-offset) var(--btn-3d-offset) 0 0 var(--btn-3d-shadow-color);
 }
 
 .controlsPage .usersPage__btn--primary.adminPage__modelApplyBtn:hover:not(:disabled) {
-  background: var(--main-auth-button-color, #1cb0d4);
+  background: var(--adm-primary-strong);
 }
 
 .adminPage__modelPicker {
@@ -215,9 +306,9 @@
   justify-content: space-between;
   gap: 0.5rem;
   width: 100%;
-  height: 40px;
-  padding: 0 0.75rem;
-  border-radius: var(--ui-border-radius, 5px);
+  height: 42px;
+  padding: 0 0.85rem;
+  border-radius: var(--ui-border-radius, 8px);
   border: 1px solid var(--adm-input-border);
   background: var(--adm-input-bg);
   color: var(--adm-text);
@@ -226,15 +317,16 @@
   text-align: left;
   cursor: pointer;
   box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .adminPage__modelTrigger:hover:not(:disabled) {
-  border-color: #94a3b8;
+  border-color: #93b4f0;
 }
 
 .adminPage__modelPicker--open .adminPage__modelTrigger {
   border-color: var(--adm-primary);
-  box-shadow: 0 0 0 2px rgba(28, 176, 212, 0.2);
+  box-shadow: 0 0 0 3px var(--adm-focus-ring);
 }
 
 .adminPage__modelTrigger:disabled {
@@ -263,62 +355,33 @@
 .adminPage__modelMenu {
   position: absolute;
   z-index: 20;
-  top: calc(100% + 0.35rem);
+  top: calc(100% + 0.4rem);
   left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
-  border-radius: var(--ui-border-radius, 5px);
-  border: 1px solid var(--adm-input-border);
-  background: var(--adm-input-bg);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+  border-radius: var(--ui-border-radius, 8px);
+  border: 1px solid var(--adm-border);
+  background: var(--adm-surface);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
   overflow: hidden;
   box-sizing: border-box;
 }
 
+/* Look from search.css — keep dropdown strip sizing */
 .adminPage__modelSearchWrap {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  height: 40px;
-  padding: 0 0.75rem;
+  height: auto;
+  min-height: 42px;
   border-bottom: 1px solid var(--adm-border);
-  background: #f8fafc;
+  border-radius: 0;
   box-sizing: border-box;
-}
-
-.adminPage__modelSearchWrap:focus-within {
-  background: rgba(28, 176, 212, 0.06);
-}
-
-.adminPage__modelSearchIcon {
-  flex-shrink: 0;
-  color: var(--adm-muted);
-}
-
-.adminPage__modelSearchInput {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: transparent;
-  color: var(--adm-text);
-  font: inherit;
-  font-size: 0.875rem;
-}
-
-.adminPage__modelSearchInput:focus {
-  outline: none;
-}
-
-.adminPage__modelSearchInput::placeholder {
-  color: #64748b;
 }
 
 .adminPage__modelSearchCount {
   flex-shrink: 0;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.02rem;
   color: var(--adm-muted);
   white-space: nowrap;
 }
@@ -326,16 +389,16 @@
 .adminPage__modelList {
   list-style: none;
   margin: 0;
-  padding: 0.25rem;
+  padding: 0.35rem;
   max-height: 14rem;
   overflow-y: auto;
-  background: var(--adm-input-bg);
+  background: var(--adm-surface);
   box-sizing: border-box;
 }
 
 .adminPage__modelListEmpty {
-  padding: 0.65rem 0.75rem;
-  font-size: 0.8rem;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.8125rem;
   color: var(--adm-muted);
 }
 
@@ -343,25 +406,26 @@
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 36px;
-  padding: 0.45rem 0.65rem;
+  min-height: 38px;
+  padding: 0.5rem 0.7rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--ui-border-radius, 8px);
   background: transparent;
   color: var(--adm-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
   box-sizing: border-box;
+  transition: background 0.12s ease;
 }
 
 .adminPage__modelOption:hover:not(:disabled) {
-  background: rgba(148, 163, 184, 0.12);
+  background: #f1f5f9;
 }
 
 .adminPage__modelOption--selected {
-  background: rgba(28, 176, 212, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(28, 176, 212, 0.35);
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1px rgba(34, 91, 255, 0.28);
 }
 
 .adminPage__modelOptionLabel {
@@ -380,7 +444,7 @@
   min-width: 0;
   margin-left: 1rem;
   color: #94a3b8;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 400;
   line-height: 1.3;
   text-align: right;
@@ -391,10 +455,10 @@
 
 .adminPage__modelStatus {
   margin: 0;
-  padding: 0.55rem 0.75rem;
-  border-radius: var(--ui-border-radius, 5px);
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--ui-border-radius, 8px);
   font-size: 0.8125rem;
-  line-height: 1.4;
+  line-height: 1.45;
   border: 1px solid var(--adm-border);
   background: #f8fafc;
   color: var(--adm-text);
@@ -402,25 +466,25 @@
 
 .adminPage__modelStatus--success {
   color: #15803d;
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.28);
 }
 
 .adminPage__modelStatus--error {
   color: #b91c1c;
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.28);
 }
 
 .adminPage__ghostBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   width: 100%;
-  min-height: 40px;
+  min-height: 42px;
   padding: 0.5rem 0.85rem;
-  border-radius: var(--ui-border-radius, 5px);
+  border-radius: 0 !important;
   border: 1px solid var(--adm-outline);
   background: #fff;
   color: var(--adm-text);
@@ -428,52 +492,77 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--btn-3d-offset) var(--btn-3d-offset) 0 0 var(--btn-3d-shadow-color);
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease,
+    filter 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .adminPage__ghostBtn:hover:not(:disabled) {
   background: #f8fafc;
-  border-color: #64748b;
+  border-color: #94a3b8;
+  color: var(--adm-accent);
+  filter: brightness(1.04);
+  box-shadow: var(--btn-3d-offset) var(--btn-3d-offset) 0 0 var(--btn-3d-shadow-color);
+  transform: none;
+}
+
+.adminPage__ghostBtn:active:not(:disabled) {
+  transform: translate(var(--btn-3d-press), var(--btn-3d-press));
+  box-shadow: calc(var(--btn-3d-offset) - var(--btn-3d-press))
+    calc(var(--btn-3d-offset) - var(--btn-3d-press)) 0 0
+    var(--btn-3d-shadow-color);
 }
 
 .adminPage__ghostBtn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+  transform: none;
+  filter: none;
 }
 
-/* Dialog / button styles used by ModelTestResultDialog */
+/* Dialog / button styles used by ModelTestResultDialog — above top nav (z-index: 900) */
 .usersPage__overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 10002;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(2px);
 }
 
 .usersPage__dialog {
   width: 100%;
   max-width: 420px;
-  background: #fff;
-  border-radius: 10px;
+  background: var(--adm-surface);
+  border-radius: var(--ui-border-radius, 8px);
   box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
-  border: 1px solid rgba(28, 176, 212, 0.15);
+  border: 1px solid var(--adm-border);
+  color: var(--adm-text);
 }
 
 .usersPage__dialogHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.1rem;
-  border-bottom: 1px solid #e5e7eb;
+  gap: 0.75rem;
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid var(--adm-border);
 }
 
 .usersPage__dialogTitle {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  color: var(--main-text-color, #1f2937);
+  letter-spacing: -0.01rem;
+  color: var(--adm-text);
 }
 
 .usersPage__dialogClose {
@@ -483,29 +572,30 @@
   width: 2rem;
   height: 2rem;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--ui-border-radius, 8px);
   background: #f1f5f9;
   color: #64748b;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .usersPage__dialogClose:hover:not(:disabled) {
   background: #e2e8f0;
-  color: #475569;
+  color: #334155;
 }
 
 .usersPage__dialogBody {
-  padding: 1.1rem 1.1rem 1.25rem;
+  padding: 1.15rem 1.15rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .usersPage__dialogActions {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
-  padding: 0 1.1rem 1.1rem;
+  padding: 0 1.15rem 1.15rem;
 }
 
 .usersPage__btn {
@@ -513,12 +603,13 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  padding: 0.5rem 1rem;
+  padding: 0.55rem 1.05rem;
   font-size: 0.875rem;
   font-weight: 600;
-  border-radius: var(--ui-border-radius, 5px);
+  border-radius: var(--ui-border-radius, 8px);
   cursor: pointer;
   border: 1px solid transparent;
+  transition: background 0.15s ease;
 }
 
 .usersPage__btn:disabled {
@@ -529,19 +620,21 @@
 .usersPage__btn--primary {
   border: none;
   color: #fff;
-  background: var(--main-auth-button-color, #1cb0d4);
+  background: var(--adm-primary);
 }
 
 .usersPage__btn--primary:hover:not(:disabled) {
-  background: var(--main-auth-button-color-strong, #149bb8);
+  background: var(--adm-primary-strong);
 }
 
 .usersPage__btn--primary.usersPage__btn--inviteSend {
-  background: #1cb0d4a9;
+  background: var(--adm-primary);
+  opacity: 0.85;
 }
 
 .usersPage__btn--primary.usersPage__btn--inviteSend:hover:not(:disabled) {
-  background: #1cb0d4cc;
+  opacity: 1;
+  background: var(--adm-primary-strong);
 }
 
 .usersPage__spinner {
@@ -563,22 +656,22 @@
   align-items: center;
   gap: 0.65rem;
   padding: 0.75rem 0.85rem;
-  border-radius: 8px;
-  font-size: 0.9375rem;
+  border-radius: var(--ui-border-radius, 8px);
+  font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.35;
 }
 
 .adminPage__modelTestDialogBanner--success {
   color: #15803d;
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.28);
 }
 
 .adminPage__modelTestDialogBanner--error {
   color: #b91c1c;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.28);
 }
 
 .adminPage__modelTestDialogMeta {
@@ -597,17 +690,17 @@
 
 .adminPage__modelTestDialogRow dt {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  color: var(--main-text-muted, #64748b);
+  color: var(--adm-muted);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04rem;
 }
 
 .adminPage__modelTestDialogRow dd {
   margin: 0;
   font-size: 0.875rem;
   line-height: 1.45;
-  color: var(--main-text-color, #1f2937);
+  color: var(--adm-text);
   word-break: break-word;
 }

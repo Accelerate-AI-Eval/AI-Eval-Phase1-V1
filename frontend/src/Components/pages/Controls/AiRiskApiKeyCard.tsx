@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useState } from "react";
-import { Copy, Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
+import { Copy, Eye, EyeOff, KeyRound, Loader2, Save } from "lucide-react";
 import {
   fetchAiRiskApiKeyConfig,
   saveAiRiskApiKey,
@@ -140,14 +140,12 @@ export function AiRiskApiKeyCard({ idPrefix }: AiRiskApiKeyCardProps) {
         <span className="controlsPage__cardIconWrap" aria-hidden>
           <KeyRound size={20} strokeWidth={2} />
         </span>
-        <div>
+        <div className="controlsPage__cardHeadText">
           <h2 id={`${baseId}-title`} className="controlsPage__cardTitle">
             AI Risk API Key
           </h2>
           <p className="controlsPage__cardHint">
-            When set, assessment types 2 (Vendor COTS) and 3 (Buyer COTS) match
-            risks from the AI-Q risk DB, then calculate intent from AI Risk
-            Intellect for SRS/IRS scoring.
+            Used for intent scoring on Vendor and Buyer COTS assessments.
           </p>
         </div>
       </div>
@@ -232,7 +230,10 @@ export function AiRiskApiKeyCard({ idPrefix }: AiRiskApiKeyCardProps) {
                   Saving…
                 </>
               ) : (
-                "Save"
+                <>
+                  <Save size={16} aria-hidden />
+                  Save
+                </>
               )}
             </button>
           </div>

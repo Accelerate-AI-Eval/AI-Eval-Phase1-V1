@@ -1,4 +1,6 @@
 import "./App.css";
+import "./styles/search.css";
+import "./styles/dark-theme.css";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Login from "./Components/Authentication/Login/Login";
 import ForgotPassword from "./Components/Authentication/ForgotPassword/ForgotPassword";
@@ -23,6 +25,8 @@ import MyVendors from "./Components/pages/MyVendors/MyVendors";
 import Organizations from "./Components/pages/Organizations/Organizations";
 import OrganizationAssessmentView from "./Components/pages/Organizations/OrganizationAssessmentView";
 import Controls from "./Components/pages/Controls/Controls";
+import Observability from "./Components/pages/Observability/Observability";
+import ObservabilityModelDetail from "./Components/pages/Observability/ObservabilityModelDetail";
 import Toaster from "./Components/Toaster/Toaster";
 import LayoutWithoutNav from "./Components/layout/LayoutWithoutNav";
 import VendorMainForm from "./Components/pages/VendorOnboarding/VendorMainForm";
@@ -64,6 +68,11 @@ function App() {
                 <Route path="/organizations" element={<Organizations />} />
                 <Route path="/organizations/assessment/:assessmentId" element={<OrganizationAssessmentView />} />
                 <Route path="/controls" element={<Controls />} />
+                <Route path="/observability" element={<Observability />} />
+                <Route
+                  path="/observability/model/:usageId"
+                  element={<ObservabilityModelDetail />}
+                />
                 <Route path="/assessments" element={<Assessments />} />
                 <Route path="/vendorcots/:assessmentId" element={<VendorCOTSMain />} />
                 <Route path="/vendorcots" element={<VendorCOTSMain />} />

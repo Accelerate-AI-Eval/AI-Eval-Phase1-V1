@@ -1,5 +1,5 @@
-import { findCatalogOption } from "../config/modelsCatalog.js";
-import { getActiveBedrockModelId, stripUsModelPrefix } from "./bedrockModelId.js";
+import { getActiveBedrockModelId } from "./bedrockModelId.js";
+import { resolveLlmModelDisplayName } from "./resolveLlmModelDisplayName.js";
 
 export type ActiveLlmModelMeta = {
   modelId: string;
@@ -9,13 +9,9 @@ export type ActiveLlmModelMeta = {
 /** Active Controls LLM model id + display label for persisting on reports. */
 export function getActiveLlmModelMeta(): ActiveLlmModelMeta {
   const modelId = getActiveBedrockModelId();
-  const label =
-    findCatalogOption(modelId)?.label?.trim() ||
-    findCatalogOption(stripUsModelPrefix(modelId))?.label?.trim() ||
-    "";
   return {
     modelId,
-    modelLabel: label || modelId,
+    modelLabel: resolveLlmModelDisplayName(modelId),
   };
 }
 

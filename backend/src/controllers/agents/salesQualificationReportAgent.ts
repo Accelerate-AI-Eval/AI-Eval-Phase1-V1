@@ -1,9 +1,5 @@
 import "dotenv/config";
-import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import { getActiveBedrockModelId } from "../../utils/bedrockModelId.js";
-
-const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
-const client = new BedrockRuntimeClient({ region: REGION });
+import { invokeBedrockAnthropicText } from "../../utils/invokeBedrockWithUsage.js";
 
 const SALES_REPORT_PROMPT = `You are a sales qualification analyst. Using ONLY the Assessment Analysis Report and Vendor Attestation data provided below, generate a Sales Qualification Report in this exact format. Use clear headings and bullets. Do not invent data not present in the inputs.
 
@@ -54,21 +50,11 @@ function buildContext(reportJson: Record<string, unknown>, attestationSummary: s
 }
 
 async function invokeModel(userInput: string): Promise<string> {
-  const body = JSON.stringify({
-    anthropic_version: "bedrock-2023-05-31",
-    max_tokens: 4096,
+  return invokeBedrockAnthropicText({
+    prompt: userInput,
+    maxTokens: 4096,
     temperature: 0.3,
-    messages: [{ role: "user", content: [{ type: "text", text: userInput }] }],
   });
-  const command = new InvokeModelCommand({
-    modelId: getActiveBedrockModelId(),
-    contentType: "application/json",
-    accept: "application/json",
-    body,
-  });
-  const response = await client.send(command);
-  const result = JSON.parse(new TextDecoder().decode(response.body));
-  return result.content?.[0]?.text ?? "";
 }
 
 /**

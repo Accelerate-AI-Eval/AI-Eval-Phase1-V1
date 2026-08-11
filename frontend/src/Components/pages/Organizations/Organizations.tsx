@@ -10,10 +10,12 @@ import "../VendorAttestationDetails/vendor_attestation_details.css";
 import "../Assessments/assessments.css";
 import CreateOrganization from "./CreateOrganization";
 import OrganizationDataTable from "./OrganizationDataTable";
+import OrgUsersTable from "./OrgUsersTable";
 import StepVendorSelfAttestationPrev, {
   type ComplianceDocumentExpiryMeta,
 } from "../VendorAttestations/StepVendorSelfAttestationPrev";
 import LoadingMessage from "../../UI/LoadingMessage";
+import OrgNameWithLogo from "../../UI/OrgNameWithLogo";
 import { ReportsPagination } from "../Reports/ReportsPagination";
 // import { buildFormStateFromApi } from "../../utils/vendorAttestationState";
 import { buildFormStateFromApi } from "../../../utils/vendorAttestationState";
@@ -24,7 +26,7 @@ import {
   formatPreviewValue,
 } from "../../../utils/orgOnboardingDisplay";
 import { getOrganizationTypeDisplay } from "../../../utils/organizationTypeDisplay";
-import { Landmark, Plus, User, FileCheck, ClipboardList, Eye, CircleX, Search, FileText, Info } from "lucide-react";
+import { Landmark, Plus, User, Users, FileCheck, ClipboardList, Eye, CircleX, Search, FileText, Info, Building2, BadgeCheck, Activity, Calendar } from "lucide-react";
 import Button from "../../UI/Button";
 import Breadcrumbs from "../../UI/Breadcrumbs";
 import ScoreTracePanel from "./ScoreTracePanel";
@@ -84,6 +86,7 @@ function getOrgAssessmentCompletedBy(row) {
 const TAB_ONBOARDING = "onboarding";
 const TAB_ATTESTATION = "attestation";
 const TAB_ASSESSMENTS = "assessments";
+const TAB_USERS = "users";
 
 const Organizations = () => {
   document.title = "AI-Q | Organizations";
@@ -108,12 +111,14 @@ const Organizations = () => {
   const [attestationsLoading, setAttestationsLoading] = useState(false);
   const [attestationsError, setAttestationsError] = useState(null);
   const [attestationSearch, setAttestationSearch] = useState("");
+  const [orgAttestationScope, setOrgAttestationScope] = useState<"current" | "archived">("current");
   const [orgAttestationCardPage, setOrgAttestationCardPage] = useState(1);
   const [orgAttestationCardPageSize, setOrgAttestationCardPageSize] = useState(10);
   const [orgAssessments, setOrgAssessments] = useState([]);
   const [orgAssessmentsLoading, setOrgAssessmentsLoading] = useState(false);
   const [orgAssessmentsError, setOrgAssessmentsError] = useState(null);
   const [orgAssessmentSearch, setOrgAssessmentSearch] = useState("");
+  const [orgAssessmentScope, setOrgAssessmentScope] = useState<"current" | "archived">("current");
   const [orgAssessmentCardPage, setOrgAssessmentCardPage] = useState(1);
   const [orgAssessmentCardPageSize, setOrgAssessmentCardPageSize] = useState(10);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -163,6 +168,12 @@ const Organizations = () => {
     setAttestationsError(null);
     setAttestations([]);
     setOrgAssessments([]);
+    setAttestationSearch("");
+    setOrgAssessmentSearch("");
+    setOrgAttestationScope("current");
+    setOrgAssessmentScope("current");
+    setOrgAttestationCardPage(1);
+    setOrgAssessmentCardPage(1);
     setOnboardingLoading(true);
     setIsOnboardingData({ buyer: null, vendor: null });
     const orgId = String(org.id ?? org.organizationId ?? "").trim();
@@ -299,11 +310,11 @@ const Organizations = () => {
 
   useEffect(() => {
     setOrgAttestationCardPage(1);
-  }, [attestationSearch]);
+  }, [attestationSearch, orgAttestationScope]);
 
   useEffect(() => {
     setOrgAssessmentCardPage(1);
-  }, [orgAssessmentSearch]);
+  }, [orgAssessmentSearch, orgAssessmentScope]);
 
   const handleViewAttestation = useCallback(
     async (attestationId) => {
@@ -352,7 +363,7 @@ const Organizations = () => {
   return (
     <>
       {isPreview ? (
-        <div className="organizationPage sec_user_page org_settings_page">
+        <div className="organizationPage sec_user_page org_settings_page org_admin_page">
           <div className="org_settings_header page_header_align">
             <div className="org_settings_headers page_header_row">
               <span className="icon_size_header" aria-hidden>
@@ -360,7 +371,9 @@ const Organizations = () => {
               </span>
               <div className="page_header_title_block">
                 <h1 className="org_settings_title page_header_title">Organizations</h1>
-                <p className="org_settings_subtitle page_header_subtitle">Manage organizations and onboarding.</p>
+                <p className="org_settings_subtitle page_header_subtitle">
+                  Browse organizations, onboarding status, and team access.
+                </p>
               </div>
             </div>
           </div>
@@ -369,12 +382,14 @@ const Organizations = () => {
             <CreateOrganization setIsOrganization={setIsOrganization} />
           )}
 
-          <div className="org_settings_card team_members_card">
+          <div className="org_settings_card team_members_card org_admin_ledger_card">
             <div className="team_members_card_header">
               <div>
-                <h2 className="org_settings_card_title">Organizations</h2>
+                <h2 className="org_settings_card_title">All Organizations</h2>
                 <p className="org_settings_card_subtitle">
-                  {isViewOnly ? "View organizations, status, and onboarding." : "View and manage organizations, status, and onboarding."}
+                  {isViewOnly
+                    ? "View organizations, status, and onboarding."
+                    : "Create, review, and open organization details."}
                 </p>
               </div>
               {!isViewOnly && (
@@ -382,18 +397,18 @@ const Organizations = () => {
                   className="invite_user_btn org_invite_btn"
                   onClick={createOrganization}
                 >
-                  <Plus size={20} />
+                  <Plus size={18} />
                   Add Organization
                 </Button>
               )}
             </div>
-            <div className="team_members_table_wrapper">
+            <div className="team_members_table_wrapper org_admin_table_shell">
               <OrganizationDataTable openPreview={openPreview} viewOnly={isViewOnly} />
             </div>
           </div>
         </div>
       ) : (
-        <div className="organizationPreview org_settings_page org_settings_page">
+        <div className="organizationPreview organizationPage sec_user_page org_settings_page org_admin_page">
           {/* <h1 className="screenHeading">
             <span>
               <Landmark width={26} height={26} />
@@ -408,7 +423,7 @@ const Organizations = () => {
           />
 
           {onboardingLoading && (
-            <p className="organizationPreviewEmpty">Loading…</p>
+            <LoadingMessage message="Loading organization…" compact />
           )}
           {onboardingError && (
             <p className="organizationPreviewError">{onboardingError}</p>
@@ -420,29 +435,41 @@ const Organizations = () => {
                 Organization details for{" "}
                 <strong>{previewOrg?.organizationName ?? "this organization"}</strong>.
               </p>
-              <div className="vendor_preview_sections">
-                {/* Organization summary card */}
-                <section className="vendor_preview_card">
-                  <h3 className="vendor_preview_card_title">
-                    <Landmark size={18} style={{ verticalAlign: "middle", marginRight: "0.35rem" }} />
-                    Organization
-                  </h3>
-                  <dl className="vendor_preview_list">
-                    <div className="vendor_preview_row">
-                      <dt className="vendor_preview_label">Organization name</dt>
-                      <dd className="vendor_preview_value">
-                        {previewOrg?.organizationName ?? "—"}
-                      </dd>
+              <div className="org_summary_cards" aria-label="Organization details">
+                <article className="org_summary_card">
+                  <div className="org_summary_card_top">
+                    <div>
+                      <p className="org_summary_card_label">Organization name</p>
+                      <div className="org_summary_card_value">
+                        <OrgNameWithLogo
+                          name={previewOrg?.organizationName}
+                          id={previewOrg?.id}
+                        />
+                      </div>
                     </div>
-                    <div className="vendor_preview_row">
-                      <dt className="vendor_preview_label">Type</dt>
-                      <dd className="vendor_preview_value">
+                    <div className="org_summary_card_icon org_summary_card_icon--blue">
+                      <Building2 size={20} aria-hidden />
+                    </div>
+                  </div>
+                </article>
+                <article className="org_summary_card">
+                  <div className="org_summary_card_top">
+                    <div>
+                      <p className="org_summary_card_label">Type</p>
+                      <p className="org_summary_card_value">
                         {getOrganizationTypeDisplay(previewOrg)}
-                      </dd>
+                      </p>
                     </div>
-                    <div className="vendor_preview_row">
-                      <dt className="vendor_preview_label">Status</dt>
-                      <dd className="vendor_preview_value">
+                    <div className="org_summary_card_icon org_summary_card_icon--teal">
+                      <BadgeCheck size={20} aria-hidden />
+                    </div>
+                  </div>
+                </article>
+                <article className="org_summary_card">
+                  <div className="org_summary_card_top">
+                    <div>
+                      <p className="org_summary_card_label">Status</p>
+                      <div className="org_summary_card_value">
                         <span
                           className={
                             previewOrg?.organizationStatus === "active"
@@ -450,15 +477,21 @@ const Organizations = () => {
                               : "inactiveStatus"
                           }
                         >
-                          {previewOrg?.organizationStatus ?? "—"}
+                          {previewOrg?.organizationStatus
+                            ? previewOrg.organizationStatus.charAt(0).toUpperCase() +
+                              previewOrg.organizationStatus.slice(1).toLowerCase()
+                            : "—"}
                         </span>
-                      </dd>
+                      </div>
                     </div>
-                  </dl>
-                </section>
+                    <div className="org_summary_card_icon org_summary_card_icon--green">
+                      <Activity size={20} aria-hidden />
+                    </div>
+                  </div>
+                </article>
               </div>
 
-              {/* Tabs: Onboarding | Attestation | Assessments */}
+              {/* Tabs: Onboarding | Attestation | Assessments | Users */}
               <div className="org_preview_tabs_wrap">
                 <div className="page_tabs org_preview_tabs">
                   <button
@@ -484,6 +517,14 @@ const Organizations = () => {
                   >
                     <FileText size={18} />
                     Assessments
+                  </button>
+                  <button
+                    type="button"
+                    className={`page_tab ${activeTab === TAB_USERS ? "page_tab_active" : ""}`}
+                    onClick={() => setActiveTab(TAB_USERS)}
+                  >
+                    <Users size={18} />
+                    Users
                   </button>
                 </div>
 
@@ -576,9 +617,37 @@ const Organizations = () => {
                 {activeTab === TAB_ATTESTATION && (
                   <div className="org_preview_tab_content">
                     <div className="ai_assessments_section">
-                      <div className="assessment_list_header_row">
+                      <div className="assessment_list_header_stack">
                         <p className="your_assessments_title">YOUR ATTESTATIONS</p>
-                        <div className="attestation_tabs_and_search_row">
+                        <div className="assessments_ledger_toolbar attestation_ledger_toolbar">
+                          <div
+                            className="assessments_ledger_segmented assessments_ledger_segmented_inline"
+                            role="group"
+                            aria-label="Attestations scope"
+                          >
+                            <button
+                              type="button"
+                              className={
+                                orgAttestationScope === "current"
+                                  ? "assessments_ledger_segment active"
+                                  : "assessments_ledger_segment"
+                              }
+                              onClick={() => setOrgAttestationScope("current")}
+                            >
+                              Current
+                            </button>
+                            <button
+                              type="button"
+                              className={
+                                orgAttestationScope === "archived"
+                                  ? "assessments_ledger_segment active"
+                                  : "assessments_ledger_segment"
+                              }
+                              onClick={() => setOrgAttestationScope("archived")}
+                            >
+                              Archived
+                            </button>
+                          </div>
                           <div className="assessments_ledger_search">
                             <Search
                               size={18}
@@ -603,19 +672,48 @@ const Organizations = () => {
                         <div className="vendor_attestation_error">{attestationsError}</div>
                       )}
                       {!attestationsLoading && !attestationsError && attestations.length === 0 && (
-                        <p className="organizationPreviewEmpty">No attestations for this organization.</p>
+                        <p className="assessment_search_no_results">
+                          No attestations for this organization.
+                        </p>
                       )}
                       {!attestationsLoading && !attestationsError && attestations.length > 0 && (() => {
+                        const withStatus = attestations.map((a) => {
+                          const statusUpper = (a.status || "").toUpperCase();
+                          const isCompleted = statusUpper === "COMPLETED";
+                          const rawExpiry = a.expiry_at ?? a.expiryAt;
+                          const expiryStr = rawExpiry != null ? (typeof rawExpiry === "string" ? rawExpiry : rawExpiry?.toISOString?.()) : "";
+                          let isExpiredByDate = false;
+                          if (expiryStr && String(expiryStr).trim() !== "") {
+                            try {
+                              const expiry = new Date(expiryStr);
+                              if (!Number.isNaN(expiry.getTime())) {
+                                const today = new Date();
+                                expiry.setHours(0, 0, 0, 0);
+                                today.setHours(0, 0, 0, 0);
+                                isExpiredByDate = expiry.getTime() < today.getTime();
+                              }
+                            } catch {
+                              isExpiredByDate = false;
+                            }
+                          }
+                          const isExpired = statusUpper === "EXPIRED" || (isCompleted && isExpiredByDate);
+                          return { a, isCompleted, isExpired, expiryStr };
+                        });
+                        const scoped = withStatus.filter(({ isExpired }) =>
+                          orgAttestationScope === "archived" ? isExpired : !isExpired,
+                        );
                         const q = (attestationSearch || "").trim().toLowerCase();
                         const filtered = q === ""
-                          ? attestations
-                          : attestations.filter((a) =>
+                          ? scoped
+                          : scoped.filter(({ a }) =>
                               (a.product_name || "").toLowerCase().includes(q)
                             );
                         if (filtered.length === 0) {
                           return (
                             <p className="assessment_search_no_results">
-                              No attestations match your search.
+                              {orgAttestationScope === "archived"
+                                ? "No archived attestations match your search."
+                                : "No attestations match your search."}
                             </p>
                           );
                         }
@@ -625,25 +723,7 @@ const Organizations = () => {
                           <>
                             <div className="attestation_list_rows assessment_list_rows">
                               <div className="general_rpr_cards_sec vendor_directory_grid">
-                                {paginated.map((a) => {
-                                const statusUpper = (a.status || "").toUpperCase();
-                                const isCompleted = statusUpper === "COMPLETED";
-                                const rawExpiry = a.expiry_at ?? a.expiryAt;
-                                const expiryStr = rawExpiry != null ? (typeof rawExpiry === "string" ? rawExpiry : rawExpiry?.toISOString?.()) : "";
-                                const isExpiredByDate = (() => {
-                                  if (!expiryStr || expiryStr.trim() === "") return false;
-                                  try {
-                                    const expiry = new Date(expiryStr);
-                                    if (Number.isNaN(expiry.getTime())) return false;
-                                    const today = new Date();
-                                    expiry.setHours(0, 0, 0, 0);
-                                    today.setHours(0, 0, 0, 0);
-                                    return expiry.getTime() < today.getTime();
-                                  } catch {
-                                    return false;
-                                  }
-                                })();
-                                const isExpired = statusUpper === "EXPIRED" || (isCompleted && isExpiredByDate);
+                                {paginated.map(({ a, isCompleted, isExpired, expiryStr }) => {
                                 const statusDisplay = isExpired ? "EXPIRED" : isCompleted ? "COMPLETED" : "Draft";
                                 const statusHeaderClass = isExpired
                                   ? "assessment_card_status_expired"
@@ -652,6 +732,7 @@ const Organizations = () => {
                                     : "assessment_card_status_draft";
                                 const title = a.product_name?.trim() || "Vendor Self-Attestation";
                                 const completedBy = a.completedBy?.name?.trim() || a.completedBy?.email?.trim() || "—";
+                                const isDraft = !isCompleted && !isExpired;
                                 const trustScore =
                                   a.trust_score != null && Number.isFinite(Number(a.trust_score))
                                     ? Math.round(Number(a.trust_score))
@@ -665,7 +746,7 @@ const Organizations = () => {
                                 return (
                                   <article
                                     key={a.id}
-                                    className="vendor_directory_card general_rpr_card"
+                                    className={`vendor_directory_card general_rpr_card${isExpired ? " general_rpr_card_archived" : ""}`}
                                     data-accent="sales"
                                   >
                                     <div className="general_report_card_header">
@@ -678,7 +759,7 @@ const Organizations = () => {
                                           </span>
                                           <span>
                                             <span>{statusDisplay}</span>
-                                            {isCompleted && !isExpired && expiryStr && (
+                                            {(isCompleted || isExpired) && expiryStr && (
                                               <span className="assessment_card_header_expiry">
                                                 {" "}Expires on: {formatDateDDMMMYYYY(expiryStr)}
                                               </span>
@@ -748,21 +829,27 @@ const Organizations = () => {
                                       </div>
                                     </div>
                                     <div className="general_rpr_card_footer">
-                                      <div className="general_rpr_card_dates">
-                                        <div className="general_rpr_card_date_row">
-                                          <span className="general_rpr_card_date_label_expiry">
-                                            {isCompleted || isExpired ? "Completed by:" : "Updated by:"}
+                                      <div className="general_rpr_card_dates attestation_card_meta">
+                                        <div className="attestation_card_meta_col">
+                                          <span className="general_rpr_card_date_label_expiry attestation_card_meta_label">
+                                            <User size={14} className="attestation_card_meta_icon" aria-hidden />
+                                            {isDraft ? "Updated by" : "Completed by"}
                                           </span>
-                                          <span className="general_rpr_card_date_value_expiry">
+                                          <span className="general_rpr_card_date_value_expiry attestation_card_meta_value">
                                             {completedBy}
                                           </span>
                                         </div>
-                                        <div className="general_rpr_card_date_row">
-                                          <span className="general_rpr_card_date_label_expiry">
-                                            {isCompleted || isExpired ? "Created on:" : "Drafted on:"}
+                                        <div className="attestation_card_meta_col attestation_card_meta_col--right">
+                                          <span className="general_rpr_card_date_label_expiry attestation_card_meta_label">
+                                            <Calendar size={14} className="attestation_card_meta_icon" aria-hidden />
+                                            {isDraft ? "Drafted on" : "Created on"}
                                           </span>
-                                          <span className="general_rpr_card_date_value_expiry">
-                                            {formatAttestationDate(isCompleted || isExpired ? a.created_at : (a.updated_at || a.created_at))}
+                                          <span className="general_rpr_card_date_value_expiry attestation_card_meta_value">
+                                            {formatAttestationDate(
+                                              isDraft
+                                                ? a.updated_at || a.created_at
+                                                : a.created_at,
+                                            )}
                                           </span>
                                         </div>
                                       </div>
@@ -792,9 +879,37 @@ const Organizations = () => {
                 {activeTab === TAB_ASSESSMENTS && (
                   <div className="org_preview_tab_content">
                     <div className="ai_assessments_section">
-                      <div className="assessment_list_header_row">
-                        <p className="your_assessments_title">ASSESSMENTS</p>
-                        <div className="attestation_tabs_and_search_row">
+                      <div className="assessment_list_header_stack">
+                        <p className="your_assessments_title">YOUR ASSESSMENTS</p>
+                        <div className="assessments_ledger_toolbar attestation_ledger_toolbar">
+                          <div
+                            className="assessments_ledger_segmented assessments_ledger_segmented_inline"
+                            role="group"
+                            aria-label="Assessments scope"
+                          >
+                            <button
+                              type="button"
+                              className={
+                                orgAssessmentScope === "current"
+                                  ? "assessments_ledger_segment active"
+                                  : "assessments_ledger_segment"
+                              }
+                              onClick={() => setOrgAssessmentScope("current")}
+                            >
+                              Current
+                            </button>
+                            <button
+                              type="button"
+                              className={
+                                orgAssessmentScope === "archived"
+                                  ? "assessments_ledger_segment active"
+                                  : "assessments_ledger_segment"
+                              }
+                              onClick={() => setOrgAssessmentScope("archived")}
+                            >
+                              Archived
+                            </button>
+                          </div>
                           <div className="assessments_ledger_search">
                             <Search size={18} className="assessments_ledger_search_icon" aria-hidden />
                             <input
@@ -815,19 +930,27 @@ const Organizations = () => {
                         <div className="vendor_attestation_error">{orgAssessmentsError}</div>
                       )}
                       {!orgAssessmentsLoading && !orgAssessmentsError && orgAssessments.length === 0 && (
-                        <p className="organizationPreviewEmpty">No assessments for this organization.</p>
+                        <p className="assessment_search_no_results">
+                          No assessments for this organization.
+                        </p>
                       )}
                       {!orgAssessmentsLoading && !orgAssessmentsError && orgAssessments.length > 0 && (() => {
+                        const scoped = orgAssessments.filter((row) => {
+                          const archived = getOrgAssessmentStatusLabel(row) === "Expired";
+                          return orgAssessmentScope === "archived" ? archived : !archived;
+                        });
                         const q = (orgAssessmentSearch || "").trim().toLowerCase();
                         const filtered = q === ""
-                          ? orgAssessments
-                          : orgAssessments.filter((row) =>
+                          ? scoped
+                          : scoped.filter((row) =>
                               getOrgAssessmentDisplayTitle(row).toLowerCase().includes(q)
                             );
                         if (filtered.length === 0) {
                           return (
                             <p className="assessment_search_no_results">
-                              No assessments match your search.
+                              {orgAssessmentScope === "archived"
+                                ? "No archived assessments match your search."
+                                : "No assessments match your search."}
                             </p>
                           );
                         }
@@ -853,9 +976,6 @@ const Organizations = () => {
                                   const assessmentType = (row.type ?? "").toLowerCase();
                                   const isVendorCots = assessmentType === "cots_vendor";
                                   const isBuyerCots = assessmentType === "cots_buyer";
-                                  // Match complete-report cards:
-                                  // - Vendor COTS: card score is Sales Confidence = alignment = 100 - SRS risk
-                                  // - Buyer COTS: card score is readiness (already stored as 0..100)
                                   const rawScore =
                                     row.reportRiskScore != null &&
                                     Number.isFinite(Number(row.reportRiskScore))
@@ -904,9 +1024,10 @@ const Organizations = () => {
                                             </span>
                                             <span>
                                               <span>{statusDisplay}</span>
-                                              {statusLabel === "Completed" && row.expiryAt && (
+                                              {(statusLabel === "Completed" || statusLabel === "Expired") &&
+                                                row.expiryAt && (
                                                 <span className="assessment_card_header_expiry">
-                                                  Expires on: {formatDateDDMMMYYYY(row.expiryAt)}
+                                                  {" "}Expires on: {formatDateDDMMMYYYY(row.expiryAt)}
                                                 </span>
                                               )}
                                             </span>
@@ -993,30 +1114,29 @@ const Organizations = () => {
                                         </div>
                                       </div>
                                       <div className="general_rpr_card_footer">
-                                        <div className="general_rpr_card_dates">
-                                          <div className="general_rpr_card_date_row">
-                                            <span className="general_rpr_card_date_label_expiry">
-                                              {isDraft ? "Drafted by:" : "Completed by:"}
+                                        <div className="general_rpr_card_dates attestation_card_meta">
+                                          <div className="attestation_card_meta_col">
+                                            <span className="general_rpr_card_date_label_expiry attestation_card_meta_label">
+                                              <User size={14} className="attestation_card_meta_icon" aria-hidden />
+                                              {isDraft ? "Updated by" : "Completed by"}
                                             </span>
-                                            <span className="general_rpr_card_date_value_expiry">
+                                            <span className="general_rpr_card_date_value_expiry attestation_card_meta_value">
                                               {completedBy}
                                             </span>
                                           </div>
-                                          {isDraft ? (
-                                            <div className="general_rpr_card_date_row">
-                                              <span className="general_rpr_card_date_label_expiry">Drafted on:</span>
-                                              <span className="general_rpr_card_date_value_expiry">
-                                                {formatDateDDMMMYYYY(row.updatedAt ?? row.createdAt)}
-                                              </span>
-                                            </div>
-                                          ) : (
-                                            <div className="general_rpr_card_date_row">
-                                              <span className="general_rpr_card_date_label_expiry">Created on:</span>
-                                              <span className="general_rpr_card_date_value_expiry">
-                                                {formatDateDDMMMYYYY(row.createdAt)}
-                                              </span>
-                                            </div>
-                                          )}
+                                          <div className="attestation_card_meta_col attestation_card_meta_col--right">
+                                            <span className="general_rpr_card_date_label_expiry attestation_card_meta_label">
+                                              <Calendar size={14} className="attestation_card_meta_icon" aria-hidden />
+                                              {isDraft ? "Drafted on" : "Created on"}
+                                            </span>
+                                            <span className="general_rpr_card_date_value_expiry attestation_card_meta_value">
+                                              {formatDateDDMMMYYYY(
+                                                isDraft
+                                                  ? row.updatedAt ?? row.createdAt
+                                                  : row.createdAt,
+                                              )}
+                                            </span>
+                                          </div>
                                         </div>
                                       </div>
                                     </article>
@@ -1038,6 +1158,15 @@ const Organizations = () => {
                         );
                       })()}
                     </div>
+                  </div>
+                )}
+
+                {activeTab === TAB_USERS && orgIdForFetch && (
+                  <div className="org_preview_tab_content">
+                    <OrgUsersTable
+                      organizationId={orgIdForFetch}
+                      organizationName={previewOrg?.organizationName}
+                    />
                   </div>
                 )}
               </div>
@@ -1070,7 +1199,7 @@ const Organizations = () => {
                 </div>
                 <div className="vendor_attestation_preview_modal_body">
                   {previewLoading && (
-                    <div className="vendor_attestation_loading">Loading preview…</div>
+                    <LoadingMessage message="Loading preview…" compact />
                   )}
                   {!previewLoading && previewFormState && (
                     <StepVendorSelfAttestationPrev

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { BookCheck, Check, Loader2, MonitorCog } from "lucide-react";
 import {
   applyLlmModel,
   fetchLlmModelConfig,
@@ -341,7 +341,10 @@ export function ModelCompatibilityChecker({
                   Testing…
                 </>
               ) : (
-                "Test"
+                <>
+                  <MonitorCog size={16} aria-hidden />
+                  Test
+                </>
               )}
             </button>
             <button
@@ -366,7 +369,10 @@ export function ModelCompatibilityChecker({
                   Applying…
                 </>
               ) : (
-                "Apply"
+                <>
+                  <Check size={16} aria-hidden />
+                  Apply
+                </>
               )}
             </button>
           </div>

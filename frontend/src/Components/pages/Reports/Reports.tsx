@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FileText, Search, CircleX, Ban, Trash2 } from "lucide-react";
 import { formatDateDDMMMYYYY } from "../../../utils/formatDate.js";
@@ -11,8 +11,7 @@ import "../UserManagement/user_management.css";
 import "../UserProfile/user_profile.css";
 import "../Assessments/assessments.css";
 import "./reports.css";
-import GeneralReports, { type GeneratedReportItem } from "./GeneralReports";
-import GeneralReportsCards from "./GeneralReportsCards";
+import GeneralReports from "./GeneralReports";
 import CompleteReportsCards from "./CompleteReportsCards";
 import { ReportsPagination } from "./ReportsPagination";
 
@@ -46,6 +45,7 @@ export interface CustomerRiskReportItem {
 }
 
 type TabId = "assessment" | "general" | "archived";
+type ArchivedSubTabId = "assessment" | "general";
 
 /** True when report is archived: user-archived assessment, or assessment/attestation expiry has passed. */
 function isCustomerReportArchived(report: CustomerRiskReportItem): boolean {
@@ -102,10 +102,9 @@ function Reports() {
   const [searchQuery, setSearchQuery] = useState("");
   const [completeReportsPage, setCompleteReportsPage] = useState(1);
   const [completeReportsPageSize, setCompleteReportsPageSize] = useState(10);
+  const [archivedSubTab, setArchivedSubTab] = useState<ArchivedSubTabId>("assessment");
   const [archivedCompletePage, setArchivedCompletePage] = useState(1);
-  const [archivedGeneralReports, setArchivedGeneralReports] = useState<GeneratedReportItem[]>([]);
-  const [archivedPage, setArchivedPage] = useState(1);
-  const [archivedPageSize, setArchivedPageSize] = useState(10);
+  const [archivedCompletePageSize, setArchivedCompletePageSize] = useState(10);
   const [deleteReportId, setDeleteReportId] = useState<string | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
@@ -126,9 +125,8 @@ function Reports() {
     setCompleteReportsPage(1);
     if (activeTab === "archived") {
       setArchivedCompletePage(1);
-      setArchivedPage(1);
     }
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, archivedSubTab]);
 
   useEffect(() => {
     document.title = "AI-Q | Reports";
@@ -254,13 +252,6 @@ function Reports() {
     }
   };
 
-  const handleViewGeneralReport = (report: GeneratedReportItem) => {
-    const reportTitle = `${report.assessmentLabel ?? ""} — ${report.reportType ?? ""}`.trim();
-    navigate(`/reports/general/${encodeURIComponent(report.id)}`, {
-      state: { reportTitle },
-    });
-  };
-
   const handleDownload = (report: CustomerRiskReportItem, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -312,12 +303,17 @@ function Reports() {
   /** Current (non-archived) and archived Complete Reports for tab split. */
   const currentAssessmentReports = reports.filter((r) => !isCustomerReportArchived(r));
   const archivedAssessmentReports = reports.filter((r) => isCustomerReportArchived(r));
-  /** For Complete Reports tab: only current reports; filter by search. */
+  /** For Complete Reports tab / Archived → Complete Reports: filter by search. */
   const assessmentReportsRaw =
-    activeTab === "assessment" ? currentAssessmentReports : activeTab === "archived" ? archivedAssessmentReports : [];
+    activeTab === "assessment"
+      ? currentAssessmentReports
+      : activeTab === "archived" && archivedSubTab === "assessment"
+        ? archivedAssessmentReports
+        : [];
   /** Filter Complete Reports by search: org name / product name (title), or "published" / "archived". */
   const assessmentReports =
-    activeTab === "assessment" || activeTab === "archived"
+    activeTab === "assessment" ||
+    (activeTab === "archived" && archivedSubTab === "assessment")
       ? (() => {
           const q = searchQuery.trim().toLowerCase();
           if (!q) return assessmentReportsRaw;
@@ -333,20 +329,6 @@ function Reports() {
           });
         })()
       : [];
-
-  /** Combined archived list (complete + general) for single pagination on Archived tab. */
-  const combinedArchivedList = useMemo(() => {
-    const complete = assessmentReports.map((r) => ({ type: "complete" as const, data: r, sortKey: r.createdAt }));
-    const general = archivedGeneralReports.map((r) => ({ type: "general" as const, data: r, sortKey: r.generatedAt }));
-    return [...complete, ...general].sort(
-      (a, b) => new Date(b.sortKey).getTime() - new Date(a.sortKey).getTime()
-    );
-  }, [assessmentReports, archivedGeneralReports]);
-
-  const paginatedArchivedList = combinedArchivedList.slice(
-    (archivedPage - 1) * archivedPageSize,
-    archivedPage * archivedPageSize
-  );
 
   return (
     <div className="sec_user_page org_settings_page reports_page">
@@ -401,10 +383,13 @@ function Reports() {
       </div>
 
       <div className="reports_list">
-        {(activeTab === "assessment" || activeTab === "archived") && loading && (
-          <LoadingMessage message="Loading reports…" />
+        {activeTab === "assessment" && loading && (
+          <LoadingMessage
+            message="Loading reports…"
+            className="loading_message_wrapper--page"
+          />
         )}
-        {(activeTab === "assessment" || activeTab === "archived") && !loading && error && (
+        {activeTab === "assessment" && !loading && error && (
           <div className="report_detail_empty">
             <h2 className="report_detail_empty_title">Error loading reports</h2>
             <p className="report_detail_empty_text">{error}</p>
@@ -461,59 +446,95 @@ function Reports() {
             canGenerateReports={!isReportsViewOnly}
           />
         )}
-        {activeTab === "archived" && !loading && !error && (
+        {activeTab === "archived" && (
           <>
-            <GeneralReports
-              searchQuery={searchQuery}
-              showArchivedOnly
-              hideDropdown
-              renderArchivedListOnly
-              onArchivedReportsChange={setArchivedGeneralReports}
-            />
-            {combinedArchivedList.length > 0 ? (
-              <>
-                <div className="general_rpr_cards_sec vendor_directory_grid complete_rpr_cards_grid">
-                  {paginatedArchivedList.map((item) =>
-                    item.type === "complete" ? (
-                      <CompleteReportsCards
-                        key={`complete-${item.data.id}`}
-                        reports={[item.data]}
-                        getTitle={(r) => getReportCardTitle(r.title ?? "")}
-                        isArchived={() => true}
-                        getExpiryDate={getCompleteReportExpiryDate}
-                        onViewReport={handleSelectReport}
-                        viewEnabledWhenArchived
-                        singleCard
-                        showScoreRationaleInfo={isSystemAdmin}
-                      />
-                    ) : (
-                      <GeneralReportsCards
-                        key={`general-${item.data.id}`}
-                        reports={[item.data]}
-                        onViewReport={handleViewGeneralReport}
-                        singleCard
-                      />
-                    )
-                  )}
-                </div>
-                <ReportsPagination
-                  totalItems={combinedArchivedList.length}
-                  currentPage={archivedPage}
-                  pageSize={archivedPageSize}
-                  onPageChange={setArchivedPage}
-                  onPageSizeChange={(size) => {
-                    setArchivedPageSize(size);
-                    setArchivedPage(1);
-                  }}
-                />
-              </>
-            ) : (
+            <div className="page_tabs reports_archived_subtabs" role="tablist" aria-label="Archived report type">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={archivedSubTab === "assessment"}
+                className={`page_tab ${archivedSubTab === "assessment" ? "page_tab_active" : ""}`}
+                onClick={() => setArchivedSubTab("assessment")}
+              >
+                Complete Reports
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={archivedSubTab === "general"}
+                className={`page_tab ${archivedSubTab === "general" ? "page_tab_active" : ""}`}
+                onClick={() => setArchivedSubTab("general")}
+              >
+                Assessment Analysis
+              </button>
+            </div>
+
+            {archivedSubTab === "assessment" && loading && (
+              <LoadingMessage
+                message="Loading reports…"
+                className="loading_message_wrapper--page"
+              />
+            )}
+            {archivedSubTab === "assessment" && !loading && error && (
               <div className="report_detail_empty">
-                <h2 className="report_detail_empty_title">No archived reports</h2>
-                <p className="report_detail_empty_text">
-                  Archived reports from Complete Reports and Assessment Analysis will appear here.
-                </p>
+                <h2 className="report_detail_empty_title">Error loading reports</h2>
+                <p className="report_detail_empty_text">{error}</p>
               </div>
+            )}
+            {archivedSubTab === "assessment" &&
+              !loading &&
+              !error &&
+              assessmentReports.length > 0 && (
+                <>
+                  <CompleteReportsCards
+                    reports={assessmentReports.slice(
+                      (archivedCompletePage - 1) * archivedCompletePageSize,
+                      archivedCompletePage * archivedCompletePageSize
+                    )}
+                    getTitle={(r) => getReportCardTitle(r.title ?? "")}
+                    isArchived={() => true}
+                    getExpiryDate={getCompleteReportExpiryDate}
+                    onViewReport={handleSelectReport}
+                    viewEnabledWhenArchived
+                    showScoreRationaleInfo={isSystemAdmin}
+                  />
+                  <ReportsPagination
+                    totalItems={assessmentReports.length}
+                    currentPage={archivedCompletePage}
+                    pageSize={archivedCompletePageSize}
+                    onPageChange={setArchivedCompletePage}
+                    onPageSizeChange={(size) => {
+                      setArchivedCompletePageSize(size);
+                      setArchivedCompletePage(1);
+                    }}
+                  />
+                </>
+              )}
+            {archivedSubTab === "assessment" &&
+              !loading &&
+              !error &&
+              assessmentReports.length === 0 && (
+                <div className="report_detail_empty">
+                  <h2 className="report_detail_empty_title">
+                    {searchQuery.trim()
+                      ? "No reports match your search"
+                      : "No archived complete reports"}
+                  </h2>
+                  <p className="report_detail_empty_text">
+                    {searchQuery.trim()
+                      ? "Try a different search (org name, product name)."
+                      : "Archived complete reports will appear here when assessments expire or are archived."}
+                  </p>
+                </div>
+              )}
+
+            {archivedSubTab === "general" && (
+              <GeneralReports
+                searchQuery={searchQuery}
+                showArchivedOnly
+                hideDropdown
+                canGenerateReports={false}
+              />
             )}
           </>
         )}

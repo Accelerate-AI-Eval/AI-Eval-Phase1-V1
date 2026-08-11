@@ -1,18 +1,14 @@
-import boto3
-
 from langchain_aws import ChatBedrockConverse
 
-from config import get_bedrock_model_id, settings
+from config import get_bedrock_model_id
+from services.bedrock_client import create_bedrock_runtime_client
 
 
 class BedrockService:
 
     def __init__(self):
 
-        self.client = boto3.client(
-            "bedrock-runtime",
-            region_name=settings.AWS_REGION
-        )
+        self.client = create_bedrock_runtime_client()
 
         self._model_id: str | None = None
         self.llm = None

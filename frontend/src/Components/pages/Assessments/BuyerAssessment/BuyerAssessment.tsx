@@ -13,6 +13,7 @@ import {
 } from "../../../../constants/buyerCotsAssessmentKeys";
 import {
   BUYER_COTS_READONLY_KEYS,
+  flattenOnboardingSectorIndustries,
   mapOnboardingToAssessmentForm,
 } from "../../../../constants/buyerCotsOnboardingMapping";
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -24,10 +25,10 @@ import {
   ChevronRightCircle,
   Send,
   Save,
-  Loader2,
   FileCheck,
 } from "lucide-react";
 import CardConfirmation from "../../../UI/CardConfirmation";
+import SubmitProgressOverlay from "../../../UI/SubmitProgressOverlay";
 import UseCase from "./UseCase";
 import VendorEvaluation from "./VendorEvaluation";
 import Readiness from "./Readiness";
@@ -306,8 +307,16 @@ const BuyerAssessment = () => {
           ];
           draftKeys.forEach((key) => {
             const v = d[key];
-            if (v != null)
-              patch[key] = Array.isArray(v) ? JSON.stringify(v) : String(v);
+            if (v == null) return;
+            // industry_sector is stored as a comma-separated varchar; form expects JSON array
+            if (key === "industrySector") {
+              const industries = flattenOnboardingSectorIndustries(v);
+              if (industries.length > 0) {
+                patch[key] = JSON.stringify(industries);
+              }
+              return;
+            }
+            patch[key] = Array.isArray(v) ? JSON.stringify(v) : String(v);
           });
           if (typeof d.integrationSystems === "string")
             patch.integrationSystems = d.integrationSystems;
@@ -752,18 +761,10 @@ const BuyerAssessment = () => {
         </div>
       </div>
       {submitting && (
-        <div
-          className="vendor_attestation_submit_overlay"
-          role="status"
-          aria-live="polite"
-          aria-label="Submitting assessment"
-        >
-          <div className="vendor_attestation_submit_overlay_content">
-            <Loader2 size={32} className="vendor_attestation_submit_overlay_loader" aria-hidden />
-            <p>Submitting assessment…</p>
-            <p className="vendor_attestation_submit_overlay_hint">Please wait. Do not close or refresh.</p>
-          </div>
-        </div>
+        <SubmitProgressOverlay
+          variant="assessment"
+          headline="Building an assessment that can explain itself"
+        />
       )}
       <div className="form_card_centered">
       <CardContainerOnBoarding>

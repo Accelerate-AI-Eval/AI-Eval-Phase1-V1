@@ -1,12 +1,23 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FileText, LayoutDashboard, Activity, Shield, AlertTriangle, ChevronDown, ClipboardPlus, Building2, Users, ChevronRight } from "lucide-react";
-import { MetricCard } from "../../UI/Card";
+import {
+  FileText,
+  FileCheck,
+  ClipboardCheck,
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  Sparkles,
+  Workflow,
+} from "lucide-react";
 import LoadingMessage from "../../UI/LoadingMessage";
+import DashboardFeatureCard from "../../UI/DashboardFeatureCard";
+import DashboardStatCard from "../../UI/DashboardStatCard";
 import type { AssessmentRow } from "./types";
 import { BASE_URL, formatGovDate, getAssessmentLabel } from "./utils";
 import { formatFrameworkMappingFrameworkForDisplay } from "../../../utils/frameworkMappingFrameworkDisplay";
 import { frameworkControlsDisplayLines } from "../../../utils/frameworkMappingControlsDisplay";
+import DashboardTypewriterGreeting from "../../UI/DashboardTypewriterGreeting";
 import "./dashboard.css";
 
 type RiskFrequency = { label: string; count: number; riskIds: string[] };
@@ -731,7 +742,6 @@ const BuyerOverview = () => {
     : assessmentsList;
   const buyerAssessments = orgScopedList.filter((a) => (a.type ?? "").toLowerCase() === "cots_buyer");
   const completedBuyerAssessments = buyerAssessments.filter((a) => (a.status ?? "").toLowerCase() !== "draft");
-  const draftCount = buyerAssessments.filter((a) => (a.status ?? "").toLowerCase() === "draft").length;
   const completedCount = completedBuyerAssessments.length;
   const selectedAssessment = completedBuyerAssessments.find((a) => String(a.assessmentId) === selectedAssessmentId);
   const displayedRiskCount = selectedAssessmentId
@@ -768,100 +778,182 @@ const BuyerOverview = () => {
   const assessmentMetricValue = selectedAssessmentId
     ? (selectedAssessmentDashboardScore != null ? selectedAssessmentDashboardScore : "")
     : buyerAssessments.length;
-  const assessmentMetricDescription = selectedAssessmentId ? "" : `${completedCount} completed, ${draftCount} pending`;
+
+  if (loading) {
+    return (
+      <div className="vendor_overview_page sec_user_page org_settings_page governance_overview">
+        <LoadingMessage
+          message="Loading dashboard…"
+          className="loading_message_wrapper--page"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="vendor_overview_page sec_user_page org_settings_page governance_overview">
-      <div className="vendor_overview_heading page_header_align governance_overview_header">
-        <div className="vendor_overview_headers page_header_row">
-          <span className="icon_size_header" aria-hidden>
-            <LayoutDashboard size={24} className="header_icon_svg" />
-          </span>
-          <div className="page_header_title_block">
-            <h1 className="page_header_title">Governance Intelligence</h1>
-            <p className="sub_title page_header_subtitle">
-              Strategic oversight for enterprise-wide AI risk mapping and compliance framework alignment.
+      <section className="dash_hero" aria-label="Buyer dashboard overview">
+        <div className="dash_hero_bg" aria-hidden>
+          <span className="dash_hero_pill dash_hero_pill--1" />
+          <span className="dash_hero_pill dash_hero_pill--2" />
+          <span className="dash_hero_pill dash_hero_pill--3" />
+          <span className="dash_hero_pill dash_hero_pill--4" />
+          <span className="dash_hero_pill dash_hero_pill--5" />
+        </div>
+
+        <div className="dash_greeting_row dash_greeting_row--centered dash_hero_greeting">
+          <div className="page_header_row dash_greeting_heading dash_greeting_heading--pa">
+            <DashboardTypewriterGreeting
+              role="buyer"
+              className="dash_greeting_title dash_hero_title"
+            />
+            <p className="dash_greeting_subtitle dash_hero_subtitle">
+              Start an assessment or explore vendors to evaluate AI trust end to end.
             </p>
           </div>
         </div>
-        <div className="vendor_overview_actions governance_overview_actions">
-          <div className="governance_overview_select_wrap">
-            <select
-              className="governance_overview_select"
-              value={selectedAssessmentId}
-              onChange={(e) => setSelectedAssessmentId(e.target.value)}
-              aria-label="Select assessment"
-            >
-              <option value="">All Assessments</option>
-              {completedBuyerAssessments.map((a) => (
-                <option key={a.assessmentId} value={a.assessmentId}>
-                  {getAssessmentLabel(a)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={18} className="governance_overview_chevron governance_overview_chevron_select" aria-hidden />
-          </div>
-        </div>
-      </div>
 
-      {loading && <LoadingMessage message="Loading assessments…" />}
-      {fetchError && <div className="vendor_overview_error">{fetchError}</div>}
+        {fetchError && <div className="vendor_overview_error">{fetchError}</div>}
 
-      {!loading && (
-        <>
-          {!isViewOnlyRole && (
-            <section className="vendor_portal_section" aria-labelledby="buyer-quick-actions-heading">
-              <h2 id="buyer-quick-actions-heading" className="vendor_portal_section_heading">
-                Quick Actions
-              </h2>
-              <div className="vendor_portal_action_cards">
-                <Link to="/buyerAssessment" className="vendor_portal_action_card vendor_portal_action_card_primary">
-                  <ClipboardPlus size={26} className="vendor_portal_action_icon_secondary" aria-hidden />
-                  <span className="vendor_portal_action_label">Create Assessment</span>
-                </Link>
-                <Link to="/vendor-directory" className="vendor_portal_action_card vendor_portal_action_card_primary">
-                  <Building2 size={26} className="vendor_portal_action_icon_secondary" aria-hidden />
-                  <span className="vendor_portal_action_label">AI Directory</span>
-                </Link>
-                <Link to="/riskMappings" className="vendor_portal_action_card vendor_portal_action_card_primary">
-                  <Users size={26} className="vendor_portal_action_icon_secondary" aria-hidden />
-                  <span className="vendor_portal_action_label">Risk Mapping</span>
-                </Link>
-                <Link to="/reports" className="vendor_portal_action_card vendor_portal_action_card_primary">
-                  <FileText size={26} className="vendor_portal_action_icon_secondary" aria-hidden />
-                  <span className="vendor_portal_action_label">Access Reports</span>
-                </Link>
-              </div>
-            </section>
+        <div
+          className="dash_feature_grid dash_feature_grid--pa_hero"
+          aria-label="Quick actions"
+        >
+          {isViewOnlyRole ? (
+            <>
+              <DashboardFeatureCard
+                variant="pa"
+                to="/vendor-directory"
+                accent="violet"
+                title="AI Directory"
+                description="Browse and discover AI vendors in your directory to compare trust."
+                icon={<Building2 size={14} strokeWidth={2.25} />}
+              />
+              <DashboardFeatureCard
+                variant="pa"
+                to="/riskMappings"
+                accent="sky"
+                title="Risk mapping"
+                description="Review identified risks mapped to controls and frameworks."
+                icon={<Workflow size={14} strokeWidth={2.25} />}
+              />
+              <DashboardFeatureCard
+                variant="pa"
+                to="/reports"
+                accent="amber"
+                title="View reports"
+                description="Open finished assessments and published risk reports."
+                icon={<FileText size={14} strokeWidth={2.25} />}
+              />
+            </>
+          ) : (
+            <>
+              <DashboardFeatureCard
+                variant="pa"
+                to="/buyerAssessment"
+                accent="violet"
+                title="Create an assessment"
+                description="Start a new buyer assessment for vendor AI products with full control."
+                icon={<ClipboardCheck size={14} strokeWidth={2.25} />}
+              />
+              <DashboardFeatureCard
+                variant="pa"
+                to="/vendor-directory"
+                accent="sky"
+                title="AI Directory"
+                description="Browse and discover AI vendors in your directory to compare trust."
+                icon={<Building2 size={14} strokeWidth={2.25} />}
+              />
+              <DashboardFeatureCard
+                variant="pa"
+                to="/riskMappings"
+                accent="amber"
+                title="Risk mapping"
+                description="Map identified risks to controls and frameworks across assessments."
+                icon={<Workflow size={14} strokeWidth={2.25} />}
+              />
+            </>
           )}
-          <div className="vendor_overview_metrics vendor_overview_metrics_four governance_overview_metrics governance_overview_top_cards">
-            <MetricCard
-              icon={<Activity size={20} />}
-              title="Total Identified Risk"
-              value={displayedRiskCount.toLocaleString()}
-              description=""
-            />
-            <MetricCard
-              icon={<Shield size={20} />}
-              title="Total Mitigations Implemented"
-              value={displayedMitigationCount.toLocaleString()}
-              description=""
-            />
-            <MetricCard
-              icon={<FileText size={20} />}
-              title={assessmentMetricTitle}
-              value={assessmentMetricValue}
-              description={assessmentMetricDescription}
-            />
-            {/* <MetricCard
-              icon={<AlertTriangle size={20} />}
-              title="Risk Domains"
-              value="6"
-              description="Active categories"
-            /> */}
-          </div>
+        </div>
+      </section>
 
-          {selectedAssessmentId && (
+      <section
+        className="dash_section"
+        aria-labelledby="buyer-quick-glance-heading"
+      >
+        <header className="dash_section_header dash_section_header--with_action">
+          <div className="dash_section_header_copy">
+            <h2 id="buyer-quick-glance-heading" className="dash_section_title">
+              Quick Glance
+            </h2>
+            <p className="dash_section_lead">
+              Key risk, mitigation, and assessment metrics at a glance.
+            </p>
+          </div>
+          <div className="dash_section_header_action">
+            <div className="governance_overview_select_wrap">
+              <select
+                className="governance_overview_select"
+                value={selectedAssessmentId}
+                onChange={(e) => setSelectedAssessmentId(e.target.value)}
+                aria-label="Select assessment"
+              >
+                <option value="">All Assessments</option>
+                {completedBuyerAssessments.map((a) => (
+                  <option key={a.assessmentId} value={a.assessmentId}>
+                    {getAssessmentLabel(a)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={18}
+                className="governance_overview_chevron governance_overview_chevron_select"
+                aria-hidden
+              />
+            </div>
+          </div>
+        </header>
+        <div className="dash_stat_grid" aria-label="Dashboard metrics">
+          <DashboardStatCard
+            to="/riskMappings"
+            label="Identified risks"
+            value={displayedRiskCount.toLocaleString()}
+            description="Across active assessments"
+            icon={<Workflow size={18} />}
+            accent="green"
+          />
+          <DashboardStatCard
+            to="/riskMappings"
+            label="Mitigations"
+            value={displayedMitigationCount.toLocaleString()}
+            description="Mapped to identified risks"
+            icon={<FileCheck size={18} />}
+            accent="orange"
+          />
+          <DashboardStatCard
+            to="/buyerAssessment"
+            label={assessmentMetricTitle}
+            value={assessmentMetricValue === "" ? "—" : assessmentMetricValue}
+            description={
+              selectedAssessmentId
+                ? "Selected assessment score"
+                : "Started in your organization"
+            }
+            icon={<ClipboardCheck size={18} />}
+            accent="rose"
+          />
+          <DashboardStatCard
+            to="/reports"
+            label="Completed"
+            value={completedCount}
+            description="With published reports"
+            icon={<FileText size={18} />}
+            accent="teal"
+          />
+        </div>
+      </section>
+
+      {selectedAssessmentId && (
             <section className="governance_panel">
               <div className="governance_section_title_row">
                 <h3 className="governance_bottom_card_title">Assessment Summary</h3>
@@ -994,7 +1086,7 @@ const BuyerOverview = () => {
                 <thead>
                   <tr>
                     <th>Risk ID</th>
-                    <th>Risk Category</th>
+                    <th className="governance_table_col_risk_category">Risk Category</th>
                     <th>Framework Control</th>
                     <th>Mitigation IDs</th>
                   </tr>
@@ -1004,7 +1096,7 @@ const BuyerOverview = () => {
                     displayedFrameworkRowsTop3.map((row) => (
                       <tr key={row.riskId}>
                         <td>{row.riskId}</td>
-                        <td>{row.riskCategory}</td>
+                        <td className="governance_table_col_risk_category">{row.riskCategory}</td>
                         <td>{row.frameworkControl}</td>
                         <td>
                           <div className="governance_mit_chip_list">
@@ -1035,8 +1127,8 @@ const BuyerOverview = () => {
             <section className="governance_panel">
               <div className="governance_section_title_row">
                 <h3 className="governance_bottom_card_title">Top Risk Implementations</h3>
-                <Link to="/reports" className="governance_view_link">
-                  View All <ChevronRight size={14} aria-hidden />
+                <Link to="/reports" className="dash_view_all_btn governance_view_link">
+                  View All <ChevronRight size={15} strokeWidth={2.25} aria-hidden />
                 </Link>
               </div>
               <div className="governance_table_wrap">
@@ -1142,8 +1234,6 @@ const BuyerOverview = () => {
             </div>
           )}
           */}
-        </>
-      )}
     </div>
   );
 };

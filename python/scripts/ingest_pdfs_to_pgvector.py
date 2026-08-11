@@ -16,7 +16,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from config import settings
 from services.vector_ingest_service import VectorIngestService
 
 DEFAULT_DIR = (
@@ -37,8 +36,8 @@ def main() -> int:
     parser.add_argument(
         "--database-url",
         type=str,
-        default=settings.DATABASE_URL,
-        help="Postgres connection URL (defaults to DATABASE_URL from settings/.env)",
+        default=None,
+        help="Optional Postgres URL override (default: DATABASE_* from settings/.env)",
     )
     args = parser.parse_args()
 

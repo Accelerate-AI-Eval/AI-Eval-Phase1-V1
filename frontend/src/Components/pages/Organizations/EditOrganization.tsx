@@ -175,7 +175,7 @@ const EditOrganization = ({ setIsEdit, id, orgData, allOrganizations = [] }) => 
                   value={isReason}
                   onChange={(e) => setIsReason(e.target.value)}
                   rows={3}
-                  style={{ resize: "none", minHeight: "4em" }}
+                  style={{ resize: "none", minHeight: "4rem" }}
                 />
               </div>
             </div>

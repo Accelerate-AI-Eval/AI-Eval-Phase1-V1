@@ -111,8 +111,8 @@ function deriveImprovement(label: string, estimatedLift: number): string {
     return "Strengthen data governance practices to managed or optimized level.";
   if (l.includes("criticality") || l.includes("risk appetite"))
     return "Reassess risk appetite or reduce implementation criticality classification.";
-  if (l.includes("requirement gap"))
-    return "Resolve documented requirement gaps before implementation to reduce integration risk.";
+  if (l.includes("requirement gap") || l.includes("currently using product") || l.includes("not currently using"))
+    return "Pilot or gain experience with the product before full implementation to reduce integration risk.";
   if (l.includes("team") || l.includes("team composition"))
     return "Expand implementation team to include at least four qualified members.";
   if (l.includes("rollback"))

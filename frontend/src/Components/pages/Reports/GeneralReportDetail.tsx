@@ -46,7 +46,9 @@ import MitigationActionPlanReportBody, {
   parseMitigationActionPlanJson,
 } from "./MitigationActionPlanReportBody";
 import "../UserManagement/user_management.css";
+import "../Assessments/assessments.css";
 import "./reports.css";
+import "./general_reports.css";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
 
@@ -120,7 +122,7 @@ const BRIEF_SECTION_DISPLAY: Array<{ pattern: RegExp | string; displayTitle: str
 
 /** Strip leading "1." "2." "11." etc. from section heading text. */
 function stripSectionNumber(title: string): string {
-  return title.replace(/^\s*\d+\.\s*/, "").trim() || title;
+  return title.replace(/^#{1,6}\s+/, "").replace(/^\s*\d+\.\s*/, "").trim() || title;
 }
 
 function getBriefSectionDisplay(title: string): { displayTitle: string; Icon: React.ComponentType<{ size?: number; className?: string }> } {
@@ -137,7 +139,7 @@ function getBriefSectionDisplay(title: string): { displayTitle: string; Icon: Re
   return { displayTitle: titleNoNumber || trimmed, Icon: FileCheck };
 }
 
-/** Parse brief content into sections by ## headings. */
+/** Parse brief content into sections by markdown headings (#–######). */
 function parseBriefContent(briefContent: string): BriefSection[] {
   const sections: BriefSection[] = [];
   const lines = briefContent.split(/\r?\n/);
@@ -145,7 +147,7 @@ function parseBriefContent(briefContent: string): BriefSection[] {
   let currentBody: string[] = [];
 
   for (const line of lines) {
-    const headingMatch = line.match(/^##\s+(.+)$/);
+    const headingMatch = line.match(/^#{1,6}\s+(.+)$/);
     if (headingMatch) {
       if (currentTitle) {
         sections.push({
@@ -153,7 +155,7 @@ function parseBriefContent(briefContent: string): BriefSection[] {
           body: currentBody.join("\n").trim(),
         });
       }
-      currentTitle = headingMatch[1].trim();
+      currentTitle = stripMarkdownArtifacts(headingMatch[1]);
       currentBody = [];
     } else {
       currentBody.push(line);
@@ -166,6 +168,26 @@ function parseBriefContent(briefContent: string): BriefSection[] {
     });
   }
   return sections.length > 0 ? sections : [{ title: "Brief", body: briefContent }];
+}
+
+/** Remove markdown markers (*, **, #, ---) so they are not shown in the UI. */
+function stripMarkdownArtifacts(s: string): string {
+  return String(s ?? "")
+    .replace(/\*\*([^*]*)\*\*/g, "$1")
+    .replace(/\*([^*]*)\*/g, "$1")
+    .replace(/__([^_]*)__/g, "$1")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/(^|\s)#{1,6}(?=\s|$)/g, "$1")
+    .replace(/#{2,}/g, "")
+    .replace(/^[ \t]*-{3,}[ \t]*$/gm, "")
+    .replace(/\s*-{3,}\s*/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
 }
 
 /** Remove "[Assumption]" from executive brief body text for display. */
@@ -186,6 +208,143 @@ function isTopRisksSectionTitle(title: string): boolean {
   return /^top\s+risks\b/i.test(stripSectionNumber(title));
 }
 
+function isOwnershipMatrixSectionTitle(title: string): boolean {
+  return /^ownership\s+matrix\b/i.test(stripSectionNumber(title));
+}
+
+function isMarkdownTableRow(line: string): boolean {
+  const t = line.trim();
+  return t.startsWith("|") && t.includes("|", 1);
+}
+
+function isMarkdownTableSeparator(line: string): boolean {
+  return /^\|?[\s:\-|]+$/.test(line.trim()) && /-{3,}/.test(line);
+}
+
+function splitMarkdownTableCells(line: string): string[] {
+  let t = line.trim();
+  if (t.startsWith("|")) t = t.slice(1);
+  if (t.endsWith("|")) t = t.slice(0, -1);
+  return t.split("|").map((c) => stripMarkdownArtifacts(c));
+}
+
+type OwnershipMatrixRow = { item: string; ownership: string; notes: string };
+
+function parseOwnershipBulletRow(line: string): OwnershipMatrixRow | null {
+  const raw = line.trim().replace(/^\s*[-*]\s+/, "");
+  if (!raw || isMarkdownTableRow(raw) || isMarkdownTableSeparator(raw)) return null;
+  const cleaned = stripMarkdownArtifacts(raw);
+  if (!cleaned) return null;
+
+  const colonIdx = cleaned.indexOf(":");
+  if (colonIdx === -1) {
+    return { item: cleaned, ownership: "", notes: "" };
+  }
+
+  const item = cleaned.slice(0, colonIdx).trim();
+  let rest = cleaned.slice(colonIdx + 1).trim();
+  if (!item) return null;
+
+  const ownershipMatch = rest.match(
+    /^(Vendor|Buyer|Shared|To be confirmed)(?:\s*\/\s*(?:Vendor|Buyer|Shared))*/i,
+  );
+  if (ownershipMatch) {
+    const ownership = ownershipMatch[0].trim();
+    const notes = rest.slice(ownershipMatch[0].length).trim().replace(/^[–—-]\s*/, "").trim();
+    return { item, ownership, notes: stripMarkdownArtifacts(notes) };
+  }
+
+  const dashParts = rest.split(/\s*[–—]\s+|\s+-\s+/);
+  if (dashParts.length >= 2) {
+    return {
+      item,
+      ownership: stripMarkdownArtifacts(dashParts[0]),
+      notes: stripMarkdownArtifacts(dashParts.slice(1).join(" – ")),
+    };
+  }
+
+  return { item, ownership: stripMarkdownArtifacts(rest), notes: "" };
+}
+
+function parseOwnershipMatrixRows(body: string): OwnershipMatrixRow[] {
+  const lines = body.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const mdLines = lines.filter((l) => isMarkdownTableRow(l) || isMarkdownTableSeparator(l));
+
+  if (mdLines.filter(isMarkdownTableRow).length >= 2) {
+    const cellRows = mdLines
+      .filter((l) => !isMarkdownTableSeparator(l))
+      .map(splitMarkdownTableCells)
+      .filter((cells) => cells.some((c) => c.length > 0));
+
+    if (cellRows.length > 0) {
+      const header = cellRows[0].map((h) => h.toLowerCase());
+      const looksLikeHeader =
+        header.some((h) => /ownership|owner|vendor|buyer|shared|risk|mitigation|item|note/i.test(h));
+      const dataRows = looksLikeHeader ? cellRows.slice(1) : cellRows;
+
+      return dataRows.map((cells) => {
+        if (cells.length >= 3) {
+          return { item: cells[0] || "", ownership: cells[1] || "", notes: cells.slice(2).join(" | ") };
+        }
+        if (cells.length === 2) {
+          return { item: cells[0] || "", ownership: cells[1] || "", notes: "" };
+        }
+        return { item: cells[0] || "", ownership: "", notes: "" };
+      });
+    }
+  }
+
+  return lines
+    .map(parseOwnershipBulletRow)
+    .filter((row): row is OwnershipMatrixRow => row != null && Boolean(row.item));
+}
+
+function renderOwnershipMatrixTable(body: string, sectionKey: string): React.ReactNode {
+  const rows = parseOwnershipMatrixRows(body);
+  if (rows.length === 0) {
+    return (
+      <p className="report_exec_brief_para">
+        {stripMarkdownArtifacts(body) || "Not specified"}
+      </p>
+    );
+  }
+
+  return (
+    <div
+      className="report_table_wrap report_ownership_matrix_wrap"
+      role="region"
+      aria-label="Ownership matrix"
+    >
+      <table className="report_table report_ownership_matrix_table">
+        <thead>
+          <tr>
+            <th scope="col">Risk / Mitigation</th>
+            <th scope="col">Ownership</th>
+            <th scope="col">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={`${sectionKey}-own-${i}`}>
+              <td>{stripMarkdownArtifacts(row.item)}</td>
+              <td>
+                {row.ownership ? (
+                  <span className="report_ownership_badge">
+                    {stripMarkdownArtifacts(row.ownership)}
+                  </span>
+                ) : (
+                  "—"
+                )}
+              </td>
+              <td>{stripMarkdownArtifacts(row.notes) || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function severityClassName(sev: string): string {
   const s = String(sev ?? "").trim().toLowerCase();
   if (s.startsWith("high")) return "report_severity_high";
@@ -197,7 +356,9 @@ function severityClassName(sev: string): string {
 function parseTopBlockerLine(
   line: string,
 ): { main: string; severity?: string; likelihood?: string; impact?: string; evidence?: string } {
-  const bulletless = stripAssumptionLabel(line.trim().replace(/^\s*[-*]\s+/, "")).replace(/\*\*/g, "");
+  const bulletless = stripMarkdownArtifacts(
+    stripAssumptionLabel(line.trim().replace(/^\s*[-*]\s+/, "")),
+  );
   const severityMatch = bulletless.match(/(?:^|\s)Severity:\s*([^|]+?)(?=\s+[|–—-]\s+(?:Likelihood:|Impact:|Evidence:)|\s+Evidence:|$)/i);
   const likelihoodMatch = bulletless.match(/(?:^|\s)Likelihood:\s*([^|–—-]+?)(?=\s+[|–—-]\s+Impact:|\s+Evidence:|$)/i);
   const impactMatch = bulletless.match(/(?:^|\s)Impact:\s*([^|]+?)(?=\s+[|–—-]\s+Severity:|\s+Evidence:|$)/i);
@@ -219,7 +380,7 @@ function parseTopBlockerLine(
   return { main: main || bulletless, severity, likelihood, impact, evidence };
 }
 
-/** Render a line of body: support **bold** and bullet lines. */
+/** Render a line of body: support bold labels and bullet lines; strip leftover markdown. */
 function renderBriefLine(
   line: string,
   key: string,
@@ -229,7 +390,9 @@ function renderBriefLine(
   const trimmed = line.trim();
   if (!trimmed) return null;
   // Skip markdown horizontal rules (---, ***, ___)
-  if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) return null;
+  if (/^(-{3,}|\*{3,}|_{3,}|#{3,})$/.test(trimmed)) return null;
+  // Skip leftover heading-only markers
+  if (/^#{1,6}$/.test(trimmed)) return null;
   const bullet = /^\s*[-*]\s+/.test(line);
   if (bullet && (isTopBlockersSectionTitle(sectionTitle) || isTopRisksSectionTitle(sectionTitle))) {
     const { main, severity, likelihood, impact, evidence } = parseTopBlockerLine(line);
@@ -278,6 +441,8 @@ function renderBriefLine(
   let remaining = trimmed.replace(/^\s*[-*]\s+/, "");
   remaining = stripAssumptionLabel(remaining);
   if (stripNumbers) remaining = stripNumberedPrefix(remaining);
+  // Drop leading heading hashes that leaked into body lines
+  remaining = remaining.replace(/^#{1,6}\s+/, "").trim();
   // Remove leftover markdown horizontal rules from the line
   remaining = remaining.replace(/\s*-{3,}\s*/g, " ").trim();
   if (!remaining) return null;
@@ -286,15 +451,20 @@ function renderBriefLine(
   let match: RegExpExecArray | null;
   while ((match = boldRegex.exec(remaining)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(remaining.slice(lastIndex, match.index));
+      parts.push(stripMarkdownArtifacts(remaining.slice(lastIndex, match.index)));
     }
-    parts.push(<strong key={`${key}-b-${match.index}`}>{match[1]}</strong>);
+    parts.push(
+      <strong key={`${key}-b-${match.index}`}>
+        {stripMarkdownArtifacts(match[1])}
+      </strong>,
+    );
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < remaining.length) {
-    parts.push(remaining.slice(lastIndex));
+    parts.push(stripMarkdownArtifacts(remaining.slice(lastIndex)));
   }
-  const content = parts.length > 0 ? parts : remaining;
+  const content = parts.length > 0 ? parts : stripMarkdownArtifacts(remaining);
+  if (!content || (typeof content === "string" && !content.trim())) return null;
   if (bullet) {
     return <li key={key} className="report_exec_brief_bullet">{content}</li>;
   }
@@ -307,6 +477,10 @@ function renderBriefBody(
   stripNumbers = false,
   sectionTitle = "",
 ): React.ReactNode {
+  if (isOwnershipMatrixSectionTitle(sectionTitle)) {
+    return renderOwnershipMatrixTable(body, sectionKey);
+  }
+
   const lines = body.split(/\r?\n/).filter((l) => l.trim() !== "" || l.includes("\n"));
   const items: React.ReactNode[] = [];
   const listItems: React.ReactNode[] = [];
@@ -344,7 +518,7 @@ function renderBriefBody(
       : "report_exec_brief_list";
     items.push(<ul key={`${sectionKey}-ul-end`} className={listClass}>{listItems.slice()}</ul>);
   }
-  return items.length > 0 ? <>{items}</> : <p className="report_exec_brief_para">{body}</p>;
+  return items.length > 0 ? <>{items}</> : <p className="report_exec_brief_para">{stripMarkdownArtifacts(body)}</p>;
 }
 
 const LOADER_MIN_MS = 2500;
@@ -490,7 +664,7 @@ function GeneralReportDetail() {
   if (loading) {
     return (
       <div className="sec_user_page org_settings_page reports_page report_detail_page report_detail_type_general">
-        <LoadingMessage message="Loading report…" />
+        <LoadingMessage message="Loading report…" className="loading_message_wrapper--page" />
       </div>
     );
   }
@@ -588,69 +762,22 @@ function GeneralReportDetail() {
             </button>
           )}
         </div>
-        {isArchived && report.reportType === "Vendor Comparison Matrix" ? (
-          <p
-            className="report_assessment_subtitle"
-            style={{ color: "#92400e", marginTop: "0.5rem" }}
+        {isArchived ? (
+          <div
+            className="report_framework_notice report_framework_notice_warn report_framework_notice_page"
             role="status"
           >
-            This assessment is archived; this matrix snapshot is read-only.
-          </p>
-        ) : null}
-        {isArchived && report.reportType === "Compliance & Risk Summary" ? (
-          <p
-            className="report_assessment_subtitle"
-            style={{ color: "#92400e", marginTop: "0.5rem" }}
-            role="status"
-          >
-            This assessment is archived; this summary snapshot is read-only.
-          </p>
-        ) : null}
-        {isArchived && report.reportType === "Implementation Risk Assessment" ? (
-          <p
-            className="report_assessment_subtitle"
-            style={{ color: "#92400e", marginTop: "0.5rem" }}
-            role="status"
-          >
-            This assessment is archived; this assessment snapshot is read-only.
-          </p>
-        ) : null}
-        {isArchived && report.reportType === "Mitigation Action Plan" ? (
-          <p
-            className="report_assessment_subtitle"
-            style={{ color: "#92400e", marginTop: "0.5rem" }}
-            role="status"
-          >
-            This assessment is archived; this plan snapshot is read-only.
-          </p>
+            <AlertTriangle
+              size={18}
+              className="report_framework_notice_icon"
+              aria-hidden
+            />
+            <p className="report_framework_notice_text">
+              This assessment is archived; this report snapshot is read-only.
+            </p>
+          </div>
         ) : null}
       </header>
-{/* 
-      <section className="report_section_card general_report_info_card">
-        <h2 className="report_section_heading">Report information</h2>
-        <dl className="report_detail_dl report_detail_info_grid">
-          <div className="report_detail_row">
-            <dt className="report_detail_dt">Vendor assessment</dt>
-            <dd className="report_detail_dd">{report.assessmentLabel}</dd>
-          </div>
-          <div className="report_detail_row">
-            <dt className="report_detail_dt">Report type</dt>
-            <dd className="report_detail_dd">{report.reportType}</dd>
-          </div>
-          <div className="report_detail_row">
-            <dt className="report_detail_dt">Generated date</dt>
-            <dd className="report_detail_dd">{generatedDate}</dd>
-          </div>
-          <div className="report_detail_row">
-            <dt className="report_detail_dt">Status</dt>
-            <dd className="report_detail_dd">
-              <span className="report_status_badge report_status_completed">
-                Generated
-              </span>
-            </dd>
-          </div>
-        </dl>
-      </section> */}
 
       <div ref={pdfBodyRef} className="report_detail_body_shell">
         <header className="report_assessment_doc_header report_assessment_doc_header--with_llm">
@@ -683,20 +810,43 @@ function GeneralReportDetail() {
             })}
           />
         </header>
-        <section className="">
-          {/* <h2 className="report_section_heading">
-          {implementationRiskAssessmentData
-            ? "Implementation Risk Assessment"
-            : mitigationActionPlanData
-              ? "Mitigation Action Plan"
-              : complianceRiskSummaryData
-                ? "Compliance & Risk Summary"
-                : vendorComparisonMatrixData
-                  ? "Vendor Comparison Matrix"
-                  : report.briefContent
-                    ? getReportTypeDisplayLabel(report.reportType)
-                    : "Summary"}
-        </h2> */}
+
+        <div className="report_context_panel general_report_meta_panel">
+          <div className="report_context_panel_top">
+            <span className="report_context_pill">
+              {getReportTypeDisplayLabel(report.reportType)}
+            </span>
+            {isArchived ? (
+              isAssessmentExpired || isAttestationExpired ? (
+                <span className="pill pill_status pill_status_inactive pill_status_with_dot">
+                  <span className="pill_status_dot" aria-hidden />
+                  Expired
+                </span>
+              ) : (
+                <span className="assessments_vd_badge assessments_vd_badge--archived">
+                  Archived
+                </span>
+              )
+            ) : (
+              <span className="pill pill_status pill_status_active pill_status_with_dot">
+                <span className="pill_status_dot" aria-hidden />
+                Completed
+              </span>
+            )}
+          </div>
+          <dl className="general_report_meta_grid">
+            <div className="general_report_meta_item">
+              <dt>Assessment</dt>
+              <dd>{report.assessmentLabel}</dd>
+            </div>
+            <div className="general_report_meta_item">
+              <dt>Generated</dt>
+              <dd>{generatedDate}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <section className="general_report_detail_body">
         {implementationRiskAssessmentData ? (
           <div className="report_summary_body">
             <ImplementationRiskAssessmentReportBody data={implementationRiskAssessmentData} />
@@ -760,10 +910,8 @@ function GeneralReportDetail() {
           </div>
         ) : (
           <p className="report_summary_body">
-            This is a general report generated for the selected vendor
-            assessment. Use the Download button above to save a copy. For
-            assessment-specific risk reports, use the Assessment Analysis tab in
-            the Reports Library.
+            This assessment analysis report has no content yet. Generate the report again from the
+            Assessment Analysis tab in the Reports Library.
           </p>
         )}
         </section>

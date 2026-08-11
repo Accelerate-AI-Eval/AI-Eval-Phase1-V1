@@ -2,26 +2,20 @@
 
 from __future__ import annotations
 
-import boto3
 from langchain_aws import BedrockEmbeddings
 
 from config import settings
+from services.bedrock_client import create_bedrock_runtime_client
 
 
 class EmbeddingService:
     """Thin wrapper around LangChain BedrockEmbeddings (Titan v2)."""
 
     def __init__(self) -> None:
-        client_kwargs: dict = {"region_name": settings.AWS_REGION}
-        if settings.AWS_ACCESS_KEY_ID:
-            client_kwargs["aws_access_key_id"] = settings.AWS_ACCESS_KEY_ID
-        if settings.AWS_SECRET_ACCESS_KEY:
-            client_kwargs["aws_secret_access_key"] = settings.AWS_SECRET_ACCESS_KEY
-
         self.model_id = settings.EMBEDDING_MODEL_ID
         self.dimensions = settings.EMBEDDING_DIMENSIONS
         self._embeddings = BedrockEmbeddings(
-            client=boto3.client("bedrock-runtime", **client_kwargs),
+            client=create_bedrock_runtime_client(),
             model_id=self.model_id,
             model_kwargs={
                 "dimensions": self.dimensions,

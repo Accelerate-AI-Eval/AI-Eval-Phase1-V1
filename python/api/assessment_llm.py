@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from exceptions.custom_exceptions import raise_http_exception
 from services.assessment_llm_service import invoke_assessment_llm
+from services.llm_usage_actor import clear_usage_actor, set_usage_actor
 from services.vts_vector_retrieval import (
     format_formula_context_for_prompt,
     retrieve_formula_context,
@@ -43,6 +44,11 @@ class LlmWithVectorRequest(BaseModel):
     temperature: float | None = 0.3
     # Optional override from Node Controls-selected model
     model_id: str | None = None
+    # Optional actor for Observability usage events
+    actor_user_id: int | None = None
+    actor_user_name: str | None = None
+    actor_organization_id: int | None = None
+    actor_organization_name: str | None = None
 
 
 class LlmWithVectorResponse(BaseModel):
@@ -62,6 +68,13 @@ async def llm_with_vector(body: LlmWithVectorRequest) -> LlmWithVectorResponse:
         prompt = (body.user_prompt or "").strip()
         if not prompt:
             raise_http_exception("user_prompt is required", status_code=400)
+
+        set_usage_actor(
+            user_id=body.actor_user_id,
+            user_name=body.actor_user_name,
+            organization_id=body.actor_organization_id,
+            organization_name=body.actor_organization_name,
+        )
 
         query_text = (body.query_text or prompt[:2000]).strip()
         retrieved = retrieve_formula_context(body.assessment_type, query_text)
@@ -111,3 +124,5 @@ async def llm_with_vector(body: LlmWithVectorRequest) -> LlmWithVectorResponse:
             raise
         logger.error("llm-with-vector failed: %s\n%s", exc, traceback.format_exc())
         raise_http_exception(str(exc) or "LLM with vector failed", status_code=500)
+    finally:
+        clear_usage_actor()

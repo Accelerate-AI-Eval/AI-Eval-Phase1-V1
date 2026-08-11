@@ -1,6 +1,5 @@
-import { ChevronRight, Download, FileText, Info } from "lucide-react";
+import { Calendar, ChevronRight, Download, FileText, Info } from "lucide-react";
 import React, { useCallback, useState } from "react";
-import ClickTooltip from "../../UI/ClickTooltip";
 import { resolveStoredLlmModelId } from "../../UI/AdminLlmModelInfo";
 import ScoreTracePanel from "../Organizations/ScoreTracePanel";
 import type { CustomerRiskReportItem } from "./Reports";
@@ -16,10 +15,11 @@ import {
 import {
   isReportTimeExpired,
   reportArchivedStatusText,
-  reportArchivedStatusBadge,
 } from "../../../utils/reportArchiveStatusLabel";
-import { mixSrgbHex } from "../../../utils/mixSrgbHex";
 import "../../../styles/popovers.css";
+import "../UserManagement/user_management.css";
+import "../Assessments/assessments.css";
+import "../Dashboard/dashboard.css";
 import "../VendorDirectory/VendorDirectory.css";
 import "./general_reports.css";
 
@@ -188,9 +188,6 @@ function CompleteReportsCards({
     const rowForMeter = rowWithFetchedReport(report);
     const report_context_score = resolveDisplayScore(report);
     const isFetching = fetchingReportId === report.id;
-    const statusLabel = archived
-      ? reportArchivedStatusBadge(report)
-      : "COMPLETED";
     const meterGrading = riskMeterGradingForReport(report, riskMeterGrading);
     const meterColor =
       !archived && report_context_score != null
@@ -213,14 +210,7 @@ function CompleteReportsCards({
         ? ({ borderBottom: `3px solid ${meterColor}` } as React.CSSProperties)
         : undefined;
 
-    const statusBadgeStyle: React.CSSProperties | undefined = archived
-      ? undefined
-      : meterColor != null
-        ? {
-            color: meterColor,
-            backgroundColor: mixSrgbHex(meterColor, "#ffffff", 0.16),
-          }
-        : undefined;
+    const isExpiredStatus = archived && isReportTimeExpired(report);
 
     return (
       <article
@@ -230,18 +220,23 @@ function CompleteReportsCards({
         style={cardAccentStyle}
       >
         <div className="general_report_card_header complete_rpr_card_top">
-          <span
-            className={
-              archived
-                ? isReportTimeExpired(report)
-                  ? "complete_rpr_card_status_badge complete_rpr_card_status_badge_expired"
-                  : "complete_rpr_card_status_badge complete_rpr_card_status_badge_archived"
-                : "complete_rpr_card_status_badge"
-            }
-            style={archived ? undefined : statusBadgeStyle}
-          >
-            {statusLabel}
-          </span>
+          {archived ? (
+            isExpiredStatus ? (
+              <span className="pill pill_status pill_status_inactive pill_status_with_dot">
+                <span className="pill_status_dot" aria-hidden />
+                Expired
+              </span>
+            ) : (
+              <span className="assessments_vd_badge assessments_vd_badge--archived">
+                Archived
+              </span>
+            )
+          ) : (
+            <span className="pill pill_status pill_status_active pill_status_with_dot">
+              <span className="pill_status_dot" aria-hidden />
+              Completed
+            </span>
+          )}
           <div className="complete_rpr_card_header_actions">
            
             <span className="complete_rpr_card_header_doc_icon" aria-hidden>
@@ -266,13 +261,19 @@ function CompleteReportsCards({
         </div>
         <div className="general_rpr_title complete_rpr_card_title_block">
           <div className="vendor_directory_card_header_text complete_rpr_card_title_model_group">
-            <ClickTooltip content={getTitle(report)} position="top" showOn="hover">
-              <span className="general_rpr_card_title_wrap">
-                <h2 className="vendor_directory_card_name general_rpr_card_title_clamp">
-                  {getTitle(report)}
-                </h2>
+            <span className="general_rpr_card_title_wrap">
+              <h2 className="vendor_directory_card_name general_rpr_card_title_clamp">
+                {getTitle(report)}
+              </h2>
+            </span>
+            {scoreSubtitle != null && scoreSubtitle !== "" ? (
+              <span
+                className="complete_rpr_card_risk_subtitle"
+                style={meterColor ? { color: meterColor } : undefined}
+              >
+                {scoreSubtitle}
               </span>
-            </ClickTooltip>
+            ) : null}
           </div>
         </div>
 
@@ -282,43 +283,39 @@ function CompleteReportsCards({
               {isVendorPortalSession() ? "CONFIDENCE SCORE" : "RISK SCORE"}
             </span>
             <span className="complete_rpr_card_risk_value_wrap">
-              {scoreSubtitle != null && scoreSubtitle !== "" ? (
-                <span className="complete_rpr_card_risk_subtitle" style={meterColor ? { color: meterColor } : undefined}>
-                  {scoreSubtitle}
-                </span>
-              ) : null}
-              <span
-                className="complete_rpr_card_risk_value"
-                style={meterColor ? { color: meterColor } : undefined}
-              >
-                {isFetching ? "…" : report_context_score != null ? `(${report_context_score}/100)` : "—"}
-              </span>
-              {showRationaleInfo && scoreRationale ? (
-                <button
-                  type="button"
-                  className="general_rpr_card_download_btn complete_rpr_card_risk_info_btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const assessmentId = String(report.assessmentId ?? "").trim();
-                    if (!assessmentId) return;
-                    setScoreTraceTarget({
-                      assessmentId,
-                      reportId: String(report.id ?? ""),
-                      title: getTitle(report),
-                      traceType: scoreTraceTypeForReport(report, riskMeterGrading),
-                      llmModelName: resolveStoredLlmModelId({
-                        llmModelId: report.llmModelId,
-                        report: rowForMeter.report,
-                      }),
-                    });
-                  }}
-                  aria-label={`${scoreRationale.title} for ${getTitle(report)}`}
-                  title={scoreRationale.title}
+              <span className="complete_rpr_card_risk_value_row">
+                <span
+                  className="complete_rpr_card_risk_value"
+                  style={meterColor ? { color: meterColor } : undefined}
                 >
-                  <Info size={14} aria-hidden />
-                </button>
-              ) : null}
-              
+                  {isFetching ? "…" : report_context_score != null ? `(${report_context_score}/100)` : "—"}
+                </span>
+                {showRationaleInfo && scoreRationale ? (
+                  <button
+                    type="button"
+                    className="general_rpr_card_download_btn complete_rpr_card_risk_info_btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const assessmentId = String(report.assessmentId ?? "").trim();
+                      if (!assessmentId) return;
+                      setScoreTraceTarget({
+                        assessmentId,
+                        reportId: String(report.id ?? ""),
+                        title: getTitle(report),
+                        traceType: scoreTraceTypeForReport(report, riskMeterGrading),
+                        llmModelName: resolveStoredLlmModelId({
+                          llmModelId: report.llmModelId,
+                          report: rowForMeter.report,
+                        }),
+                      });
+                    }}
+                    aria-label={`${scoreRationale.title} for ${getTitle(report)}`}
+                    title={scoreRationale.title}
+                  >
+                    <Info size={14} aria-hidden />
+                  </button>
+                ) : null}
+              </span>
             </span>
           </div>
           <div className="complete_rpr_card_risk_track" aria-hidden>
@@ -346,20 +343,27 @@ function CompleteReportsCards({
               </span>
             ) : (
               <>
-                <span className="complete_rpr_card_expiry_label">EXPIRY DATE</span>
+                <span className="complete_rpr_card_expiry_label">
+                  <Calendar
+                    size={14}
+                    className="complete_rpr_card_expiry_icon"
+                    aria-hidden
+                  />
+                  Expires on
+                </span>
                 <span className="complete_rpr_card_expiry_value">{getExpiryDate(report)}</span>
               </>
             )}
           </div>
           <button
             type="button"
-            className="view_rpr_btn vendor_directory_card_action_btn complete_rpr_card_view_btn"
+            className="dash_view_all_btn complete_rpr_card_view_btn"
             onClick={() => void handleViewReport(report)}
             aria-label={`View report: ${getTitle(report)}`}
             disabled={(archived && !viewEnabledWhenArchived) || isFetching}
           >
             View Report
-            <ChevronRight size={16} aria-hidden />
+            <ChevronRight size={15} strokeWidth={2.25} aria-hidden />
           </button>
         </div>
       </article>

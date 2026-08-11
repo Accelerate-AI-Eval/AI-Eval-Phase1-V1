@@ -150,6 +150,11 @@ export const YES_NO_OPTIONS: OptionItem[] = [
   { label: "Not Sure", value: "Not Sure" },
 ];
 
+export const BINARY_YES_NO_OPTIONS: OptionItem[] = [
+  { label: "Yes", value: "Yes" },
+  { label: "No", value: "No" },
+];
+
 export const IMPLEMENTATION_TEAM_OPTIONS: OptionItem[] = [
   { label: "Executive Sponsor", value: "Executive Sponsor" },
   { label: "Project Manager", value: "Project Manager" },

@@ -8,6 +8,7 @@ import {
   buildInviteUserEmailHtml,
   INVITE_MAIL_PLATFORM_NAME,
 } from "../email/inviteUserEmailHtml.js";
+import { getAccelerateAiLogoAttachment } from "../email/emailBrand.js";
 
 function capitalizeFirstLetter(str: string): string {
   if (!str || typeof str !== "string") return str;
@@ -75,6 +76,7 @@ export async function inviteCustomerOrganizationAdmin(params: {
       to: email,
       subject: `You're invited to join ${INVITE_MAIL_PLATFORM_NAME}`,
       html: buildInviteUserEmailHtml(organizationNameCapitalized, roleCapitalized, confirmationLink),
+      attachments: [getAccelerateAiLogoAttachment()],
     });
   } catch (emailErr: unknown) {
     console.error("inviteCustomerOrganizationAdmin: failed to send invitation email", emailErr);

@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { CircleX, AlertTriangle, TrendingUp, Lock, ChevronDown } from "lucide-react";
 import { AdminLlmModelLabel } from "../../UI/AdminLlmModelInfo";
+import LoadingMessage from "../../UI/LoadingMessage";
 import "./score_trace_panel.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -173,7 +174,7 @@ const IRS_FIELD_DISPLAY: Record<string, string> = {
   riskAppetite: "Risk Appetite",
   criticality: "Decision Stakes",
   integrationSystems: "Integration Systems",
-  requirementGaps: "Requirement Gaps",
+  requirementGaps: "Currently Using Product",
   rollbackCapability: "Rollback Capability",
   monitoringDataAvailable: "Monitoring Data Available",
   auditLogsAvailable: "Audit Logs Available",
@@ -801,12 +802,7 @@ export default function ScoreTracePanel({
         {/* ── Scrollable body ── */}
         <div className="stp_body">
 
-          {loading && (
-            <div className="stp_loading">
-              <div className="stp_spinner" aria-hidden="true" />
-              <span>Loading analysis…</span>
-            </div>
-          )}
+          {loading && <LoadingMessage message="Loading analysis…" compact />}
 
           {!loading && error && (
             <div className="stp_error" role="alert">

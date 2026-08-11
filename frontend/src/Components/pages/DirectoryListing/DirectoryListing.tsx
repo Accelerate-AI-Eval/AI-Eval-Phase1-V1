@@ -531,12 +531,17 @@ export const DirectoryListing = () => {
   const reportToShow = generatedReport ?? selectedStoredReport;
 
   if (loading) {
-    return <LoadingMessage message="Loading product profile…" />;
+    return (
+      <LoadingMessage
+        message="Loading product profile…"
+        className="loading_message_wrapper--page product_profile_page_loader"
+      />
+    );
   }
 
   if (sessionExpired) {
     return (
-      <div className="sec_user_page attestation_page org_settings_page product_profile_page" style={{ padding: "2rem" }}>
+      <div className="sec_user_page attestation_page org_settings_page product_profile_page" style={{ padding: "1.5rem 1rem 0 0" }}>
         <div
           className="product_profile_detail_card"
           style={{ maxWidth: "28rem", margin: "2rem auto", textAlign: "center" }}
