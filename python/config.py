@@ -107,7 +107,12 @@ def aws_credentials_configured() -> bool:
 
 def get_bedrock_model_id() -> str:
     """Active Bedrock chat model (Controls Apply updates this at runtime)."""
-    model_id = (settings.BEDROCK_MODEL_ID or "").strip() or "anthropic.claude-3-sonnet-20240229-v1:0"
+    model_id = (
+        (os.environ.get("BEDROCK_MODEL_ID") or "").strip()
+        or (os.environ.get("BEDROCK_MODEL") or "").strip()
+        or (settings.BEDROCK_MODEL_ID or "").strip()
+        or "anthropic.claude-3-sonnet-20240229-v1:0"
+    )
     print(f"[LLM] taking model from BEDROCK_MODEL_ID: {model_id}")
     return model_id
 
@@ -120,10 +125,11 @@ def set_bedrock_model_id(model_id: str) -> str:
     trimmed = (model_id or "").strip()
     if not trimmed:
         raise ValueError("modelId is required")
-    previous = (settings.BEDROCK_MODEL_ID or "").strip()
+    previous = get_bedrock_model_id()
     settings.BEDROCK_MODEL_ID = trimmed
     os.environ["BEDROCK_MODEL_ID"] = trimmed
-    _upsert_env_file(_ENV_PATH, {"BEDROCK_MODEL_ID": trimmed})
+    os.environ["BEDROCK_MODEL"] = trimmed
+    _upsert_env_file(_ENV_PATH, {"BEDROCK_MODEL_ID": trimmed, "BEDROCK_MODEL": trimmed})
     print(f"[LLM] model changed (Python sync): {previous!r} -> {trimmed!r}")
     return trimmed
 

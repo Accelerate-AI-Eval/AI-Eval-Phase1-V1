@@ -19,6 +19,7 @@ import {
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams, Navigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
+import { apiErrorMessage, errorToUserMessage } from "../../../../utils/tokenQuotaError";
 import Button from "../../../UI/Button";
 import {
   ChevronLeftCircle,
@@ -562,7 +563,7 @@ const BuyerAssessment = () => {
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.message || "Failed to submit assessment");
+        throw new Error(apiErrorMessage(result, "Failed to submit assessment"));
       }
       const submittedId =
         result.assessmentId != null
@@ -579,7 +580,7 @@ const BuyerAssessment = () => {
         navigate("/reports", { replace: true });
       }
     } catch (err) {
-      setSubmitError(err.message || "Failed to submit assessment");
+      setSubmitError(errorToUserMessage(err, "Failed to submit assessment"));
     } finally {
       setSubmitting(false);
     }

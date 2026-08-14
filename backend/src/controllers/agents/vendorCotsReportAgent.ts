@@ -9,6 +9,7 @@ import {
 } from "../../services/getTop5RisksFromAssessmentContext.js";
 import type { FrameworkMappingTableRow } from "../../services/frameworkMappingFromCompliance.js";
 import { invokePythonLlmWithVector } from "../../services/pythonAssessmentLlmClient.js";
+import { isTokenQuotaExceededError } from "../../services/admin/featureTokenQuota.service.js";
 import {
   scoreCotsVendorWithPython,
   type PythonCotsVendorScoreResult,
@@ -165,9 +166,10 @@ After the sections above, output a single JSON object in a fenced code block sta
 - frameworkMapping: object with rows: array of { framework, coverage, controls, notes }. Copy exactly the rows from the "Product attestation: compliance framework mappings" JSON block in the assessment context (same order, same text). If that block is a single placeholder with coverage and controls "Not provided", use that as the only row. Do NOT add frameworks from regulatory_requirements, customer sector, or other assessment fields. Do NOT omit attestation rows.
 - implementationPlan: object with phases: array of { title, timeline, status: "Complete"|"In Progress"|"Planned", activities (string array), deliverables (string array) }
 - competitivePositioning: string (2-4 sentences)
-- appendix: object with methodology (string), preparedBy (string), reviewedBy (string), confidentiality (string), dataSources (string array)
+- appendix: object with methodology (string — framework/process name only; NEVER include scoring formulas, equations, weight percentages, or VTS/IRS/SRS algebra), preparedBy (string), reviewedBy (string), confidentiality (string), dataSources (string array)
 
 Use only the data provided; if a field is empty or "Not specified", say so or use empty value. Be concise.
+Do NOT discuss, quote, or display scoring formulas, weight percentages, or equations (e.g. VTS =, IRS =, SRS =, × 0.35) anywhere in the report narrative or appendix.
 `;
 
 function buildAssessmentContext(
@@ -1718,6 +1720,7 @@ async function invokeModelLocal(userInput: string): Promise<string> {
     prompt: userInput,
     maxTokens: 8192,
     temperature: 0.3,
+    feature: "assessment",
   });
 }
 
@@ -1739,6 +1742,7 @@ async function invokeModel(userInput: string): Promise<string> {
     );
     return result.text;
   } catch (err) {
+    if (isTokenQuotaExceededError(err)) throw err;
     console.error(
       "[cots_vendor] Python LLM+vector failed; falling back to local Bedrock:",
       err instanceof Error ? err.message : err,
@@ -1907,6 +1911,7 @@ export async function generateVendorCotsReport(
       raw: rawReply,
     };
   } catch (err) {
+    if (isTokenQuotaExceededError(err)) throw err;
     console.error("generateVendorCotsReport error:", err);
     return null;
   }

@@ -17,6 +17,7 @@ def set_usage_actor(
     user_name: str | None = None,
     organization_id: int | None = None,
     organization_name: str | None = None,
+    feature: str | None = None,
 ) -> None:
     _actor_ctx.set(
         {
@@ -24,6 +25,7 @@ def set_usage_actor(
             "user_name": (user_name or "").strip() or None,
             "organization_id": organization_id,
             "organization_name": (organization_name or "").strip() or None,
+            "feature": (feature or "").strip() or None,
         }
     )
 

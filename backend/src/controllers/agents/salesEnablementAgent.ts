@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { invokeBedrockAnthropicText } from "../../utils/invokeBedrockWithUsage.js";
+import { isTokenQuotaExceededError } from "../../services/admin/featureTokenQuota.service.js";
 
 export interface SwotData {
   strengths: string[];
@@ -94,6 +95,7 @@ async function invokeModel(userInput: string): Promise<string> {
     prompt: userInput,
     maxTokens: 8192,
     temperature: 0.3,
+    feature: "sales_agent",
   });
 }
 
@@ -198,6 +200,7 @@ export async function generateSalesEnablement(
     const battleCard = parseBattleCard(parsed.battleCard);
     return { swot, battleCard };
   } catch (err) {
+    if (isTokenQuotaExceededError(err)) throw err;
     console.error("generateSalesEnablement error:", err);
     return null;
   }
@@ -244,6 +247,7 @@ export async function answerSalesQuestion(
     const trimmed = reply?.trim() || null;
     return trimmed ? stripMarkdownFromSalesReply(trimmed) : null;
   } catch (err) {
+    if (isTokenQuotaExceededError(err)) throw err;
     console.error("answerSalesQuestion error:", err);
     return null;
   }

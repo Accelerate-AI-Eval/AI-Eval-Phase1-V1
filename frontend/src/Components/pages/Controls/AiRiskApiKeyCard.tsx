@@ -44,7 +44,7 @@ export function AiRiskApiKeyCard({ idPrefix }: AiRiskApiKeyCardProps) {
     setIsLoading(true);
     try {
       const result = await fetchAiRiskApiKeyConfig();
-      if (!result.ok) {
+      if (result.ok === false) {
         setSaveStatus("error");
         setStatusMessage(result.message);
         return;
@@ -103,7 +103,7 @@ export function AiRiskApiKeyCard({ idPrefix }: AiRiskApiKeyCardProps) {
 
     try {
       const result = await saveAiRiskApiKey(value);
-      if (!result.ok) {
+      if (result.ok === false) {
         setSaveStatus("error");
         setStatusMessage(result.message);
         return;

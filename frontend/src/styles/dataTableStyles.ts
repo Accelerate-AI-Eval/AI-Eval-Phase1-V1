@@ -19,7 +19,7 @@ export const premiumDataTableStyles = {
     style: {
       backgroundColor: "var(--table-header-bg, #edf2ff)",
       borderBottomWidth: "2px",
-      borderBottomStyle: "solid",
+      borderBottomStyle: "solid" as const,
       borderBottomColor: "var(--table-header-border, var(--border-strong, #c5d0ea))",
       minHeight: "unset",
     },
@@ -89,6 +89,30 @@ export const premiumDataTableStyles = {
       borderTop: "none",
       borderBottom: "none",
       color: "var(--text-muted, #64748b)",
+    },
+  },
+};
+
+/** Org Configuration tables — no nested H/V scrollbars (columns fit the page). */
+export const orgControlDataTableStyles = {
+  ...premiumDataTableStyles,
+  table: {
+    style: {
+      ...premiumDataTableStyles.table.style,
+      height: "auto",
+    },
+  },
+  tableWrapper: {
+    style: {
+      ...premiumDataTableStyles.tableWrapper.style,
+      overflow: "visible",
+      height: "auto",
+    },
+  },
+  responsiveWrapper: {
+    style: {
+      overflowX: "visible" as const,
+      overflowY: "visible" as const,
     },
   },
 };

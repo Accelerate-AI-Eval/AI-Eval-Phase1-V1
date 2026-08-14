@@ -17,6 +17,7 @@ import Modal from "../../UI/Modal";
 import LoadingMessage from "../../UI/LoadingMessage";
 import SubmitProgressOverlay from "../../UI/SubmitProgressOverlay";
 import { toast } from "react-toastify";
+import { apiErrorMessage, isTokenQuotaExceeded } from "../../../utils/tokenQuotaError";
 import MultiStepTabs from "../../UI/MultiStepTabs";
 import StepVendorSelfAttestationPrev, {
   type ComplianceDocumentExpiryMeta,
@@ -1095,6 +1096,7 @@ const VendorAttestationsMainForm = () => {
         success?: boolean;
         message?: string;
         detail?: string;
+        code?: string;
         attestation?: { id?: string; status?: string };
       } = {};
       try {
@@ -1104,14 +1106,16 @@ const VendorAttestationsMainForm = () => {
         return { ok: false };
       }
       if (!response.ok) {
-        const msg =
-          (result.message as string) ||
-          (isDraft ? "Save draft failed" : "Submit failed");
-        if (response.status === 403) {
+        if (isTokenQuotaExceeded(result)) {
+          setSubmitError(apiErrorMessage(result, "Submit failed"));
+        } else if (response.status === 403) {
           setSubmitError(
             'Completed attestations cannot be modified. Please use "New Attestation" to create a new one.',
           );
         } else {
+          const msg =
+            (result.message as string) ||
+            (isDraft ? "Save draft failed" : "Submit failed");
           const detail =
             typeof result.detail === "string" && result.detail.trim()
               ? ` (${result.detail.trim()})`

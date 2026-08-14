@@ -54,6 +54,7 @@ async function invokeModel(userInput: string): Promise<string> {
     prompt: userInput,
     maxTokens: 4096,
     temperature: 0.3,
+    feature: "reports",
   });
 }
 

@@ -12,6 +12,10 @@ import {
   type Top5RisksWithMitigations,
 } from "../../services/getTop5RisksFromAssessmentContext.js";
 import { stampActiveLlmModel, getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
+import {
+  assertFeatureTokenQuota,
+  sendIfTokenQuotaExceeded,
+} from "../../services/admin/featureTokenQuota.service.js";
 
 /** Persisted under fullReport.appendix: catalog rows used to generate the assessment. */
 function appendixCatalogRisksAndMitigations(
@@ -432,6 +436,8 @@ const submitVendorCotsAssessment = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "User has no organization. Complete onboarding or contact admin." });
     }
 
+    await assertFeatureTokenQuota("assessment");
+
     const u = user as Record<string, unknown>;
     const firstName = typeof u.user_first_name === "string" ? u.user_first_name.trim() : "";
     const lastName = typeof u.user_last_name === "string" ? u.user_last_name.trim() : "";
@@ -560,6 +566,7 @@ const submitVendorCotsAssessment = async (req: Request, res: Response) => {
       assessmentId: assessment.id,
     });
   } catch (error) {
+    if (sendIfTokenQuotaExceeded(res, error)) return;
     const message = error instanceof Error ? error.message : String(error);
     console.error("Error in submitVendorCotsAssessment:", message);
     return res.status(500).json({

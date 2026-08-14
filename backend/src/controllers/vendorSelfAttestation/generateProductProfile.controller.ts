@@ -4,6 +4,10 @@ import { db } from "../../database/db.js";
 import { usersTable, generatedProfileReports, vendorSelfAttestations } from "../../schema/schema.js";
 import { generateVendorAttestationReport, buildReportPayloadAndSummary } from "../agents/vendorAttestation.js";
 import { stampActiveLlmModel, getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
+import {
+  assertFeatureTokenQuota,
+  sendIfTokenQuotaExceeded,
+} from "../../services/admin/featureTokenQuota.service.js";
 
 /**
  * POST /vendorSelfAttestation/generate-profile
@@ -63,6 +67,8 @@ const generateProductProfile = async (req: Request, res: Response): Promise<void
       .where(eq(usersTable.id, userId))
       .limit(1);
     const organizationIdStr = userRow?.organization_id != null ? String(userRow.organization_id) : null;
+
+    await assertFeatureTokenQuota("attestation");
 
     // Python calculates VTS; Node persists trust_score + report
     const report = await generateVendorAttestationReport(vendorData, formulaPayload);
@@ -138,6 +144,7 @@ const generateProductProfile = async (req: Request, res: Response): Promise<void
       },
     });
   } catch (error) {
+    if (sendIfTokenQuotaExceeded(res, error)) return;
     console.error("generateProductProfile error:", error);
     res.status(500).json({
       success: false,

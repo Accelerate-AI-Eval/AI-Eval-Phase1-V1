@@ -316,7 +316,7 @@ function buyerFormulaReadinessRows(merged: Record<string, unknown>): React.React
   if (!gradeStr && !hasIrs) return null;
   return (
     <section className="vendor_preview_card">
-      <h3 className="vendor_preview_card_title">Readiness (formula)</h3>
+      <h3 className="vendor_preview_card_title">Readiness</h3>
       <dl className="vendor_preview_list">
         {gradeStr ? (
           <div className="vendor_preview_row">

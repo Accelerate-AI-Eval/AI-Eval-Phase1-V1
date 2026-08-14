@@ -954,10 +954,17 @@ html[data-theme="dark"] .signin-input-wrap,
 html[data-theme="dark"] .authPage--minimal .signin-input-wrap {
   background-color: var(--auth-signin-input-bg, #221f2e) !important;
   border: 1px solid var(--auth-signin-input-border, #4a455c) !important;
+  outline: none !important;
 }
 
-html[data-theme="dark"] .authPage--minimal .signin-input-wrap .signin-input {
+/* Wrap owns the single border — never draw a second ring on the inner password input */
+html[data-theme="dark"] .signin-input-wrap .signin-input,
+html[data-theme="dark"] .authPage--minimal .signin-input-wrap .signin-input,
+html[data-theme="dark"] .passwordData .signin-input-wrap input,
+html[data-theme="dark"] .authPage .signin-input-wrap input {
   border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   background-color: transparent !important;
   color: var(--input-text, #ebe9f3) !important;
   -webkit-text-fill-color: var(--input-text, #ebe9f3) !important;
@@ -972,20 +979,26 @@ html[data-theme="dark"] .authPage input::placeholder {
 }
 
 html[data-theme="dark"] .signin-input:focus,
-html[data-theme="dark"] .authPage--minimal .signin-input:focus,
-html[data-theme="dark"] .signin-input-wrap:focus-within,
-html[data-theme="dark"] .authPage--minimal .signin-input-wrap:focus-within {
+html[data-theme="dark"] .authPage--minimal .signin-input:focus {
   outline: 2px solid rgba(91, 140, 255, 0.35) !important;
   border-color: #5b8cff !important;
 }
 
+/* Password wrap: one border only (no outline stacked on border) */
+html[data-theme="dark"] .signin-input-wrap:focus-within,
 html[data-theme="dark"] .authPage--minimal .signin-input-wrap:focus-within {
+  outline: none !important;
   border-color: #5b8cff !important;
+  box-shadow: 0 0 0 2px rgba(91, 140, 255, 0.35) !important;
 }
 
-html[data-theme="dark"] .authPage--minimal .signin-input-wrap .signin-input:focus {
+html[data-theme="dark"] .signin-input-wrap .signin-input:focus,
+html[data-theme="dark"] .authPage--minimal .signin-input-wrap .signin-input:focus,
+html[data-theme="dark"] .passwordData .signin-input-wrap input:focus,
+html[data-theme="dark"] .authPage .signin-input-wrap input:focus {
   outline: none !important;
   border: none !important;
+  box-shadow: none !important;
 }
 
 html[data-theme="dark"] .signin-input[readonly],

@@ -69,6 +69,7 @@ def _invoke_bedrock_once(
             organization_name=actor.get("organization_name"),
             user_id=actor.get("user_id"),
             user_name=actor.get("user_name"),
+            feature=actor.get("feature"),
         )
     content = result.get("content") or []
     if content and isinstance(content[0], dict):

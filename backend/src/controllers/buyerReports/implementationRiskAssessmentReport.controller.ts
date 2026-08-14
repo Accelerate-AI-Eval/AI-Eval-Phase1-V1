@@ -17,6 +17,7 @@ import {
   regulatorySnippetFromJson,
 } from "../agents/buyerVendorRiskReportAgent.js";
 import { generateImplementationRiskAssessmentReport } from "../agents/implementationRiskAssessmentReportAgent.js";
+import { sendIfTokenQuotaExceeded } from "../../services/admin/featureTokenQuota.service.js";
 
 const REPORT_TYPE = "Implementation Risk Assessment";
 
@@ -269,6 +270,7 @@ const implementationRiskAssessmentReport = async (req: Request, res: Response): 
       },
     });
   } catch (err) {
+    if (sendIfTokenQuotaExceeded(res, err)) return;
     console.error("implementationRiskAssessmentReport error:", err);
     res.status(500).json({
       success: false,

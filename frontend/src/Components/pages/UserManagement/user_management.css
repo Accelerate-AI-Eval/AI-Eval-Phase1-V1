@@ -577,6 +577,12 @@
   color: #b91c1c;
 }
 
+.pill_status_archived {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
+}
+
 /* Completed / Expired / Active / Inactive: status dot */
 .pill_status_with_dot {
   display: inline-flex;

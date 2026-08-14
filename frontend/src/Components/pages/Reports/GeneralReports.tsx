@@ -13,6 +13,7 @@ import GeneralReportsTypesPopup, {
 import Button from "../../UI/Button";
 import GeneralReportsCards from "./GeneralReportsCards";
 import { ReportsPagination } from "./ReportsPagination";
+import { apiErrorMessage } from "../../../utils/tokenQuotaError";
 
 const BASE_URL =
   import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
@@ -542,7 +543,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
-          setBriefError(data?.message ?? "Failed to generate Executive Stakeholder Brief.");
+          setBriefError(apiErrorMessage(data, "Failed to generate Executive Stakeholder Brief."));
         }
       } catch {
         setBriefError("Failed to generate Executive Stakeholder Brief. Please try again.");
@@ -606,7 +607,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
             setAlreadyGeneratedError(ALREADY_GENERATED_MSG);
             setIsTypeReportPopupOpen(true);
           } else {
-            setBriefError(msg || "Failed to generate Sales Qualification Report.");
+            setBriefError(apiErrorMessage(data, "Failed to generate Sales Qualification Report."));
           }
         }
       } catch {
@@ -661,7 +662,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
-          setBriefError(data?.message ?? "Failed to generate Customer Risk Mitigation Plan.");
+          setBriefError(apiErrorMessage(data, "Failed to generate Customer Risk Mitigation Plan."));
         }
       } catch {
         setBriefError("Failed to generate Customer Risk Mitigation Plan. Please try again.");
@@ -715,7 +716,7 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
           };
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
-          setBriefError(data?.message ?? "Failed to generate Implementation Roadmap Proposal.");
+          setBriefError(apiErrorMessage(data, "Failed to generate Implementation Roadmap Proposal."));
         }
       } catch {
         setBriefError("Failed to generate Implementation Roadmap Proposal. Please try again.");
@@ -771,8 +772,10 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
           setBriefError(
-            data?.message ??
+            apiErrorMessage(
+              data,
               "Failed to generate Vendor Comparison Matrix. Ensure the complete report exists in Complete Reports.",
+            ),
           );
         }
       } catch {
@@ -829,8 +832,10 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
           setBriefError(
-            data?.message ??
+            apiErrorMessage(
+              data,
               "Failed to generate Compliance & Risk Summary. Ensure the complete report exists in Complete Reports.",
+            ),
           );
         }
       } catch {
@@ -887,8 +892,10 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
           setBriefError(
-            data?.message ??
+            apiErrorMessage(
+              data,
               "Failed to generate Implementation Risk Assessment. Ensure the complete report exists in Complete Reports.",
+            ),
           );
         }
       } catch {
@@ -945,8 +952,10 @@ const GeneralReports = ({ searchQuery = "", showArchivedOnly, hideDropdown, arch
           setGeneratedReports((prev) => [...prev, newReport]);
         } else {
           setBriefError(
-            data?.message ??
+            apiErrorMessage(
+              data,
               "Failed to generate Mitigation Action Plan. Ensure the complete report exists in Complete Reports.",
+            ),
           );
         }
       } catch {

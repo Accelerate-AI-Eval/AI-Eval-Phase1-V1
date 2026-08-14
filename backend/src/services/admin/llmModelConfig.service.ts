@@ -9,6 +9,7 @@ import {
   normalizeBedrockModelAlias,
   isBedrockProviderModelId,
   resolveBedrockInvokeModelId,
+  stripBedrockGeoPrefix,
 } from "../../utils/bedrockModelId.js";
 import { upsertEnvFile } from "../../utils/envFile.js";
 import { backendRoot } from "../../utils/backendRoot.js";
@@ -249,12 +250,25 @@ function pythonUrl(): string {
   ).replace(/\/$/, "");
 }
 
-/** Same model once context-window suffixes / casing are normalized. */
+/** Canonical id so global.X / us.X / ARN / :200k suffixes compare as one model. */
+function canonicalModelKey(modelId: string): string {
+  let id = resolveBedrockInvokeModelId(modelId.trim()).toLowerCase();
+  if (!id) return "";
+  if (id.startsWith("arn:aws:bedrock:")) {
+    const slash = id.lastIndexOf("/");
+    if (slash >= 0) id = id.slice(slash + 1);
+  }
+  return stripBedrockGeoPrefix(id);
+}
+
 function sameModelId(a: string, b: string): boolean {
-  const norm = (v: string) => resolveBedrockInvokeModelId(v.trim()).toLowerCase();
-  const left = norm(a);
-  const right = norm(b);
+  const left = canonicalModelKey(a);
+  const right = canonicalModelKey(b);
   return left !== "" && left === right;
+}
+
+function matchesAnyModelId(actual: string, candidates: string[]): boolean {
+  return candidates.some((candidate) => candidate.trim() && sameModelId(actual, candidate));
 }
 
 type PythonSyncOutcome = {
@@ -336,7 +350,7 @@ async function probePythonModel(): Promise<{ modelId?: string; error?: string }>
  */
 async function resolvePythonSyncState(
   backend: LlmBackend,
-  nodeModelId: string,
+  ...candidateModelIds: string[]
 ): Promise<Pick<LlmModelConfig, "pythonSynced" | "pythonModelId" | "pythonSyncError">> {
   if (backend !== "bedrock") {
     return { pythonSynced: true };
@@ -345,7 +359,7 @@ async function resolvePythonSyncState(
   if (probe.error != null || !probe.modelId) {
     return { pythonSynced: false, pythonSyncError: probe.error };
   }
-  if (!sameModelId(probe.modelId, nodeModelId)) {
+  if (!matchesAnyModelId(probe.modelId, candidateModelIds)) {
     return {
       pythonSynced: false,
       pythonModelId: probe.modelId,
@@ -399,7 +413,11 @@ export async function getLlmModelConfigAsync(): Promise<LlmModelConfig> {
     option = findOption(modelId) ?? findCatalogOption(modelId);
   }
 
-  const pythonState = await resolvePythonSyncState(backend, rawModelId);
+  const pythonState = await resolvePythonSyncState(
+    backend,
+    rawModelId,
+    option?.id ?? modelId,
+  );
 
   return {
     backend,
@@ -548,10 +566,11 @@ export async function setLlmModel(modelId: string): Promise<LlmModelConfig> {
 
   // Python holds its own BEDROCK_MODEL_ID for VTS scoring, so a failed sync must be
   // reported — otherwise Controls shows the new model while Python keeps scoring on the old one.
-  const python = await syncPythonModel(updates.BEDROCK_MODEL ?? trimmed);
+  const syncedId = updates.BEDROCK_MODEL ?? trimmed;
+  const python = await syncPythonModel(syncedId);
   console.log("[LLM] Python sync after model change:", {
     ok: python.ok,
-    modelSynced: updates.BEDROCK_MODEL ?? trimmed,
+    modelSynced: syncedId,
     pythonModelId: python.pythonModelId ?? null,
     requiresPythonRestart: python.requiresPythonRestart ?? null,
     error: python.error ?? null,
@@ -561,6 +580,15 @@ export async function setLlmModel(modelId: string): Promise<LlmModelConfig> {
   if (!python.ok) {
     config.pythonSynced = false;
     config.pythonSyncError = python.error ?? "Python scoring service sync failed.";
+  } else if (
+    python.pythonModelId &&
+    matchesAnyModelId(python.pythonModelId, [syncedId, trimmed])
+  ) {
+    // PUT already confirmed the model; don't let a follow-up GET lose that
+    // (uvicorn --reload can restart while Node re-probes).
+    config.pythonSynced = true;
+    config.pythonModelId = python.pythonModelId;
+    delete config.pythonSyncError;
   }
   if (python.ok && python.requiresPythonRestart != null) {
     config.requiresPythonRestart = python.requiresPythonRestart;

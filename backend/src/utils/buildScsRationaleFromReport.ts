@@ -93,21 +93,14 @@ export function buildScsRationaleFromReport(report: unknown): string | null {
   if (dealChars) lines.push(`  Deal picture:       ${dealChars}`);
   if (recommended) lines.push(`  Recommended move:   ${recommended}`);
 
-  lines.push(
-    "",
-    "HOW WE GOT HERE",
-    "  Method:   Deterministic sales-risk formula from the Vendor COTS answers",
-    "  Idea:     Sales risk blends three weighted risks (then deal odds ~= 100 - risk)",
-    "  Weights:  Customer friction 35%  |  Implementation 35%  |  Competitive 30%",
-  );
+  lines.push("", "KEY DRIVERS (higher = more sales risk):");
 
   if (drivers.length > 0) {
-    lines.push("", "  Risk drivers (higher = more sales risk):");
     drivers.forEach((d, idx) => {
       const biggest = idx === 0 ? "  << biggest drag" : "";
       const namePad = d.name.padEnd(22, " ");
       lines.push(
-        `    ${idx + 1}. ${namePad} ${Number(d.risk).toFixed(2)}  (weight ${Math.round(d.weight * 100)}%)${biggest}`,
+        `    ${idx + 1}. ${namePad} ${Number(d.risk).toFixed(2)}${biggest}`,
       );
     });
   }

@@ -1,9 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../../styles/layout/topNav.css";
 import { Bell, Search } from "lucide-react";
 import UserProfile from "../pages/UserProfile/UserProfile";
 import AccountSettingsModal from "../pages/MyAccount/AccountSettingsModal";
 import NotificationsPopover from "../UI/NotificationsPopover";
+import {
+  fetchAdminNotifications,
+  isPlatformAdminSession,
+  markAdminNotificationRead,
+  markAllAdminNotificationsRead,
+  type AdminNotification,
+  type AdminNotificationsPayload,
+} from "../../utils/adminNotificationsApi";
 
 interface MeUser {
   email?: string | null;
@@ -42,11 +51,16 @@ function formatRoleForDisplay(role: string | null | undefined): string {
 }
 
 const TopNavBar = () => {
+  const navigate = useNavigate();
   const [isPopupVisible, setIsPopupVisible] = useState(false);
   const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [user, setUser] = useState<MeUser | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [notifications, setNotifications] = useState<AdminNotificationsPayload>({
+    items: [],
+    unreadCount: 0,
+  });
 
   const userRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -98,6 +112,24 @@ const TopNavBar = () => {
     window.addEventListener("userProfileUpdated", onProfileUpdated);
     return () => window.removeEventListener("userProfileUpdated", onProfileUpdated);
   }, [setUserFromSessionStorage]);
+
+  const loadNotifications = useCallback(async () => {
+    const data = await fetchAdminNotifications();
+    setNotifications(data);
+  }, []);
+
+  useEffect(() => {
+    void loadNotifications();
+    if (!isPlatformAdminSession()) return undefined;
+    const timer = window.setInterval(() => {
+      void loadNotifications();
+    }, 45_000);
+    return () => window.clearInterval(timer);
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    if (isNotificationsVisible) void loadNotifications();
+  }, [isNotificationsVisible, loadNotifications]);
 
   const initials = user
     ? getInitials(
@@ -205,24 +237,57 @@ const TopNavBar = () => {
         </form>
 
         <div className="nav_right_content">
-          <div className="notifications_icon_sec" ref={notifRef}>
-            <Bell
-              size={24}
-              className="notification_icon"
-              onClick={handleNotificationsToggle}
-              role="button"
-              aria-label="Notifications"
-              aria-expanded={isNotificationsVisible}
-            />
-            {isNotificationsVisible && (
-              <div
-                className="notifications_popover_anchor"
-                ref={notifPopoverRef}
+          {isPlatformAdminSession() ? (
+            <div className="notifications_icon_sec" ref={notifRef}>
+              <button
+                type="button"
+                className="notification_icon_btn"
+                onClick={handleNotificationsToggle}
+                aria-label={
+                  notifications.unreadCount > 0
+                    ? `Notifications, ${notifications.unreadCount} unread`
+                    : "Notifications"
+                }
+                aria-expanded={isNotificationsVisible}
               >
-                <NotificationsPopover emptyMessage="No notifications" />
-              </div>
-            )}
-          </div>
+                <Bell size={24} className="notification_icon" aria-hidden />
+                {notifications.unreadCount > 0 ? (
+                  <span className="notification_badge">
+                    {notifications.unreadCount > 9
+                      ? "9+"
+                      : notifications.unreadCount}
+                  </span>
+                ) : null}
+              </button>
+              {isNotificationsVisible && (
+                <div
+                  className="notifications_popover_anchor"
+                  ref={notifPopoverRef}
+                >
+                  <NotificationsPopover
+                    items={notifications.items}
+                    unreadCount={notifications.unreadCount}
+                    onSelect={(item: AdminNotification) => {
+                      if (item.readAt == null) {
+                        void markAdminNotificationRead(item.id).then(() => {
+                          void loadNotifications();
+                        });
+                      }
+                      setIsNotificationsVisible(false);
+                      if (item.type.startsWith("token_quota_exhausted")) {
+                        navigate("/controls");
+                      }
+                    }}
+                    onMarkAllRead={() => {
+                      void markAllAdminNotificationsRead().then(() => {
+                        void loadNotifications();
+                      });
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {/* USER SECTION */}
           <div

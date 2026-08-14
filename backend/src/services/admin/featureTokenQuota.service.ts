@@ -1,0 +1,195 @@
+import type { Response } from "express";
+import { and, eq, sql } from "drizzle-orm";
+import { db } from "../../database/db.js";
+import { orgUserTokenAllocations } from "../../schema/controls/orgTokenQuotas.js";
+import { llmModelUsageEvents } from "../../schema/observability/llmModelUsageEvents.js";
+import { resolveActorSnapshot } from "../observability/llmUsage.service.js";
+import {
+  ORG_CONTROL_FEATURE_LABELS,
+  type OrgControlFeature,
+} from "./orgControlFeatures.js";
+
+export const TOKEN_QUOTA_EXCEEDED_CODE = "TOKEN_QUOTA_EXCEEDED";
+
+export class TokenQuotaExceededError extends Error {
+  readonly status = 403;
+  readonly code = TOKEN_QUOTA_EXCEEDED_CODE;
+
+  constructor(
+    message: string,
+    readonly feature: OrgControlFeature,
+    readonly allocated: number,
+    readonly consumed: number,
+  ) {
+    super(message);
+    this.name = "TokenQuotaExceededError";
+  }
+}
+
+function asNonNegInt(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.floor(n);
+}
+
+export function isTokenQuotaExceededError(
+  error: unknown,
+): error is TokenQuotaExceededError {
+  return error instanceof TokenQuotaExceededError;
+}
+
+export function sendIfTokenQuotaExceeded(res: Response, error: unknown): boolean {
+  if (!isTokenQuotaExceededError(error)) return false;
+  res.status(error.status).json({
+    success: false,
+    code: error.code,
+    message: error.message,
+  });
+  return true;
+}
+
+export type FeatureTokenBalance = {
+  allocatedInput: number;
+  allocatedOutput: number;
+  consumedInput: number;
+  consumedOutput: number;
+  allocated: number;
+  consumed: number;
+  remaining: number;
+  inputExceeded: boolean;
+  outputExceeded: boolean;
+  exhausted: boolean;
+};
+
+export async function getFeatureTokenBalance(input: {
+  userId: number;
+  organizationId: number;
+  feature: OrgControlFeature;
+}): Promise<FeatureTokenBalance> {
+  const empty: FeatureTokenBalance = {
+    allocatedInput: 0,
+    allocatedOutput: 0,
+    consumedInput: 0,
+    consumedOutput: 0,
+    allocated: 0,
+    consumed: 0,
+    remaining: 0,
+    inputExceeded: false,
+    outputExceeded: false,
+    exhausted: true,
+  };
+  const userId = asNonNegInt(input.userId);
+  const organizationId = asNonNegInt(input.organizationId);
+  if (userId < 1 || organizationId < 1) return empty;
+
+  const [allocRow] = await db
+    .select({
+      allocatedInput: sql<number>`coalesce(sum(${orgUserTokenAllocations.inputTokens}), 0)`,
+      allocatedOutput: sql<number>`coalesce(sum(${orgUserTokenAllocations.outputTokens}), 0)`,
+    })
+    .from(orgUserTokenAllocations)
+    .where(
+      and(
+        eq(orgUserTokenAllocations.userId, userId),
+        eq(orgUserTokenAllocations.organizationId, organizationId),
+        eq(orgUserTokenAllocations.feature, input.feature),
+      ),
+    );
+  const allocatedInput = asNonNegInt(allocRow?.allocatedInput);
+  const allocatedOutput = asNonNegInt(allocRow?.allocatedOutput);
+
+  const [usageRow] = await db
+    .select({
+      consumedInput: sql<number>`coalesce(sum(${llmModelUsageEvents.inputTokens}), 0)`,
+      consumedOutput: sql<number>`coalesce(sum(${llmModelUsageEvents.outputTokens}), 0)`,
+    })
+    .from(llmModelUsageEvents)
+    .where(
+      and(
+        eq(llmModelUsageEvents.userId, userId),
+        eq(llmModelUsageEvents.organizationId, organizationId),
+        eq(llmModelUsageEvents.feature, input.feature),
+      ),
+    );
+  const consumedInput = asNonNegInt(usageRow?.consumedInput);
+  const consumedOutput = asNonNegInt(usageRow?.consumedOutput);
+  const allocated = allocatedInput + allocatedOutput;
+  const consumed = consumedInput + consumedOutput;
+  const inputExceeded = allocatedInput > 0 && consumedInput >= allocatedInput;
+  const outputExceeded = allocatedOutput > 0 && consumedOutput >= allocatedOutput;
+  const exhausted =
+    allocated <= 0 || inputExceeded || outputExceeded;
+
+  return {
+    allocatedInput,
+    allocatedOutput,
+    consumedInput,
+    consumedOutput,
+    allocated,
+    consumed,
+    remaining: Math.max(0, allocated - consumed),
+    inputExceeded,
+    outputExceeded,
+    exhausted,
+  };
+}
+
+function quotaExceededMessage(
+  feature: OrgControlFeature,
+  balance: Pick<
+    FeatureTokenBalance,
+    "allocated" | "inputExceeded" | "outputExceeded"
+  >,
+): string {
+  const label = ORG_CONTROL_FEATURE_LABELS[feature];
+  if (balance.allocated <= 0) {
+    return `No tokens have been allocated for ${label}. Contact a platform admin.`;
+  }
+  if (balance.inputExceeded && balance.outputExceeded) {
+    return `Your ${label} input and output token quotas are exhausted. Contact a platform admin.`;
+  }
+  if (balance.inputExceeded) {
+    return `Your ${label} input token quota is exhausted. Contact a platform admin.`;
+  }
+  if (balance.outputExceeded) {
+    return `Your ${label} output token quota is exhausted. Contact a platform admin.`;
+  }
+  return `Your ${label} token quota is exhausted. Contact a platform admin.`;
+}
+
+/**
+ * Block LLM work when this user has used their allocated input or output tokens.
+ * Skips only when there is no authenticated actor (internal/admin tests).
+ */
+export async function assertFeatureTokenQuota(
+  feature: OrgControlFeature,
+): Promise<void> {
+  const actor = await resolveActorSnapshot();
+  if (actor.userId == null) return;
+  if (actor.organizationId == null) {
+    throw new TokenQuotaExceededError(
+      quotaExceededMessage(feature, {
+        allocated: 0,
+        inputExceeded: false,
+        outputExceeded: false,
+      }),
+      feature,
+      0,
+      0,
+    );
+  }
+
+  const balance = await getFeatureTokenBalance({
+    userId: actor.userId,
+    organizationId: actor.organizationId,
+    feature,
+  });
+  if (!balance.exhausted) return;
+
+  throw new TokenQuotaExceededError(
+    quotaExceededMessage(feature, balance),
+    feature,
+    balance.allocated,
+    balance.consumed,
+  );
+}

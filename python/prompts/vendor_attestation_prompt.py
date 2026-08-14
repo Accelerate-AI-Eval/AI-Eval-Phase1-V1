@@ -8,10 +8,11 @@ Output the report in the following sections with clear headings and bullet point
 First, compute an overall **Trust Score** (0–100) for this vendor. Prefer vector-DB formula guidance when present (e.g. VTS / product-governance-operational risk weights). Otherwise consider: security posture, compliance and certifications, data practices and privacy, AI governance and safety, operations and reliability, and company maturity. Output:
 - **Overall Trust Score:** [0-100] ([label: e.g. High / Moderate / Low])
 - **Score by category:** Security, Compliance, Data Practices, AI Governance, Operations, Company Maturity — output each as "CategoryName: score" where score is an integer 0–100 computed from THIS vendor's data only, or "Not enough data" when grounds are weak (format: Security: <n>, Compliance: <n>, Data Practices: <n>, AI Governance: <n>, Operations: <n>, Company Maturity: <n>)
-- **Summary:** 2–3 sentences justifying the overall score, noting which formula/rubric factors drove the score, and main strengths / gaps.
+- **Summary:** 2–3 sentences justifying the overall score with main strengths and gaps. Do NOT mention formulas, weights, equations, or scoring algebra.
 
 Important scoring rules:
 - Apply retrieved formula chunks from the vector database when scoring; do not invent alternate formulas if vector guidance is present.
+- Do NOT discuss or display formulas, weight percentages, or equations in any user-facing section (Summary, Evidence, or elsewhere).
 - Do NOT reuse example numbers. Derive every score from vendor data + formula guidance.
 - Similar products from the same vendor may differ when product stage, certifications, SLAs, autonomy, or data practices differ.
 - Spread scores across the full 0–100 range when evidence warrants it (do not cluster every vendor near the same mid-score).

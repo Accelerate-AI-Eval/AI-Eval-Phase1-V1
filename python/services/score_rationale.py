@@ -93,18 +93,6 @@ _VTS_KEY_FIELDS: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 
-def _vts_method_line(scoring_source: str) -> str:
-    src = (scoring_source or "").lower()
-    if "vector" in src:
-        return (
-            "AI overall trust score from the product profile, "
-            "guided by scoring formula documents from the knowledge base"
-        )
-    if src.startswith("llm"):
-        return "AI overall trust score from attestation / vendor product profile data"
-    return "Deterministic trust formula from vendor self-attestation answers"
-
-
 def print_vts_rationale(
     *,
     final_score: float,
@@ -173,18 +161,13 @@ def print_vts_rationale(
     lines.extend(
         [
             "",
-            "HOW WE GOT HERE",
-            f"  Method:   {_vts_method_line(scoring_source)}",
-            "  Idea:     Trust = 100 minus weighted Product, Governance, and Operational risk",
-            "  Weights:  Product risk 40%  |  Governance risk 30%  |  Operational risk 30%",
-            "",
-            "  Risk drivers (higher risk lowers trust):",
+            "KEY DRIVERS (higher risk lowers trust):",
         ]
     )
-    for idx, (name, risk, weight, _tip) in enumerate(ranked, start=1):
+    for idx, (name, risk, _weight, _tip) in enumerate(ranked, start=1):
         biggest = "  << biggest drag" if idx == 1 else ""
         lines.append(
-            f"    {idx}. {name:<22} {risk:5.2f}  (weight {weight:.0%}){biggest}"
+            f"    {idx}. {name:<22} {risk:5.2f}{biggest}"
         )
 
     lines.extend(["", "WHAT TO IMPROVE (to raise trust score)"])
@@ -323,18 +306,13 @@ def print_srs_rationale(
     lines.extend(
         [
             "",
-            "HOW WE GOT HERE",
-            "  Method:   Deterministic sales-risk formula from the Vendor COTS answers",
-            "  Idea:     Sales risk blends three weighted risks (then deal odds ~= 100 - risk)",
-            "  Weights:  Customer friction 35%  |  Implementation 35%  |  Competitive 30%",
-            "",
-            "  Risk drivers (higher = more sales risk):",
+            "KEY DRIVERS (higher = more sales risk):",
         ]
     )
-    for idx, (name, risk, weight, _tip) in enumerate(ranked, start=1):
+    for idx, (name, risk, _weight, _tip) in enumerate(ranked, start=1):
         biggest = "  << biggest drag" if idx == 1 else ""
         lines.append(
-            f"    {idx}. {name:<22} {risk:5.2f}  (weight {weight:.0%}){biggest}"
+            f"    {idx}. {name:<22} {risk:5.2f}{biggest}"
         )
     if sector:
         lines.append(f"  Sector context: {_safe(sector, 40)}")
@@ -448,18 +426,13 @@ def print_irs_rationale(
     lines.extend(
         [
             "",
-            "HOW WE GOT HERE",
-            "  Method:   Deterministic readiness formula from buyer answers + vendor trust",
-            "  Idea:     Readiness = 100 minus weighted Vendor risk, Org gap, and Integration risk",
-            "  Weights:  Vendor risk 35%  |  Org readiness gap 35%  |  Integration risk 30%",
-            "",
-            "  Risk drivers (higher risk lowers readiness):",
+            "KEY DRIVERS (higher risk lowers readiness):",
         ]
     )
-    for idx, (name, risk, weight, _tip) in enumerate(ranked, start=1):
+    for idx, (name, risk, _weight, _tip) in enumerate(ranked, start=1):
         biggest = "  << biggest drag" if idx == 1 else ""
         lines.append(
-            f"    {idx}. {name:<22} {risk:5.2f}  (weight {weight:.0%}){biggest}"
+            f"    {idx}. {name:<22} {risk:5.2f}{biggest}"
         )
     lines.append(
         f"  Vendor trust used: {vts:.0f}/100  "

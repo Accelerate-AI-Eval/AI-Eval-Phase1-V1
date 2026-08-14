@@ -20,6 +20,7 @@ export const llmModelUsageEvents = pgTable("llm_model_usage_events", {
   organizationName: varchar("organization_name", { length: 512 }),
   userId: integer("user_id"),
   userName: varchar("user_name", { length: 512 }),
+  feature: varchar("feature", { length: 64 }),
   inputTokens: bigint("input_tokens", { mode: "number" }).notNull().default(0),
   outputTokens: bigint("output_tokens", { mode: "number" }).notNull().default(0),
   totalTokens: bigint("total_tokens", { mode: "number" }).notNull().default(0),

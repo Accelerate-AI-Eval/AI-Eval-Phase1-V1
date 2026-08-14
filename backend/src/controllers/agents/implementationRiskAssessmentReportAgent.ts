@@ -188,6 +188,7 @@ async function invokeModel(prompt: string): Promise<string> {
     prompt,
     maxTokens: 8192,
     temperature: 0.3,
+    feature: "reports",
   });
 }
 

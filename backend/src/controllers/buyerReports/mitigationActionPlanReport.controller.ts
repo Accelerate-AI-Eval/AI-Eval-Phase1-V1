@@ -17,6 +17,7 @@ import {
   regulatorySnippetFromJson,
 } from "../agents/buyerVendorRiskReportAgent.js";
 import { generateMitigationActionPlanReport } from "../agents/mitigationActionPlanReportAgent.js";
+import { sendIfTokenQuotaExceeded } from "../../services/admin/featureTokenQuota.service.js";
 
 const REPORT_TYPE = "Mitigation Action Plan";
 
@@ -272,6 +273,7 @@ const mitigationActionPlanReport = async (req: Request, res: Response): Promise<
       },
     });
   } catch (err) {
+    if (sendIfTokenQuotaExceeded(res, err)) return;
     console.error("mitigationActionPlanReport error:", err);
     res.status(500).json({
       success: false,

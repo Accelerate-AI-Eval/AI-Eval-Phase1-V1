@@ -156,10 +156,14 @@ def format_formula_context_for_prompt(context_text: str, assessment_type: str = 
     return (
         "\n\n---\n"
         f"SCORING FORMULAS & GUIDANCE FROM VECTOR DATABASE (pgvector){type_note}\n"
-        "Use the following retrieved formula / rubric knowledge when computing scores "
-        "and writing the analysis. Apply these rules to the assessment data. If a retrieved "
-        "chunk conflicts with explicit assessment facts, prefer the assessment facts for facts, "
-        "but use the formula chunks for HOW to score.\n\n"
+        "Use the following retrieved formula / rubric knowledge ONLY for internal score "
+        "computation. Apply these rules to the assessment data when deriving numeric scores. "
+        "If a retrieved chunk conflicts with explicit assessment facts, prefer the assessment "
+        "facts for facts, but use the formula chunks for HOW to score.\n"
+        "CRITICAL — USER-FACING OUTPUT: Do NOT quote, discuss, or display any formulas, "
+        "equations, weight percentages, or scoring algebra (e.g. VTS =, IRS =, SRS =, × 0.35) "
+        "in summaries, methodology, appendix, or any narrative section. Report results and "
+        "business implications only — never the underlying formula.\n\n"
         f"{context_text.strip()}\n"
         "---\n\n"
     )

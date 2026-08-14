@@ -78,18 +78,27 @@ const UserProfile = ({ onClose, onOpenSettings }: UserProfileProps) => {
   const systemRoleRaw = getSession("systemRole").trim().toLowerCase().replace(/_/g, " ");
   const userRoleLabel = formatRoleLabel(getSession("userRole"));
   const systemRoleLabel = formatRoleLabel(getSession("systemRole"));
-  const roleTag =
-    userRoleLabel ||
-    (systemRoleRaw === "vendor" || systemRoleRaw === "buyer"
-      ? "User"
-      : systemRoleLabel) ||
-    "User";
+  const isVendorOrBuyer = systemRoleRaw === "vendor" || systemRoleRaw === "buyer";
+  const isSystemAdmin = systemRoleRaw === "system admin";
+  const isSystemPortal = systemRoleRaw.startsWith("system ");
   const portalTag =
     systemRoleRaw === "vendor"
       ? "VENDOR"
       : systemRoleRaw === "buyer"
-        ? "ORGANIZATION"
-        : null;
+        ? "BUYER"
+        : isSystemAdmin
+          ? "Platform Owner"
+          : isSystemPortal
+            ? formatRoleLabel(systemRoleRaw)
+            : null;
+  const roleTag =
+    userRoleLabel ||
+    (isVendorOrBuyer
+      ? "User"
+      : isSystemPortal
+        ? formatRoleLabel(systemRoleRaw.replace(/^system\s+/, "")) || systemRoleLabel
+        : systemRoleLabel) ||
+    "User";
 
   const closeLogoutConfirm = () => {
     if (isLoggingOut) return;
@@ -236,18 +245,14 @@ const UserProfile = ({ onClose, onOpenSettings }: UserProfileProps) => {
                 <span className="account_menu_label" title={displayName}>
                   {displayName}
                 </span>
-                {portalTag ? (
-                  <span className="account_menu_portal_tag" title={portalTag}>
-                    {portalTag}
-                  </span>
-                ) : (
+                {!portalTag ? (
                   <span
                     className="account_menu_user_tag account_menu_user_tag--inline"
                     title={`Role: ${roleTag}`}
                   >
                     {roleTag}
                   </span>
-                )}
+                ) : null}
               </span>
               {portalTag ? (
                 <span
@@ -264,6 +269,11 @@ const UserProfile = ({ onClose, onOpenSettings }: UserProfileProps) => {
                 </span>
               ) : null}
             </span>
+            {portalTag ? (
+              <span className="account_menu_portal_tag" title={portalTag}>
+                {portalTag}
+              </span>
+            ) : null}
           </li>
           <li className="account_menu_logout_item">
             <button
@@ -309,7 +319,7 @@ const UserProfile = ({ onClose, onOpenSettings }: UserProfileProps) => {
                   <div className="settings_form_actions">
                     <Button
                       type="button"
-                      className="orgCancelBtn"
+                      className="orgCancelBtn logout_confirm_cancel_btn"
                       onClick={closeLogoutConfirm}
                       disabled={isLoggingOut}
                     >

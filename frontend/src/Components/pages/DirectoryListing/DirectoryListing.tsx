@@ -5,6 +5,7 @@ import { buildFormStateFromApi } from "../../../utils/vendorAttestationState";
 import { buildVendorDataFromFormState } from "../../../utils/buildVendorDataFromFormState";
 import type { VendorSelfAttestationFormState } from "../../../types/vendorSelfAttestation";
 import type { GeneratedProductProfileReport } from "../../../types/generatedProductProfile";
+import { apiErrorMessage } from "../../../utils/tokenQuotaError";
 import "../ProductProfile/product_profile.css";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
@@ -380,7 +381,7 @@ export const DirectoryListing = () => {
         setSelectedStoredReportId(null);
         fetchGeneratedReports();
       } else {
-        setGenerateError((data?.message as string) || "Failed to generate profile.");
+        setGenerateError(apiErrorMessage(data, "Failed to generate profile."));
       }
     } catch {
       setGenerateError("Network error. Try again.");

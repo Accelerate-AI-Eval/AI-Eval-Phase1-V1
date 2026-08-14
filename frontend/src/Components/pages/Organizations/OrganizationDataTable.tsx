@@ -111,14 +111,19 @@ const OrganizationDataTable = ({ openPreview, viewOnly = false }) => {
       cell: (row) => {
         const status = (row.organizationStatus ?? "").toString().toLowerCase();
         const isActive = status === "active";
+        const isArchived = status === "archived";
         return (
           <span
             className={`pill pill_status ${
-              isActive ? "pill_status_active" : "pill_status_inactive"
+              isActive
+                ? "pill_status_active"
+                : isArchived
+                  ? "pill_status_archived"
+                  : "pill_status_inactive"
             } pill_status_with_dot`}
           >
             <span className="pill_status_dot" aria-hidden />
-            {isActive ? "Active" : "Inactive"}
+            {isActive ? "Active" : isArchived ? "Archived" : "Inactive"}
           </span>
         );
       },

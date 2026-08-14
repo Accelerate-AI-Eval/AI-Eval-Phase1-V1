@@ -14,6 +14,7 @@ import {
   regulatorySnippetFromJson,
 } from "../agents/buyerVendorRiskReportAgent.js";
 import { generateVendorComparisonMatrixFromCompleteReport } from "../agents/vendorComparisonMatrixReportAgent.js";
+import { sendIfTokenQuotaExceeded } from "../../services/admin/featureTokenQuota.service.js";
 
 const REPORT_TYPE = "Vendor Comparison Matrix";
 
@@ -223,6 +224,7 @@ const vendorComparisonMatrixReport = async (req: Request, res: Response): Promis
       },
     });
   } catch (err) {
+    if (sendIfTokenQuotaExceeded(res, err)) return;
     console.error("vendorComparisonMatrixReport error:", err);
     res.status(500).json({
       success: false,

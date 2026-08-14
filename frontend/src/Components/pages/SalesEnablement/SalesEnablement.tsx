@@ -28,6 +28,7 @@ import ToolCallsSummary, {
 import aiQLogoBlue from "../../../assets/images/mainLogo/new_logo/ai_q_logo_blue.png";
 import "../UserManagement/user_management.css";
 import "./sales_enablement.css";
+import { apiErrorMessage, errorToUserMessage } from "../../../utils/tokenQuotaError";
 
 const BASE_URL =
   import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
@@ -599,7 +600,7 @@ export function SalesEnablement() {
               battleCard: result.data.battleCard,
             };
           }
-          throw new Error(result?.message ?? "Failed to generate");
+          throw new Error(apiErrorMessage(result, "Failed to generate"));
         });
     },
     []
@@ -622,7 +623,7 @@ export function SalesEnablement() {
           if (result?.success && result?.data?.answer != null) {
             return String(result.data.answer);
           }
-          throw new Error(result?.message ?? "Failed to get answer");
+          throw new Error(apiErrorMessage(result, "Failed to get answer"));
         });
     },
     []
@@ -690,7 +691,7 @@ export function SalesEnablement() {
             ...prev,
             {
               role: "agent" as const,
-              text: err?.message ?? "Failed to generate SWOT analysis. Please try again.",
+              text: errorToUserMessage(err, "Failed to generate SWOT analysis. Please try again."),
             },
           ]);
         })
@@ -750,7 +751,7 @@ export function SalesEnablement() {
             ...prev,
             {
               role: "agent" as const,
-              text: err?.message ?? "Failed to generate battle card. Please try again.",
+              text: errorToUserMessage(err, "Failed to generate battle card. Please try again."),
             },
           ]);
         })
@@ -790,7 +791,7 @@ export function SalesEnablement() {
           ...prev,
           {
             role: "agent" as const,
-            text: err?.message ?? "Sorry, I couldn't answer that. Please try again.",
+            text: errorToUserMessage(err, "Sorry, I couldn't answer that. Please try again."),
           },
         ]);
       })
@@ -850,7 +851,7 @@ export function SalesEnablement() {
           ...prev,
           {
             role: "agent" as const,
-            text: err?.message ?? "Failed to generate SWOT analysis. Please try again.",
+            text: errorToUserMessage(err, "Failed to generate SWOT analysis. Please try again."),
           },
         ]);
       })
@@ -900,7 +901,7 @@ export function SalesEnablement() {
           ...prev,
           {
             role: "agent" as const,
-            text: err?.message ?? "Failed to generate battle card. Please try again.",
+            text: errorToUserMessage(err, "Failed to generate battle card. Please try again."),
           },
         ]);
       })

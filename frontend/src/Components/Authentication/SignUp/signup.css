@@ -256,6 +256,16 @@ html[data-theme="dark"] .signup_form select {
   -webkit-text-fill-color: var(--input-text, #ebe9f3) !important;
 }
 
+/* Password wrap already has the border — keep the inner field borderless */
+html[data-theme="dark"] .signup-shell-body .signin-input-wrap .signin-input,
+html[data-theme="dark"] .signup_form .signin-input-wrap .signin-input,
+html[data-theme="dark"] .signup_form .signin-input-wrap input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
 html[data-theme="dark"] .signup-shell-body .signin-input--readonly,
 html[data-theme="dark"] .signup-shell-body .signin-input[readonly],
 html[data-theme="dark"] .readOnlyField {

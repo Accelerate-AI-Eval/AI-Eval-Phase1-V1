@@ -8,6 +8,11 @@ import { findAttestationForBuyerAssessment } from "../../services/findAttestatio
 import { resolveFrameworkMappingRowsForAttestation } from "../../services/frameworkMappingFromCompliance.js";
 import { generateBuyerVendorRiskReport } from "../agents/buyerVendorRiskReportAgent.js";
 import { stampActiveLlmModel, getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
+import {
+  assertFeatureTokenQuota,
+  isTokenQuotaExceededError,
+  sendIfTokenQuotaExceeded,
+} from "../../services/admin/featureTokenQuota.service.js";
 
 function readBuyerAttestationIdFromBody(body: Record<string, unknown>): string | null {
   const keys = [
@@ -107,6 +112,7 @@ async function persistVendorRiskReport(
       })
       .where(eq(cotsBuyerAssessments.assessment_id, assessmentId));
   } catch (e) {
+    if (isTokenQuotaExceededError(e)) throw e;
     console.error("persistVendorRiskReport:", e);
   }
 }
@@ -205,6 +211,8 @@ const submitBuyerCotsAssessment = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "User has no organization. Complete onboarding or contact admin." });
     }
 
+    await assertFeatureTokenQuota("assessment");
+
     const body = req.body ?? {};
     const assessmentIdRaw = body.assessmentId ?? body.assessment_id;
     const assessmentId = typeof assessmentIdRaw === "string" ? assessmentIdRaw.trim() || null : null;
@@ -270,6 +278,7 @@ const submitBuyerCotsAssessment = async (req: Request, res: Response) => {
       vendorRiskReportAvailable: true,
     });
   } catch (error) {
+    if (sendIfTokenQuotaExceeded(res, error)) return;
     const message = error instanceof Error ? error.message : String(error);
     console.error("Error in submitBuyerCotsAssessment:", message);
     return res.status(500).json({ message: "Internal server error" });

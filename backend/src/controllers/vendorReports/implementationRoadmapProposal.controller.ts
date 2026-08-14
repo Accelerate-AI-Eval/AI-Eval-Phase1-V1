@@ -8,6 +8,7 @@ import { vendorSelfAttestations } from "../../schema/assessments/vendorSelfAttes
 import { generalReports } from "../../schema/assessments/generalReports.js";
 import { getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
 import { generateImplementationRoadmapProposal } from "../agents/implementationRoadmapProposalAgent.js";
+import { sendIfTokenQuotaExceeded } from "../../services/admin/featureTokenQuota.service.js";
 
 function toStr(v: unknown): string {
   if (v == null) return "";
@@ -156,6 +157,7 @@ const implementationRoadmapProposal = async (req: Request, res: Response): Promi
       },
     });
   } catch (err) {
+    if (sendIfTokenQuotaExceeded(res, err)) return;
     console.error("implementationRoadmapProposal error:", err);
     res.status(500).json({
       success: false,

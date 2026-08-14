@@ -4,6 +4,8 @@ import {
 } from "@aws-sdk/client-bedrock-runtime";
 import { getActiveBedrockModelId } from "./bedrockModelId.js";
 import { recordLlmUsageAsync } from "../services/observability/llmUsage.service.js";
+import { assertFeatureTokenQuota } from "../services/admin/featureTokenQuota.service.js";
+import type { OrgControlFeature } from "../services/admin/orgControlFeatures.js";
 
 const REGION =
   process.env.AWS_REGION?.trim() ||
@@ -19,6 +21,8 @@ export type InvokeBedrockAnthropicOptions = {
   modelId?: string;
   /** Optional client (e.g. agent-local). Defaults to a shared regional client. */
   client?: BedrockRuntimeClient;
+  /** When set, enforce that feature's per-user token quota before invoking. */
+  feature?: OrgControlFeature;
 };
 
 /**
@@ -27,6 +31,9 @@ export type InvokeBedrockAnthropicOptions = {
 export async function invokeBedrockAnthropicText(
   options: InvokeBedrockAnthropicOptions,
 ): Promise<string> {
+  if (options.feature) {
+    await assertFeatureTokenQuota(options.feature);
+  }
   const modelId = (options.modelId?.trim() || getActiveBedrockModelId()).trim();
   const maxTokens = options.maxTokens ?? 4096;
   const temperature = options.temperature ?? 0.3;
@@ -64,6 +71,7 @@ export async function invokeBedrockAnthropicText(
       inputTokens,
       outputTokens,
       totalTokens: inputTokens + outputTokens,
+      feature: options.feature ?? null,
     });
   }
 

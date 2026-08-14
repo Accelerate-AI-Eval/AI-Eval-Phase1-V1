@@ -539,19 +539,15 @@ function buildSrsRationaleFallback(report: Record<string, unknown>): string | nu
 
   lines.push(
     "",
-    "HOW WE GOT HERE",
-    "  Method:   Deterministic sales-risk formula from the Vendor COTS answers",
-    "  Idea:     Sales risk blends three weighted risks (then deal odds ~= 100 - risk)",
-    "  Weights:  Customer friction 35%  |  Implementation 35%  |  Competitive 30%",
+    "KEY DRIVERS (higher = more sales risk):",
   );
 
   if (drivers.length > 0) {
-    lines.push("", "  Risk drivers (higher = more sales risk):");
     drivers.forEach((d, idx) => {
       const biggest = idx === 0 ? "  << biggest drag" : "";
       const namePad = d.name.padEnd(22, " ");
       lines.push(
-        `    ${idx + 1}. ${namePad} ${Number(d.risk).toFixed(2)}  (weight ${Math.round(d.weight * 100)}%)${biggest}`,
+        `    ${idx + 1}. ${namePad} ${Number(d.risk).toFixed(2)}${biggest}`,
       );
     });
   }
@@ -574,6 +570,21 @@ function stripSummaryFromRationale(text: string): string {
     .replace(/\n+SUMMARY\s*\n[\s\S]*$/i, "")
     .trim();
   return withoutSummary;
+}
+
+/** Remove formula / weight methodology blocks from stored rationale (legacy reports). */
+function stripFormulaDiscussionFromRationale(text: string): string {
+  return text
+    .replace(
+      /\n*HOW WE GOT HERE\n[\s\S]*?(?=\n(?:WHAT TO IMPROVE|KEY DRIVERS|RESULT)\b|$)/i,
+      "\n",
+    )
+    .replace(/\n*\s*Method:\s*[^\n]*formula[^\n]*/gi, "")
+    .replace(/\n*\s*Idea:\s*[^\n]*(?:weighted|minus weighted|blends three)[^\n]*/gi, "")
+    .replace(/\n*\s*Weights:\s*[^\n]*/gi, "")
+    .replace(/\s*\(weight\s+\d+%\)/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function readinessProfileFromScore(readiness: number): string {
@@ -700,19 +711,15 @@ function buildIrsRationaleFallback(
 
   lines.push(
     "",
-    "HOW WE GOT HERE",
-    "  Method:   Deterministic readiness formula from buyer answers + vendor trust",
-    "  Idea:     Readiness = 100 minus weighted Vendor risk, Org gap, and Integration risk",
-    "  Weights:  Vendor risk 35%  |  Org readiness gap 35%  |  Integration risk 30%",
+    "KEY DRIVERS (higher risk lowers readiness):",
   );
 
   if (drivers.length > 0) {
-    lines.push("", "  Risk drivers (higher risk lowers readiness):");
     drivers.forEach((d, idx) => {
       const biggest = idx === 0 ? "  << biggest drag" : "";
       const namePad = d.name.padEnd(22, " ");
       lines.push(
-        `    ${idx + 1}. ${namePad} ${Number(d.risk).toFixed(2)}  (weight ${Math.round(d.weight * 100)}%)${biggest}`,
+        `    ${idx + 1}. ${namePad} ${Number(d.risk).toFixed(2)}${biggest}`,
       );
     });
   }
@@ -738,7 +745,7 @@ function buildIrsRationaleFallback(
       lines.push(`  3. ${third.name} (${Number(third.risk).toFixed(1)}) - ${third.tip}`);
     }
   } else {
-    lines.push("  No major formula drivers detected from stored breakdown.");
+    lines.push("  No major drivers detected from stored breakdown.");
   }
 
   return lines.join("\n");
@@ -791,7 +798,9 @@ export function resolveScoreRationaleForCompleteReport(
         if (stored.text.includes("SALES RISK SCORE (Type 2)")) {
           return {
             title: scoreRationaleTitle("SCS"),
-            rationale: stripSummaryFromRationale(stored.text),
+            rationale: stripFormulaDiscussionFromRationale(
+              stripSummaryFromRationale(stored.text),
+            ),
           };
         }
         if (rebuiltSrs?.trim()) {
@@ -799,7 +808,9 @@ export function resolveScoreRationaleForCompleteReport(
         }
         return {
           title: scoreRationaleTitle("SCS"),
-          rationale: stripSummaryFromRationale(stored.text),
+          rationale: stripFormulaDiscussionFromRationale(
+            stripSummaryFromRationale(stored.text),
+          ),
         };
       }
 
@@ -808,7 +819,9 @@ export function resolveScoreRationaleForCompleteReport(
         if (stored.text.includes("IMPLEMENTATION READINESS SCORE (Type 3)")) {
           return {
             title: scoreRationaleTitle("IRS"),
-            rationale: stripSummaryFromRationale(stored.text),
+            rationale: stripFormulaDiscussionFromRationale(
+              stripSummaryFromRationale(stored.text),
+            ),
           };
         }
         if (rebuiltIrs?.trim()) {
@@ -816,11 +829,16 @@ export function resolveScoreRationaleForCompleteReport(
         }
         return {
           title: scoreRationaleTitle("IRS"),
-          rationale: stripSummaryFromRationale(stored.text),
+          rationale: stripFormulaDiscussionFromRationale(
+            stripSummaryFromRationale(stored.text),
+          ),
         };
       }
 
-      return { title: scoreRationaleTitle(type), rationale: stored.text };
+      return {
+        title: scoreRationaleTitle(type),
+        rationale: stripFormulaDiscussionFromRationale(stored.text),
+      };
     }
 
     for (const type of preferredTypes) {

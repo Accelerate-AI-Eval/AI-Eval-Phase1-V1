@@ -54,7 +54,7 @@ Output ONLY valid JSON (no markdown, no code fences) with exactly these keys:
     { "framework": "<e.g. ISO 27001, SOC 2, GDPR>", "requirement": "<specific obligation or control theme>", "vendorControlOrEvidence": "<what vendor attests / evidence from inputs>" }
   ],
   "vendorValidationNotes": "<synthesize buyer-entered validation/testing notes if provided below; otherwise state that no buyer validation notes were supplied and list recommended diligence>",
-  "methodologyEvidenceTrail": "<how this summary was derived: inputs used (assessment, catalog risks, attestation), limitations, and what would strengthen assurance>"
+  "methodologyEvidenceTrail": "<how this summary was derived: inputs used (assessment, catalog risks, attestation), limitations, and what would strengthen assurance — do NOT include scoring formulas, equations, or weight algebra>"
 }
 
 Rules:
@@ -62,6 +62,7 @@ Rules:
 - topRisks: 5–8 rows, ranked 1..n by L×I descending; likelihood and impact must be integers 1–5; lxi must align (likelihood * impact unless you justify a different composite in methodology).
 - complianceMapping: at least 4 rows mapping frameworks relevant to regulatory/sensitivity in the assessment to vendor-side controls or gaps.
 - If database-matched risks are provided, align topRisks and executive narrative with those catalog items where applicable.
+- Do NOT discuss or display VTS/IRS/SRS scoring formulas, equations, or weight algebra in any field.
 Use only information supported by inputs; if thin, say so conservatively.`;
 
 function extractJsonObject(text: string): Record<string, unknown> | null {
@@ -181,6 +182,7 @@ async function invokeModel(prompt: string): Promise<string> {
     prompt,
     maxTokens: 8192,
     temperature: 0.3,
+    feature: "reports",
   });
 }
 

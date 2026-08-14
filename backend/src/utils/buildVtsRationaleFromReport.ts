@@ -26,20 +26,6 @@ function firstNonEmpty(...values: unknown[]): string | null {
   return null;
 }
 
-function vtsMethodLine(scoringSource: string): string {
-  const src = scoringSource.toLowerCase();
-  if (src.includes("vector")) {
-    return (
-      "AI overall trust score from the product profile, " +
-      "guided by scoring formula documents from the knowledge base"
-    );
-  }
-  if (src.startsWith("llm")) {
-    return "AI overall trust score from attestation / vendor product profile data";
-  }
-  return "Deterministic trust formula from vendor self-attestation answers";
-}
-
 function trustScoreFromReport(report: unknown): number | null {
   if (report == null || typeof report !== "object" || Array.isArray(report)) return null;
   const r = report as Record<string, unknown>;
@@ -225,18 +211,13 @@ export function buildVtsRationaleFromReport(source: VtsRationaleSource): string 
     `  Next step:     ${recommendedAction}`,
     `  Source:        ${scoringSource}`,
     "",
-    "HOW WE GOT HERE",
-    `  Method:   ${vtsMethodLine(scoringSource)}`,
-    "  Idea:     Trust = 100 minus weighted Product, Governance, and Operational risk",
-    "  Weights:  Product risk 40%  |  Governance risk 30%  |  Operational risk 30%",
-    "",
-    "  Risk drivers (higher risk lowers trust):",
+    "KEY DRIVERS (higher risk lowers trust):",
   ];
 
   drivers.forEach((d, idx) => {
     const biggest = idx === 0 ? "  << biggest drag" : "";
     lines.push(
-      `    ${idx + 1}. ${d.name.padEnd(22)} ${Number(d.risk).toFixed(2)}  (weight ${Math.round(d.weight * 100)}%)${biggest}`,
+      `    ${idx + 1}. ${d.name.padEnd(22)} ${Number(d.risk).toFixed(2)}${biggest}`,
     );
   });
 

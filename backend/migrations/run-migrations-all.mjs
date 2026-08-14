@@ -41,6 +41,13 @@ const sqlFiles = [
   "20260721_llm_model_columns.sql",
   "20260721_general_reports_llm_model.sql",
   "20260730_vendor_import_long_text.sql",
+  "20260811_llm_model_usage.sql",
+  "20260811_llm_model_usage_events.sql",
+  "20260813_org_token_quotas.sql",
+  "20260813_admin_notifications.sql",
+  "20260813_llm_usage_event_feature.sql",
+  "20260813_backfill_usage_event_feature.sql",
+  "20260813_org_status_archived.sql",
 ];
 
 const pool = new pg.Pool({ connectionString });

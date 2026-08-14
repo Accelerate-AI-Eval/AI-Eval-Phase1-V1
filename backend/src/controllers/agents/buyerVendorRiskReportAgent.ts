@@ -12,6 +12,7 @@ import {
   irsFinalScoreFromParts,
 } from "../../services/buyerImplementationRiskScore.js";
 import { invokeBedrockAnthropicText } from "../../utils/invokeBedrockWithUsage.js";
+import { isTokenQuotaExceededError } from "../../services/admin/featureTokenQuota.service.js";
 
 export type VendorRiskRecommendation = {
   priority: "High" | "Medium" | "Low";
@@ -170,7 +171,9 @@ If the user message includes a block "--- Database-matched top risks and mitigat
 
 Use only facts inferable from the inputs. If attestation data is sparse, say so in summaries and score conservatively.
 
-CRITICAL: The user message supplies the authoritative Vendor Trust Score from the vendor self-attestation. In executiveSummary you MUST write exactly 'Vendor trust score: <that number>/100' — do not invent a different trust score and do not use overallRiskScore as the Vendor Trust Score.`;
+CRITICAL: The user message supplies the authoritative Vendor Trust Score from the vendor self-attestation. In executiveSummary you MUST write exactly 'Vendor trust score: <that number>/100' — do not invent a different trust score and do not use overallRiskScore as the Vendor Trust Score.
+
+CRITICAL: Do NOT discuss, quote, or display scoring formulas, equations, or weight algebra (e.g. VTS =, IRS =, × 0.35) anywhere in the report. Buyer priority weightPercent values are decision criteria only — never explain how VTS/IRS are computed.`;
 
 /**
  * Force executive summary to cite the real Vendor Trust Score (from attestation VTS),
@@ -768,6 +771,7 @@ async function invokeModelLocal(prompt: string): Promise<string> {
     prompt,
     maxTokens: 8192,
     temperature: 0.35,
+    feature: "assessment",
   });
 }
 
@@ -789,6 +793,7 @@ async function invokeModel(prompt: string): Promise<string> {
     );
     return result.text;
   } catch (err) {
+    if (isTokenQuotaExceededError(err)) throw err;
     console.error(
       "[cots_buyer] Python LLM+vector failed; falling back to local Bedrock:",
       err instanceof Error ? err.message : err,
@@ -1005,6 +1010,7 @@ export async function generateBuyerVendorRiskReport(
       };
     }
   } catch (e) {
+    if (isTokenQuotaExceededError(e)) throw e;
     console.error("generateBuyerVendorRiskReport LLM error:", e);
   }
   const fallback = buildFallbackReport(

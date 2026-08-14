@@ -119,6 +119,7 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
             user_name=body.actor_user_name,
             organization_id=body.actor_organization_id,
             organization_name=body.actor_organization_name,
+            feature=body.usage_feature,
         )
 
         if body.formula_input and isinstance(body.formula_input, dict):

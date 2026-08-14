@@ -474,7 +474,9 @@ const Organizations = () => {
                           className={
                             previewOrg?.organizationStatus === "active"
                               ? "activeStatus"
-                              : "inactiveStatus"
+                              : previewOrg?.organizationStatus === "archived"
+                                ? "archivedStatus"
+                                : "inactiveStatus"
                           }
                         >
                           {previewOrg?.organizationStatus

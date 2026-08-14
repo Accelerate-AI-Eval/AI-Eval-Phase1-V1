@@ -328,11 +328,42 @@ html[data-theme="dark"] .profile_detail_popover_input {
 }
 
 html[data-theme="dark"] .notifications_popover {
-  color: var(--text-muted, #9a95ab) !important;
+  color: var(--text-primary, #ebe9f3) !important;
+  background: var(--surface-elevated, #2d2a3a);
+  border-color: var(--border-strong, #524e68);
+}
+
+html[data-theme="dark"] .notifications_popover_head {
+  border-bottom-color: var(--border-subtle, #403c52);
 }
 
 html[data-theme="dark"] .notifications_popover_icon {
   color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .notifications_popover_title,
+html[data-theme="dark"] .notifications_popover_itemTitle,
+html[data-theme="dark"] .notifications_popover_message {
+  color: var(--text-primary, #e5e7eb);
+}
+
+html[data-theme="dark"] .notifications_popover_item:hover {
+  background: var(--surface-hover, #2a2638);
+}
+
+html[data-theme="dark"] .notifications_popover_item--unread {
+  background: transparent;
+}
+
+html[data-theme="dark"] .notifications_popover_itemSub,
+html[data-theme="dark"] .notifications_popover_itemUsage,
+html[data-theme="dark"] .notifications_popover_itemBody,
+html[data-theme="dark"] .notifications_popover_emptyHint {
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .notifications_popover_itemMeta {
+  color: #7d7890;
 }
 
 /* Popup / dialog text — beat hardcoded light-theme slate/black */
@@ -475,16 +506,14 @@ html[data-theme="dark"] .general_reports_types_popup_options .radio-content .tex
 }
 
 /* Cancel stays reddish in dark mode (same as light: crimson) */
-html[data-theme="dark"] .logout_confirm_modal_content .settings_form_actions .orgCancelBtn,
-html[data-theme="dark"] .logout_confirm_modal_content .settings_form_actions .orgCancelBtn:hover:not(:disabled),
-html[data-theme="dark"] .profile_modal_content .orgCancelBtn,
-html[data-theme="dark"] .profile_modal_content .orgCancelBtn:hover:not(:disabled):not(.disabled_css),
+html[data-theme="dark"] .profile_modal_content .orgCancelBtn:not(.logout_confirm_cancel_btn),
+html[data-theme="dark"] .profile_modal_content .orgCancelBtn:not(.logout_confirm_cancel_btn):hover:not(:disabled):not(.disabled_css),
 html[data-theme="dark"] .modal_popup .orgCancelBtn,
 html[data-theme="dark"] .modal_popup .orgCancelBtn:hover:not(:disabled):not(.disabled_css),
 html[data-theme="dark"] .assessment_delete_modal_content .orgCancelBtn,
 html[data-theme="dark"] .assessment_delete_modal_content .orgCancelBtn:hover:not(:disabled):not(.disabled_css),
-html[data-theme="dark"] .orgCancelBtn,
-html[data-theme="dark"] .orgCancelBtn:hover:not(:disabled):not(.disabled_css) {
+html[data-theme="dark"] .orgCancelBtn:not(.logout_confirm_cancel_btn),
+html[data-theme="dark"] .orgCancelBtn:not(.logout_confirm_cancel_btn):hover:not(:disabled):not(.disabled_css) {
   background-color: crimson !important;
   border-color: crimson !important;
   color: #fff !important;
@@ -1010,10 +1039,12 @@ html[data-theme="dark"] .reports_tab:hover {
 html[data-theme="dark"] .report_card,
 html[data-theme="dark"] .report_summary_card,
 html[data-theme="dark"] .report_recommendation_card,
+html[data-theme="dark"] .report_section_card,
+html[data-theme="dark"] .report_context_panel,
 html[data-theme="dark"] .report_detail_empty,
 html[data-theme="dark"] .reports_pagination_select {
   background: var(--surface-color);
-  border-color: var(--border-subtle);
+  border-color: var(--border-subtle, #403c52);
   color: var(--text-primary);
   box-shadow: var(--shadow-soft);
 }
@@ -2408,4 +2439,357 @@ html[data-theme="dark"] .fw_mapping_control_detail_card {
 html[data-theme="dark"] .risk_mapping_stats_grid .dash_stat_card {
   background: var(--surface-elevated, #2d2a3a) !important;
   border-color: var(--border-subtle, #403c52) !important;
+}
+
+/* ========== Dark theme text visibility (hardcoded light-mode blacks) ========== */
+
+/* Framework Know More / control detail */
+html[data-theme="dark"] .fw_mapping_detail_page_title,
+html[data-theme="dark"] .fw_mapping_detail_snapshot_title_with_icon,
+html[data-theme="dark"] .fw_mapping_detail_snapshot_card .fw_mapping_detail_card_title,
+html[data-theme="dark"] #fw_detail_controls_heading,
+html[data-theme="dark"] .fw_mapping_detail_gap_framework,
+html[data-theme="dark"] .fw_mapping_detail_card_value,
+html[data-theme="dark"] .fw_mapping_detail_popup_field_value,
+html[data-theme="dark"] .fw_mapping_control_detail_title,
+html[data-theme="dark"] .fw_mapping_control_detail_desc,
+html[data-theme="dark"] .fw_mapping_control_detail_desc_truncated::after,
+html[data-theme="dark"] .fw_mapping_control_detail_desc_clamped_trunc::after,
+html[data-theme="dark"] .fw_control_detail_title,
+html[data-theme="dark"] .fw_control_detail_summary_title,
+html[data-theme="dark"] .fw_control_detail_mitigation_name,
+html[data-theme="dark"] .fw_control_detail_risk_id,
+html[data-theme="dark"] .risk_mapping_notes_value,
+html[data-theme="dark"] .risk_mapping_notes_block_expiry .risk_mapping_notes_expiry_value {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .risk_mapping_notes_plain,
+html[data-theme="dark"] .fw_mapping_detail_gap_detail,
+html[data-theme="dark"] .fw_control_detail_meta_grid dd,
+html[data-theme="dark"] .fw_control_detail_summary_desc,
+html[data-theme="dark"] .fw_control_detail_summary_points,
+html[data-theme="dark"] .fw_control_detail_mitigation_desc {
+  color: var(--text-secondary, #c8c4d6) !important;
+}
+
+html[data-theme="dark"] .risk_mapping_notes_label,
+html[data-theme="dark"] .fw_mapping_detail_page_sub,
+html[data-theme="dark"] .fw_mapping_detail_card_title,
+html[data-theme="dark"] .fw_control_detail_risk_row_label,
+html[data-theme="dark"] .fw_control_detail_layer,
+html[data-theme="dark"] .fw_mapping_control_detail_not_provided,
+html[data-theme="dark"] .fw_mapping_detail_muted {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .fw_mapping_control_detail_desc_truncated::before,
+html[data-theme="dark"] .fw_mapping_control_detail_desc_clamped_trunc::before {
+  background: var(--surface-elevated, #2d2a3a) !important;
+}
+
+html[data-theme="dark"] .fw_mapping_control_detail_desc_truncated::after,
+html[data-theme="dark"] .fw_mapping_control_detail_desc_clamped_trunc::after {
+  background: var(--surface-elevated, #2d2a3a) !important;
+}
+
+html[data-theme="dark"] .fw_control_detail_summary_toggle,
+html[data-theme="dark"] .fw_mapping_control_detail_desc_toggle_nextline,
+html[data-theme="dark"] .fw_mapping_control_detail_desc_toggle_embed,
+html[data-theme="dark"] .fw_mapping_control_risk_map_btn {
+  color: var(--nav-active, #8aafff) !important;
+}
+
+/* Assessments */
+html[data-theme="dark"] .assessment_card_title,
+html[data-theme="dark"] .assessments_ledger_risk,
+html[data-theme="dark"] .assessments_vd_risk,
+html[data-theme="dark"] .assessment_list_rows .vendor_overview_attestation_name,
+html[data-theme="dark"] .ai_assessments_section h2,
+html[data-theme="dark"] .ai_assessments_section_cots_vendor h2 {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .assessment_card_btn_secondary {
+  background: var(--surface-muted, #221f2e) !important;
+  color: var(--text-secondary, #c8c4d6) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+/* Buyer governance / dashboard children */
+html[data-theme="dark"] .governance_assessment_row_title,
+html[data-theme="dark"] .governance_risk_breakdown_title,
+html[data-theme="dark"] .vendor_portal_attestation_wide_name,
+html[data-theme="dark"] .vendor_portal_score_pct,
+html[data-theme="dark"] .card__metric-value,
+html[data-theme="dark"] .card__value {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .governance_assessment_link,
+html[data-theme="dark"] .governance_domain_tile .tile_text,
+html[data-theme="dark"] .card__category {
+  color: var(--text-secondary, #c8c4d6) !important;
+}
+
+html[data-theme="dark"] .governance_assessment_row_meta,
+html[data-theme="dark"] .governance_top_risk_row_meta,
+html[data-theme="dark"] .governance_domain_tile .tile_label,
+html[data-theme="dark"] .card__metric-title,
+html[data-theme="dark"] .card__label {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .governance_domain_tile .tile_value,
+html[data-theme="dark"] .governance_assessment_link:hover,
+html[data-theme="dark"] .governance_assessment_link_table {
+  color: var(--nav-active, #8aafff) !important;
+}
+
+html[data-theme="dark"] .governance_domain_tile {
+  background: var(--surface-elevated, #2d2a3a) !important;
+  border-color: rgba(138, 175, 255, 0.1) !important;
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+/* Risk mapping multiselect / notes leftovers */
+html[data-theme="dark"] .risk_mapping_fw_multiselect_row,
+html[data-theme="dark"] .risk_mapping_fw_multiselect_framework_name {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .risk_mapping_fw_multiselect_row_muted {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+/* Controls dialog close / muted */
+html[data-theme="dark"] .usersPage__dialogClose {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .usersPage__dialogTitle {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+/* Buyer vendor risk report (titles / body) */
+html[data-theme="dark"] .bvr_page,
+html[data-theme="dark"] .bvr_page h1,
+html[data-theme="dark"] .bvr_page h2,
+html[data-theme="dark"] .bvr_page h3,
+html[data-theme="dark"] .bvr_vcm_ring_pct,
+html[data-theme="dark"] .bvr_vcm_priority_title,
+html[data-theme="dark"] .bvr_priority_label,
+html[data-theme="dark"] .bvr_priority_pct,
+html[data-theme="dark"] .bvr_score_circle,
+html[data-theme="dark"] .bvr_strength_item,
+html[data-theme="dark"] .bvr_reco_title,
+html[data-theme="dark"] .ira_score_value,
+html[data-theme="dark"] .bvr_matrix_table td {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .bvr_matrix_table th,
+html[data-theme="dark"] .bvr_vcm_priority_note,
+html[data-theme="dark"] .bvr_priority_note,
+html[data-theme="dark"] .bvr_reco_desc,
+html[data-theme="dark"] .ira_score_label,
+html[data-theme="dark"] .bvr_page p,
+html[data-theme="dark"] .bvr_page .bvr_muted {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+/* Report detail / library leftover hardcodes */
+html[data-theme="dark"] .reports_search_input {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .reports_search_input::placeholder {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+/* Empty / no-data copy — hardcoded light-mode grays stay readable in dark */
+html[data-theme="dark"] .report_detail_empty_title,
+html[data-theme="dark"] .report_framework_empty_title {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .report_detail_empty_text,
+html[data-theme="dark"] .report_framework_empty_desc,
+html[data-theme="dark"] .report_framework_empty_icon,
+html[data-theme="dark"] .assessment_search_no_results,
+html[data-theme="dark"] .product_profile_no_products,
+html[data-theme="dark"] .product_profile_empty_hero_hint,
+html[data-theme="dark"] .product_profile_empty_hero_lead,
+html[data-theme="dark"] .generated_profile_trust_cat_empty,
+html[data-theme="dark"] .governance_recent_empty,
+html[data-theme="dark"] .vendor_overview_empty,
+html[data-theme="dark"] .vendor_portal_compliance_empty_beside,
+html[data-theme="dark"] .risk_mapping_empty_text,
+html[data-theme="dark"] .risk_mapping_empty_state__desc,
+html[data-theme="dark"] .vd_empty_state__desc,
+html[data-theme="dark"] .assessments_ledger_empty,
+html[data-theme="dark"] .observabilityPage__emptyText {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .report_framework_empty_state {
+  background: var(--surface-elevated, #2d2a3a) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .product_profile_no_products {
+  background: var(--surface-elevated, #2d2a3a) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+/* ── Reports dark theme: readable text + softer borders ─────────────────── */
+html[data-theme="dark"] .report_section_card,
+html[data-theme="dark"] .report_context_panel,
+html[data-theme="dark"] .report_contract_header,
+html[data-theme="dark"] .report_roi_card,
+html[data-theme="dark"] .report_framework_table_shell,
+html[data-theme="dark"] .report_compliance_recommendations_shell,
+html[data-theme="dark"] .report_risk_category_block,
+html[data-theme="dark"] .report_summary_card,
+html[data-theme="dark"] .report_detail_page .bvr_recommendations_card,
+html[data-theme="dark"] .bvr_card {
+  background: var(--surface-color, #2d2a3a) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .reports_tabs,
+html[data-theme="dark"] .report_exec_brief_section_title,
+html[data-theme="dark"] .report_risk_expanded,
+html[data-theme="dark"] .report_rec_item,
+html[data-theme="dark"] .report_compliance_row,
+html[data-theme="dark"] .bvr_reco_priority_col,
+html[data-theme="dark"] .bvr_reco_priority_cell,
+html[data-theme="dark"] .bvr_recommendation_row,
+html[data-theme="dark"] .bvr_risk_scope_split_col + .bvr_risk_scope_split_col {
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .report_assessment_title,
+html[data-theme="dark"] .report_summary_heading,
+html[data-theme="dark"] .report_section_heading,
+html[data-theme="dark"] .report_exec_brief_section_title,
+html[data-theme="dark"] .report_roi_heading,
+html[data-theme="dark"] .report_roi_value,
+html[data-theme="dark"] .report_deployment_value,
+html[data-theme="dark"] .report_appendix_term,
+html[data-theme="dark"] .report_detail_dd,
+html[data-theme="dark"] .report_contract_main_title,
+html[data-theme="dark"] .report_context_vendor,
+html[data-theme="dark"] .report_context_grade,
+html[data-theme="dark"] .report_context_grade_label,
+html[data-theme="dark"] .report_framework_td_name,
+html[data-theme="dark"] .report_risk_assessment_score_cell,
+html[data-theme="dark"] .report_appendix_card_title,
+html[data-theme="dark"] .report_compliance_card_title,
+html[data-theme="dark"] .admin_llm_model_label_text strong,
+html[data-theme="dark"] .report_llm_model_tag .admin_llm_model_label_text strong,
+html[data-theme="dark"] .bvr_section_title,
+html[data-theme="dark"] .bvr_title_with_icon,
+html[data-theme="dark"] .bvr_doc_title,
+html[data-theme="dark"] .bvr_reco_title {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .report_assessment_subtitle,
+html[data-theme="dark"] .report_summary_body,
+html[data-theme="dark"] .report_exec_brief_section_body,
+html[data-theme="dark"] .report_context_desc,
+html[data-theme="dark"] .report_context_meta,
+html[data-theme="dark"] .report_context_rating,
+html[data-theme="dark"] .report_context_score,
+html[data-theme="dark"] .report_framework_lead,
+html[data-theme="dark"] .report_framework_td_notes,
+html[data-theme="dark"] .report_framework_td_coverage,
+html[data-theme="dark"] .report_framework_td_controls,
+html[data-theme="dark"] .report_compliance_summary,
+html[data-theme="dark"] .report_compliance_card_desc,
+html[data-theme="dark"] .report_impl_phase_list,
+html[data-theme="dark"] .report_detail_dt,
+html[data-theme="dark"] .report_detail_subtitle,
+html[data-theme="dark"] .report_subheading,
+html[data-theme="dark"] .report_rec_item p,
+html[data-theme="dark"] .report_overall_risk_score_label,
+html[data-theme="dark"] .report_security_posture_residual_note,
+html[data-theme="dark"] .report_risk_assessment_type_text,
+html[data-theme="dark"] .report_risk_domain_type_tag,
+html[data-theme="dark"] .report_appendix_card_body,
+html[data-theme="dark"] .reports_pagination_btn,
+html[data-theme="dark"] .reports_pagination_select,
+html[data-theme="dark"] .reports_tab,
+html[data-theme="dark"] .bvr_exec_text,
+html[data-theme="dark"] .bvr_reco_intro,
+html[data-theme="dark"] .bvr_reco_time,
+html[data-theme="dark"] .bvr_reco_empty,
+html[data-theme="dark"] .bvr_reco_desc {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .reports_pagination_btn:hover:not(:disabled) {
+  color: var(--text-primary, #ebe9f3) !important;
+  border-color: var(--border-strong, #524e68) !important;
+}
+
+html[data-theme="dark"] .report_llm_model_tag.admin_llm_model_label,
+html[data-theme="dark"] .report_llm_model_tag {
+  background: var(--surface-muted, #221f2e) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+  color: var(--text-secondary, #c8c4d6) !important;
+}
+
+html[data-theme="dark"] .report_table,
+html[data-theme="dark"] .report_table_wrap {
+  background: var(--surface-color, #2d2a3a) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .report_table th {
+  color: var(--text-muted, #9a95ab) !important;
+  background: var(--surface-muted, #221f2e) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .report_table td,
+html[data-theme="dark"] .report_table tbody tr:nth-child(odd) td,
+html[data-theme="dark"] .report_table tbody tr:nth-child(even) td {
+  background: transparent !important;
+  color: var(--text-secondary, #c8c4d6) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .report_table tbody tr:hover td {
+  background: var(--surface-hover, #353145) !important;
+}
+
+/* Complete / general report library cards — soft side borders */
+html[data-theme="dark"] .complete_rpr_card_design,
+html[data-theme="dark"] .general_rpr_card.complete_rpr_card_design {
+  border-color: var(--border-subtle, #403c52) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+html[data-theme="dark"] .general_report_info_card,
+html[data-theme="dark"] .general_report_meta_panel {
+  background: var(--surface-color, #2d2a3a) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .general_report_meta_item dt {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .general_report_meta_item dd,
+html[data-theme="dark"] .general_report_section_title {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .general_report_body,
+html[data-theme="dark"] .general_report_section_body {
+  color: var(--text-muted, #9a95ab) !important;
 }

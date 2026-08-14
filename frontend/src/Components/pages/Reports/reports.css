@@ -1186,28 +1186,28 @@
 }
 
 html[data-theme="dark"] .report_ownership_matrix_wrap {
-  border-color: var(--app-border-color, #334155);
+  border-color: var(--border-subtle, #403c52);
 }
 
 html[data-theme="dark"] .report_ownership_matrix_table th,
 html[data-theme="dark"] .report_ownership_matrix_table td {
-  border-color: var(--app-border-color, #334155);
+  border-color: var(--border-subtle, #403c52);
 }
 
 html[data-theme="dark"] .report_ownership_matrix_table th {
-  background: rgba(148, 163, 184, 0.12);
-  color: #94a3b8;
+  background: var(--surface-muted, #221f2e);
+  color: var(--text-muted, #9a95ab);
 }
 
 html[data-theme="dark"] .report_ownership_matrix_table td,
 html[data-theme="dark"] .report_ownership_matrix_table tbody tr:nth-child(odd) td,
 html[data-theme="dark"] .report_ownership_matrix_table tbody tr:nth-child(even) td {
   background: transparent;
-  color: #cbd5e1;
+  color: var(--text-secondary, #c8c4d6);
 }
 
 html[data-theme="dark"] .report_ownership_badge {
-  color: #e2e8f0;
+  color: var(--text-primary, #ebe9f3);
 }
 .report_blocker_list {
   list-style: none;
@@ -2488,7 +2488,7 @@ html[data-theme="dark"] .report_ownership_badge {
 
 /* Keep recommendation-style sections same as standard report cards. */
 .report_detail_page .bvr_recommendations_card {
-  border-color: #e5e7eb !important;
+  border-color: var(--border-subtle, #e5e7eb) !important;
   background: var(--surface-color) !important;
 }
 
@@ -2695,37 +2695,37 @@ html[data-theme="dark"] .report_ownership_badge {
 }
 
 html[data-theme="dark"] .report_compliance_priority_table {
-  background: var(--surface-color, #1c1917);
-  border-color: var(--border-subtle, #3f3a36);
+  background: var(--surface-color, #2d2a3a);
+  border-color: var(--border-subtle, #403c52);
 }
 
 html[data-theme="dark"] .report_compliance_priority_table .bvr_reco_priority_head {
-  background: var(--surface-muted, #292524);
-  border-bottom-color: var(--border-subtle, #3f3a36);
+  background: var(--surface-muted, #221f2e);
+  border-bottom-color: var(--border-subtle, #403c52);
 }
 
 html[data-theme="dark"] .report_compliance_priority_table .bvr_reco_priority_cell,
 html[data-theme="dark"] .report_compliance_priority_table .bvr_reco_priority_col {
-  border-color: var(--border-subtle, #3f3a36);
+  border-color: var(--border-subtle, #403c52);
 }
 
 html[data-theme="dark"] .report_compliance_card {
-  background: var(--surface-elevated, #292524);
-  border-color: var(--border-subtle, #3f3a36);
+  background: var(--surface-elevated, #2d2a3a);
+  border-color: var(--border-subtle, #403c52);
   box-shadow: none;
 }
 
 html[data-theme="dark"] .report_compliance_card:hover {
-  border-color: rgba(138, 175, 255, 0.35);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  border-color: rgba(138, 175, 255, 0.22);
+  box-shadow: var(--shadow-soft);
 }
 
 html[data-theme="dark"] .report_compliance_card_title {
-  color: var(--text-primary, #e6e2dc);
+  color: var(--text-primary, #ebe9f3);
 }
 
 html[data-theme="dark"] .report_compliance_card_desc {
-  color: var(--text-muted, #a8a29e);
+  color: var(--text-muted, #9a95ab);
 }
 
 .report_pill {

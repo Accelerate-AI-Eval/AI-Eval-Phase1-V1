@@ -59,6 +59,7 @@ def record_llm_usage(
     organization_name: str | None = None,
     user_id: int | None = None,
     user_name: str | None = None,
+    feature: str | None = None,
 ) -> None:
     mid = (model_id or "").strip()
     if not mid:
@@ -81,6 +82,7 @@ def record_llm_usage(
     org_name = (organization_name or "").strip() or actor.get("organization_name")
     uid = user_id if user_id is not None else actor.get("user_id")
     uname = (user_name or "").strip() or actor.get("user_name")
+    feat = (feature or "").strip() or actor.get("feature")
 
     try:
         conn = psycopg2.connect(
@@ -118,9 +120,9 @@ def record_llm_usage(
                     """
                     INSERT INTO llm_model_usage_events (
                       usage_id, model_id, organization_id, organization_name,
-                      user_id, user_name, input_tokens, output_tokens,
+                      user_id, user_name, feature, input_tokens, output_tokens,
                       total_tokens, estimated_cost_usd
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         usage_id,
@@ -129,6 +131,7 @@ def record_llm_usage(
                         (org_name or "").strip() or None,
                         uid,
                         (uname or "").strip() or None,
+                        (feat or "").strip() or None,
                         inp,
                         out,
                         total,

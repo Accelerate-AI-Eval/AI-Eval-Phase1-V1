@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import SubmitProgressOverlay from "../../../UI/SubmitProgressOverlay";
+import { apiErrorMessage, errorToUserMessage } from "../../../../utils/tokenQuotaError";
 import { VENDOR_COTS_DATA } from "../../../../constants/vendorCotsData";
 import {
   VENDOR_COTS_INITIAL_STATE,
@@ -303,17 +304,17 @@ const VendorCOTSMain = () => {
       });
       const result = await response.json();
       if (!response.ok) {
-        if (response.status === 403) {
+        if (response.status === 403 && result.code !== "TOKEN_QUOTA_EXCEEDED") {
           toast.info("This assessment is completed and cannot be modified.");
           navigate("/assessments", { replace: true });
           return;
         }
-        throw new Error(result.message || "Failed to submit assessment");
+        throw new Error(apiErrorMessage(result, "Failed to submit assessment"));
       }
       navigate("/reports", { replace: true });
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : "Failed to submit assessment",
+        errorToUserMessage(err, "Failed to submit assessment"),
       );
     } finally {
       setSubmitting(false);

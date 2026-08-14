@@ -16,17 +16,22 @@ import "../Assessments/assessments.css";
 import "./observability.css";
 
 function formatTokens(value: number): string {
-  return new Intl.NumberFormat("en-US").format(Math.max(0, Number(value) || 0));
+  const n = Math.max(0, Math.floor(Number(value) || 0));
+  return n.toLocaleString("en-US", {
+    useGrouping: true,
+    maximumFractionDigits: 0,
+  });
 }
 
 function formatUsd(value: number): string {
   const n = Number(value) || 0;
-  return new Intl.NumberFormat("en-US", {
+  return n.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
+    useGrouping: true,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(n);
+  });
 }
 
 function Observability() {

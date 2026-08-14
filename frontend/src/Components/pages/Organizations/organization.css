@@ -381,6 +381,12 @@
   border-color: #fca5a5;
 }
 
+.archivedStatus {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
 .editOrgImg span,
 .deleteOrgImg span {
   display: flex;

@@ -8,6 +8,11 @@ import { buildVendorDataFromPayload } from "../../utils/buildVendorDataFromPaylo
 import { generateVendorAttestationReport, buildReportPayloadAndSummary } from "../agents/vendorAttestation.js";
 import { parseAndStoreComplianceDocumentExpiries } from "../../services/complianceDocumentParser.js";
 import { stampActiveLlmModel, getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
+import {
+  assertFeatureTokenQuota,
+  isTokenQuotaExceededError,
+  sendIfTokenQuotaExceeded,
+} from "../../services/admin/featureTokenQuota.service.js";
 
 const UPLOADS_DIR = path.resolve(process.cwd(), "public", "uploads_vendor_attestations");
 
@@ -201,6 +206,7 @@ async function generateAndStoreProfileReport(
 
     return reportPayload as unknown as ReportPayload;
   } catch (err) {
+    if (isTokenQuotaExceededError(err)) throw err;
     console.error("generateVendorAttestationReport after submit:", err);
     return null;
   }
@@ -330,6 +336,9 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       String(rawDraft).toLowerCase() === "true" ||
       rawDraft === 1;
     const status = isDraft ? "DRAFT" : "COMPLETED";
+    if (status === "COMPLETED") {
+      await assertFeatureTokenQuota("attestation");
+    }
 
     const values = {
       user_id: userId,
@@ -672,6 +681,7 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       message: "Either newAttestation or attestationId must be provided.",
     });
   } catch (error) {
+    if (sendIfTokenQuotaExceeded(res, error)) return;
     console.error("submitVendorSelfAttestation error:", error);
     const detail = error instanceof Error ? error.message : String(error);
     try {

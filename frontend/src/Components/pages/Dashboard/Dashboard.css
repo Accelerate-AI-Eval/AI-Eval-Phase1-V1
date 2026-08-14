@@ -2514,6 +2514,10 @@ html[data-theme="dark"] .dash_section_lead {
   flex-shrink: 0;
 }
 
+.vendor_overview_page.vendor_portal_dashboard > .dash_hero {
+  border-radius: 0;
+}
+
 /* System admin: full content block (header + cards) centered vertically */
 .admin_overview_page.admin_overview_page {
   display: flex;
@@ -2819,7 +2823,7 @@ html[data-theme="dark"] .dash_section_lead {
   padding: 1.15rem 1.2rem;
   background: var(--surface-color);
   border: 1px solid var(--border-subtle, #e2e6ec);
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
   min-height: 110px;
   box-sizing: border-box;
@@ -3047,7 +3051,7 @@ html[data-theme="dark"] .dash_section_lead {
   gap: 0.85rem;
   min-height: 108px;
   padding: 0.9rem 1rem;
-  border-radius: 10px;
+  border-radius: 0;
   background: #f5f5f5;
   border: 1px solid transparent;
   box-shadow: none;
@@ -4022,6 +4026,7 @@ html[data-theme="dark"] .vendor_overview_empty,
 html[data-theme="dark"] .governance_evaluation_meta,
 html[data-theme="dark"] .governance_overview_assessment_count,
 html[data-theme="dark"] .governance_assessments_empty,
+html[data-theme="dark"] .governance_recent_empty,
 html[data-theme="dark"] .governance_bottom_card_subtitle,
 html[data-theme="dark"] .dashboard_placeholder {
   color: #c8c4d6 !important;

@@ -5,59 +5,74 @@ import "../../../styles/page_tabs.css";
 import "./controls.css";
 import { AiRiskApiKeyCard } from "./AiRiskApiKeyCard";
 import { ModelCompatibilityChecker } from "./ModelCompatibilityChecker";
+import OrganizationConfiguration, {
+  type OrgConfigListItem,
+} from "./OrganizationConfiguration";
+import OrganizationControl from "./OrganizationControl";
 
 type ControlsTab = "key" | "organization";
 
 function Controls() {
   const baseId = useId();
   const [activeTab, setActiveTab] = useState<ControlsTab>("key");
+  const [selectedOrg, setSelectedOrg] = useState<OrgConfigListItem | null>(null);
 
   useEffect(() => {
     document.title = "AI-Q | Controls";
   }, []);
 
+  useEffect(() => {
+    if (activeTab !== "organization") setSelectedOrg(null);
+  }, [activeTab]);
+
+  const showingOrgControl = activeTab === "organization" && selectedOrg != null;
+
   return (
     <div className="controlsPage sec_user_page org_settings_page">
-      <div className="org_settings_header page_header_align heading_user_page">
-        <div className="org_settings_headers page_header_row">
-          <span className="icon_size_header" aria-hidden>
-            <SlidersHorizontal size={24} className="header_icon_svg" />
-          </span>
-          <div className="page_header_title_block">
-            <h1 className="org_settings_title page_header_title">Controls</h1>
-            <p className="org_settings_subtitle page_header_subtitle">
-              Configure LLM models, API keys, and organization settings.
-            </p>
+      {!showingOrgControl && (
+        <>
+          <div className="org_settings_header page_header_align heading_user_page">
+            <div className="org_settings_headers page_header_row">
+              <span className="icon_size_header" aria-hidden>
+                <SlidersHorizontal size={24} className="header_icon_svg" />
+              </span>
+              <div className="page_header_title_block">
+                <h1 className="org_settings_title page_header_title">Controls</h1>
+                <p className="org_settings_subtitle page_header_subtitle">
+                  Configure LLM models, API keys, and organization settings.
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="page_tabs controlsPage__tabs" role="tablist" aria-label="Controls sections">
-        <button
-          type="button"
-          role="tab"
-          id={`${baseId}-tab-key`}
-          aria-selected={activeTab === "key"}
-          aria-controls={`${baseId}-panel-key`}
-          className={`page_tab ${activeTab === "key" ? "page_tab_active" : ""}`}
-          onClick={() => setActiveTab("key")}
-        >
-          <KeyRound size={18} />
-          Key Configuration
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id={`${baseId}-tab-org`}
-          aria-selected={activeTab === "organization"}
-          aria-controls={`${baseId}-panel-org`}
-          className={`page_tab ${activeTab === "organization" ? "page_tab_active" : ""}`}
-          onClick={() => setActiveTab("organization")}
-        >
-          <Building2 size={18} />
-          Organization Configuration
-        </button>
-      </div>
+          <div className="page_tabs controlsPage__tabs" role="tablist" aria-label="Controls sections">
+            <button
+              type="button"
+              role="tab"
+              id={`${baseId}-tab-key`}
+              aria-selected={activeTab === "key"}
+              aria-controls={`${baseId}-panel-key`}
+              className={`page_tab ${activeTab === "key" ? "page_tab_active" : ""}`}
+              onClick={() => setActiveTab("key")}
+            >
+              <KeyRound size={18} />
+              Key Configuration
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id={`${baseId}-tab-org`}
+              aria-selected={activeTab === "organization"}
+              aria-controls={`${baseId}-panel-org`}
+              className={`page_tab ${activeTab === "organization" ? "page_tab_active" : ""}`}
+              onClick={() => setActiveTab("organization")}
+            >
+              <Building2 size={18} />
+              Organization Configuration
+            </button>
+          </div>
+        </>
+      )}
 
       {activeTab === "key" && (
         <div
@@ -93,18 +108,22 @@ function Controls() {
 
       {activeTab === "organization" && (
         <div
-          className="controlsPage__comingSoon"
           role="tabpanel"
           id={`${baseId}-panel-org`}
           aria-labelledby={`${baseId}-tab-org`}
         >
-          <span className="controlsPage__comingSoonIcon" aria-hidden>
-            <Building2 size={28} strokeWidth={1.75} />
-          </span>
-          <h2 className="controlsPage__comingSoonTitle">Coming soon</h2>
-          <p className="controlsPage__comingSoonDesc">
-            Organization configuration options will appear here.
-          </p>
+          {selectedOrg ? (
+            <OrganizationControl
+              org={selectedOrg}
+              onBack={() => setSelectedOrg(null)}
+              onControls={() => {
+                setSelectedOrg(null);
+                setActiveTab("key");
+              }}
+            />
+          ) : (
+            <OrganizationConfiguration onOpenOrg={setSelectedOrg} />
+          )}
         </div>
       )}
     </div>

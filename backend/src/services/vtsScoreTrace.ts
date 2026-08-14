@@ -170,7 +170,7 @@ export function buildVtsScoreTrace(input: VtsTraceInput): ScoreTrace {
   return {
     scoreType: "vendor_trust",
     finalScore: storedTrustScore,
-    formula: "VTS = 100 − [(Product_Risk × 0.40) + (Governance_Risk × 0.30) + (Operational_Risk × 0.30)]",
+    formula: "",
     scoringVersion: SCORING_VERSION,
     rawSubScores: {
       productScore:    productScore    ?? undefined,

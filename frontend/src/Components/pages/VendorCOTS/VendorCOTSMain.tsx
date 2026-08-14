@@ -12,6 +12,7 @@ import { VENDOR_COTS_DATA } from "../../../../constants/vendorCotsData";
 import { VENDOR_COTS_INITIAL_STATE } from "../../../../constants/vendorCotsAssessmentKeys";
 import StepCustomerRiskMitigation from "./StepCustomerRiskMitigation";
 import SubmitProgressOverlay from "../../UI/SubmitProgressOverlay";
+import { apiErrorMessage, errorToUserMessage } from "../../../utils/tokenQuotaError";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -53,12 +54,12 @@ const VendorCOTSMain = () => {
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.message || "Failed to submit assessment");
+        throw new Error(apiErrorMessage(result, "Failed to submit assessment"));
       }
       setAllStepsFilled(true);
       setTimeout(() => navigate("/assessments"), 2000);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to submit assessment");
+      setSubmitError(errorToUserMessage(err, "Failed to submit assessment"));
     } finally {
       setSubmitting(false);
     }

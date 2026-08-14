@@ -8,6 +8,8 @@ import { usersTable } from "../../schema/user_management/invite_user_schema.js";
 import { normalizeBedrockModelAlias } from "../../utils/bedrockModelId.js";
 import { getRequestActor } from "../../utils/requestActorContext.js";
 import { resolveLlmModelDisplayName } from "../../utils/resolveLlmModelDisplayName.js";
+import { maybeNotifyTokenQuotaExhausted } from "../admin/tokenQuotaAlert.service.js";
+import type { OrgControlFeature } from "../admin/orgControlFeatures.js";
 
 export type LlmUsageDelta = {
   modelId: string;
@@ -17,6 +19,8 @@ export type LlmUsageDelta = {
   totalTokens?: number | null;
   /** Prefer explicit actor id (captured at call site before fire-and-forget). */
   actorUserId?: number | null;
+  /** Controls feature this invoke belongs to (attestation, assessment, sales_agent, reports). */
+  feature?: OrgControlFeature | null;
 };
 
 export type LlmModelUsageRow = {
@@ -219,6 +223,7 @@ export async function recordLlmUsage(delta: LlmUsageDelta): Promise<void> {
       .returning({ id: llmModelUsage.id });
 
     const usageId = usageRow?.id ?? null;
+    const feature = delta.feature ?? null;
     await db.insert(llmModelUsageEvents).values({
       usageId: usageId ?? undefined,
       modelId,
@@ -226,11 +231,22 @@ export async function recordLlmUsage(delta: LlmUsageDelta): Promise<void> {
       organizationName: actor.organizationName ?? undefined,
       userId: actor.userId ?? undefined,
       userName: actor.userName ?? undefined,
+      feature: feature ?? null,
       inputTokens,
       outputTokens,
       totalTokens,
       estimatedCostUsd: incrementalCost.toFixed(6),
     });
+
+    if (feature && actor.userId != null && actor.organizationId != null) {
+      await maybeNotifyTokenQuotaExhausted({
+        userId: actor.userId,
+        organizationId: actor.organizationId,
+        userName: actor.userName,
+        organizationName: actor.organizationName,
+        feature,
+      });
+    }
   } catch (err) {
     console.error(
       "[llmUsage] failed to record usage:",

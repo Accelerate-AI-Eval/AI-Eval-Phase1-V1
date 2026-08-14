@@ -690,10 +690,7 @@ export function buildIrsScoreTrace(input: IrsTraceInput): ScoreTrace {
   return {
     scoreType: "buyer_implementation_risk",
     finalScore: canonicalIrs,
-    formula:
-      intentMultiplier === 1
-        ? "IRS = 100 − ((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30))"
-        : "IRS = 100 − (((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30)) × Intent)",
+    formula: "",
     scoringVersion: SCORING_VERSION,
     rawSubScores: {
       vendorRisk: vRisk,

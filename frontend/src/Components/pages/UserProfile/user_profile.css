@@ -86,6 +86,8 @@ html[data-theme="dark"] .account_menu_avatar--dark {
 }
 
 .user_popup--account .account_menu_item {
+  display: flex;
+  align-items: center;
   gap: 12px;
   padding: 8px 16px;
   font-size: 14px;
@@ -102,7 +104,7 @@ html[data-theme="dark"] .account_menu_avatar--dark {
 
 .user_popup--account .account_menu_item--static:hover {
   background-color: transparent;
-  color: #374151;
+  color: inherit;
 }
 
 .account_menu_label {
@@ -116,6 +118,8 @@ html[data-theme="dark"] .account_menu_avatar--dark {
 .user_popup--account .account_menu_item--user {
   align-items: center;
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .user_popup--account .account_menu_item--user > svg {
@@ -130,7 +134,7 @@ html[data-theme="dark"] .account_menu_avatar--dark {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.25rem;
+  gap: 0.4rem;
   min-width: 0;
   flex: 1;
   width: 100%;
@@ -138,16 +142,16 @@ html[data-theme="dark"] .account_menu_avatar--dark {
 }
 
 .account_menu_user_name_row {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.5rem;
   min-width: 0;
   max-width: 100%;
 }
 
 .user_popup--account .account_menu_item--user .account_menu_label {
-  flex: 0 1 auto;
+  flex: 1;
+  min-width: 0;
   width: auto;
   max-width: 100%;
   font-weight: 600;
@@ -159,7 +163,7 @@ html[data-theme="dark"] .account_menu_avatar--dark {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  margin: 0;
+  margin-left: auto;
   padding: 0.15rem 0.45rem;
   border: 1px solid #dbe3ef;
   border-radius: 0;
@@ -167,9 +171,9 @@ html[data-theme="dark"] .account_menu_avatar--dark {
   color: #475569;
   font-size: 0.62rem;
   font-weight: 600;
-  letter-spacing: 0.06rem;
+  letter-spacing: 0.04rem;
   line-height: 1.2;
-  text-transform: uppercase;
+  text-transform: none;
   white-space: nowrap;
 }
 
@@ -363,8 +367,15 @@ html[data-theme="dark"] .user_popup--account {
 }
 
 html[data-theme="dark"] .account_menu_org,
-html[data-theme="dark"] .user_popup--account .account_menu_item {
+html[data-theme="dark"] .user_popup--account .account_menu_item,
+html[data-theme="dark"] .user_popup--account .account_menu_item--static,
+html[data-theme="dark"] .user_popup--account .account_menu_item--static:hover,
+html[data-theme="dark"] .user_popup--account .account_menu_label {
   color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .user_popup--account .account_menu_item--user .account_menu_label {
+  color: var(--text-primary, #ebe9f3);
 }
 
 /* Profile dropdown icons — readable on dark panel (not #555) */
@@ -653,20 +664,23 @@ html[data-theme="dark"] .user_popup_account_title {
   gap: 0.4rem;
 }
 
-/* Cancel: neutral secondary — distinct from destructive Logout */
-.logout_confirm_modal_content .settings_form_actions .orgCancelBtn,
-.logout_confirm_modal_content .settings_form_actions .orgCancelBtn:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  border: 1px solid #d1d5db;
-  color: #374151;
-  box-shadow: var(--btn-3d-offset) var(--btn-3d-offset) 0 0 #9ca3af;
+/* Cancel: clean secondary outline — not destructive red (Logout stays red) */
+.logout_confirm_modal_content .settings_form_actions .logout_confirm_cancel_btn,
+.logout_confirm_modal_content .settings_form_actions .logout_confirm_cancel_btn.orgCancelBtn,
+.logout_confirm_modal_content .settings_form_actions .logout_confirm_cancel_btn:hover:not(:disabled) {
+  background-color: #fff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  -webkit-text-fill-color: #334155;
+  box-shadow: var(--btn-3d-offset) var(--btn-3d-offset) 0 0 #94a3b8;
+  filter: none;
 }
 
-.logout_confirm_modal_content .settings_form_actions .orgCancelBtn:hover:not(:disabled) {
-  background-color: #e5e7eb;
-  border-color: #9ca3af;
-  color: #1f2937;
-  filter: none;
+.logout_confirm_modal_content .settings_form_actions .logout_confirm_cancel_btn:hover:not(:disabled) {
+  background-color: #f8fafc;
+  border-color: #93b4f0;
+  color: #225bff;
+  -webkit-text-fill-color: #225bff;
 }
 
 .logout_confirm_modal_content .logout_confirm_btn {
@@ -1197,13 +1211,22 @@ html[data-theme="dark"] .logout_btn svg {
   stroke: currentColor !important;
 }
 
-html[data-theme="dark"] .logout_confirm_modal_content .settings_form_actions .orgCancelBtn,
-html[data-theme="dark"] .logout_confirm_modal_content .settings_form_actions .orgCancelBtn:hover:not(:disabled) {
-  background-color: crimson !important;
-  border-color: crimson !important;
-  color: #fff !important;
-  -webkit-text-fill-color: #fff !important;
-  box-shadow: var(--btn-3d-offset) var(--btn-3d-offset) 0 0 var(--btn-3d-shadow-danger, #606266);
+html[data-theme="dark"] .logout_confirm_modal_content .settings_form_actions .logout_confirm_cancel_btn,
+html[data-theme="dark"] .logout_confirm_modal_content .settings_form_actions .logout_confirm_cancel_btn.orgCancelBtn,
+html[data-theme="dark"] .logout_confirm_modal_content .settings_form_actions .logout_confirm_cancel_btn:hover:not(:disabled) {
+  background-color: #3a3648 !important;
+  border: 1px solid #6b6580 !important;
+  color: #e5e7eb !important;
+  -webkit-text-fill-color: #e5e7eb !important;
+  box-shadow: var(--btn-3d-offset) var(--btn-3d-offset) 0 0 #524e68 !important;
+  filter: none !important;
+}
+
+html[data-theme="dark"] .logout_confirm_modal_content .settings_form_actions .logout_confirm_cancel_btn:hover:not(:disabled) {
+  background-color: #454158 !important;
+  border-color: #7aa3ff !important;
+  color: #c5d4ff !important;
+  -webkit-text-fill-color: #c5d4ff !important;
 }
 
 /* Keep Logout confirm CTA red in dark mode (do not inherit primary blue) */

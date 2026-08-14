@@ -19,6 +19,7 @@ class ScoreRequest(BaseModel):
     actor_user_name: str | None = None
     actor_organization_id: int | None = None
     actor_organization_name: str | None = None
+    usage_feature: str | None = None
 
 
 class ScoreResponse(BaseModel):

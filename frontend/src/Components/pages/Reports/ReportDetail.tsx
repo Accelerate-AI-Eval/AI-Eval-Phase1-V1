@@ -2252,9 +2252,16 @@ function ReportDetail() {
               Methodology
             </h4>
             <div className="report_appendix_card_body">
-              {formatReportValue(fullReport?.appendix?.methodology) !== "—"
-                ? formatReportValue(fullReport?.appendix?.methodology)
-                : "AI EVAL 3-Layer Risk Assessment Framework v2.1 — Customer-Specific Analysis"}
+              {(() => {
+                const methodologyRaw = formatReportValue(fullReport?.appendix?.methodology);
+                const looksLikeFormula =
+                  methodologyRaw !== "—" &&
+                  /(?:VTS|IRS|SRS|SCS)\s*=|×\s*0\.\d|weight(?:ed|s)?\s*(?:risk|of|:)|deterministic\s+.*formula/i.test(
+                    methodologyRaw,
+                  );
+                if (methodologyRaw !== "—" && !looksLikeFormula) return methodologyRaw;
+                return "AI EVAL 3-Layer Risk Assessment Framework v2.1 — Customer-Specific Analysis";
+              })()}
             </div>
           </article>
           <article className="report_appendix_card">

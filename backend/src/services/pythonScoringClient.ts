@@ -8,6 +8,8 @@
 
 import { resolveActorSnapshot } from "./observability/llmUsage.service.js";
 import { getRequestActor } from "../utils/requestActorContext.js";
+import { assertFeatureTokenQuota } from "./admin/featureTokenQuota.service.js";
+import { maybeNotifyTokenQuotaExhausted } from "./admin/tokenQuotaAlert.service.js";
 
 export interface PythonScoreResult {
   vendor_trust_score: number;
@@ -153,6 +155,7 @@ export async function scoreVendorAttestationWithPython(
   payload: Record<string, unknown>,
   vendorData?: string,
 ): Promise<PythonScoreResult> {
+  await assertFeatureTokenQuota("attestation");
   const url = `${scoringBaseUrl()}/assessment/score`;
   const actor = await resolveActorSnapshot(getRequestActor().userId ?? null);
   const r = await postJson(url, {
@@ -162,6 +165,7 @@ export async function scoreVendorAttestationWithPython(
     actor_user_name: actor.userName,
     actor_organization_id: actor.organizationId,
     actor_organization_name: actor.organizationName,
+    usage_feature: "attestation",
   });
 
   const vendorTrustScore = Number(r.vendor_trust_score);
@@ -176,7 +180,7 @@ export async function scoreVendorAttestationWithPython(
     ? (r.sections as NonNullable<PythonScoreResult["sections"]>)
     : undefined;
 
-  return {
+  const result: PythonScoreResult = {
     vendor_trust_score: vendorTrustScore,
     product_risk: Number(r.product_risk ?? 0),
     governance_risk: Number(r.governance_risk ?? 0),
@@ -200,6 +204,18 @@ export async function scoreVendorAttestationWithPython(
     raw: typeof r.raw === "string" ? r.raw : undefined,
     rationale: typeof r.rationale === "string" ? r.rationale : undefined,
   };
+
+  if (actor.userId != null && actor.organizationId != null) {
+    await maybeNotifyTokenQuotaExhausted({
+      userId: actor.userId,
+      organizationId: actor.organizationId,
+      userName: actor.userName,
+      organizationName: actor.organizationName,
+      feature: "attestation",
+    });
+  }
+
+  return result;
 }
 
 /** Type 2 — Sales Risk Score formula in Python (Node persists only). */

@@ -11,7 +11,7 @@
  *   2. Frontend: caller checks isInternalUser before mounting
  */
 import React, { useState, useEffect, useCallback } from "react";
-import { CircleX, AlertTriangle, TrendingUp, Lock, ChevronDown } from "lucide-react";
+import { CircleX, AlertTriangle, TrendingUp } from "lucide-react";
 import { AdminLlmModelLabel } from "../../UI/AdminLlmModelInfo";
 import LoadingMessage from "../../UI/LoadingMessage";
 import "./score_trace_panel.css";
@@ -1427,27 +1427,7 @@ export default function ScoreTracePanel({
                 </section>
               )}
 
-              {/* ──────────────────────────────────────────────────────────────
-                  SECTION G — Methodology (internal only — hidden in vendor mode)
-              ────────────────────────────────────────────────────────────── */}
-              {!isVendorMode && (
-                <section className="stp_section">
-                  <details className="stp_methodology">
-                    <summary className="stp_methodology_summary">
-                      <Lock size={11} aria-hidden="true" />
-                      <span>Methodology</span>
-                      <ChevronDown size={13} className="stp_methodology_chevron" aria-hidden="true" />
-                    </summary>
-                    <div className="stp_methodology_body">
-                      <div className="stp_formula_internal_notice">
-                        <Lock size={10} aria-hidden="true" />
-                        <span>INTERNAL ONLY — Do not expose in vendor/buyer shared reports.</span>
-                      </div>
-                      <code className="stp_formula_block">{trace.formula}</code>
-                    </div>
-                  </details>
-                </section>
-              )}
+              {/* Methodology / formula block intentionally omitted — formulas are internal only and must not appear in reports. */}
 
               {/* ──────────────────────────────────────────────────────────────
                   SECTION H — Scoring Notes (internal warnings, hidden in vendor mode)

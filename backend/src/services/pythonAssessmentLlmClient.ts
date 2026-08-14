@@ -7,6 +7,9 @@
 import { resolveActorSnapshot } from "./observability/llmUsage.service.js";
 import { getActiveBedrockModelId } from "../utils/bedrockModelId.js";
 import { getRequestActor } from "../utils/requestActorContext.js";
+import { assertFeatureTokenQuota } from "./admin/featureTokenQuota.service.js";
+import { maybeNotifyTokenQuotaExhausted } from "./admin/tokenQuotaAlert.service.js";
+import type { OrgControlFeature } from "./admin/orgControlFeatures.js";
 
 export type AssessmentLlmType =
   | "vendor_self_attestation"
@@ -35,6 +38,10 @@ function scoringBaseUrl(): string {
   return raw.replace(/\/+$/, "");
 }
 
+function featureForAssessmentType(assessmentType: AssessmentLlmType): OrgControlFeature {
+  return assessmentType === "vendor_self_attestation" ? "attestation" : "assessment";
+}
+
 export async function invokePythonLlmWithVector(options: {
   assessmentType: AssessmentLlmType;
   userPrompt: string;
@@ -43,6 +50,8 @@ export async function invokePythonLlmWithVector(options: {
   temperature?: number;
   modelId?: string;
 }): Promise<PythonLlmWithVectorResult> {
+  const feature = featureForAssessmentType(options.assessmentType);
+  await assertFeatureTokenQuota(feature);
   const url = `${scoringBaseUrl()}/assessment/llm-with-vector`;
   const modelId = options.modelId?.trim() || getActiveBedrockModelId();
   // Resolve org/user before the Python call so usage events get names.
@@ -63,6 +72,7 @@ export async function invokePythonLlmWithVector(options: {
         actor_user_name: actor.userName,
         actor_organization_id: actor.organizationId,
         actor_organization_name: actor.organizationName,
+        usage_feature: feature,
       }),
     });
   } catch (err) {
@@ -96,6 +106,16 @@ export async function invokePythonLlmWithVector(options: {
   const llmText = typeof r.text === "string" ? r.text : "";
   if (!llmText.trim()) {
     throw new Error("Python LLM+vector returned empty text");
+  }
+
+  if (actor.userId != null && actor.organizationId != null) {
+    await maybeNotifyTokenQuotaExhausted({
+      userId: actor.userId,
+      organizationId: actor.organizationId,
+      userName: actor.userName,
+      organizationName: actor.organizationName,
+      feature,
+    });
   }
 
   return {

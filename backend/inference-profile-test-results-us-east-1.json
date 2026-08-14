@@ -1,6 +1,6 @@
 {
   "region": "us-east-1",
-  "updatedAt": "2026-08-11T08:21:47.829Z",
+  "updatedAt": "2026-08-13T06:49:27.697Z",
   "count": 4,
   "results": [
     {
@@ -100,7 +100,7 @@
       "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/global.anthropic.claude-opus-4-6-v1",
       "foundationModelId": "anthropic.claude-opus-4-6-v1",
       "prompt": "Hi",
-      "testedAt": "2026-08-11T08:21:47.815Z",
+      "testedAt": "2026-08-13T06:49:27.685Z",
       "tests": [
         {
           "status": "working",
@@ -108,7 +108,7 @@
           "value": "global.anthropic.claude-opus-4-6-v1",
           "prompt": "Hi",
           "reply": "Hi there! How are you doing today? Is there something I can help you with?",
-          "latencyMs": 3194,
+          "latencyMs": 2939,
           "stopReason": "end_turn"
         }
       ],

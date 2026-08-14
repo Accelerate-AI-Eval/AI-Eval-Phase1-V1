@@ -17,6 +17,7 @@ import {
   regulatorySnippetFromJson,
 } from "../agents/buyerVendorRiskReportAgent.js";
 import { generateComplianceRiskSummaryReport } from "../agents/complianceRiskSummaryReportAgent.js";
+import { sendIfTokenQuotaExceeded } from "../../services/admin/featureTokenQuota.service.js";
 
 const REPORT_TYPE = "Compliance & Risk Summary";
 
@@ -269,6 +270,7 @@ const complianceRiskSummaryReport = async (req: Request, res: Response): Promise
       },
     });
   } catch (err) {
+    if (sendIfTokenQuotaExceeded(res, err)) return;
     console.error("complianceRiskSummaryReport error:", err);
     res.status(500).json({
       success: false,

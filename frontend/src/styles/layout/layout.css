@@ -43,7 +43,7 @@ html[data-theme="dark"] body {
   min-height: var(--top-nav-height);
   flex-shrink: 0;
   padding: 0 0.1rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--app-border-color) 70%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--app-border-color) 70%, transparent);
   background-color: color-mix(in srgb, var(--app-bg-color, #f8f4ed) 55%, transparent);
   backdrop-filter: blur(20px) saturate(1.25);
   -webkit-backdrop-filter: blur(20px) saturate(1.25);

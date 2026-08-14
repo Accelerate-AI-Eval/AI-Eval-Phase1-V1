@@ -79,10 +79,11 @@ Output the report in the following sections with clear headings and bullet point
 First, compute an overall **Trust Score** (0–100) for this vendor based on the provided data. Consider: security posture, compliance and certifications, data practices and privacy, AI governance and safety, operations and reliability, and company maturity. Output:
 - **Overall Trust Score:** [0-100] ([label: e.g. High / Moderate / Low])
 - **Score by category:** Security, Compliance, Data Practices, AI Governance, Operations, Company Maturity — output each as "CategoryName: score" where score is an integer 0–100 computed from THIS vendor's data only, or "Not enough data" when grounds are weak (format: Security: <n>, Compliance: <n>, Data Practices: <n>, AI Governance: <n>, Operations: <n>, Company Maturity: <n>)
-- **Summary:** 2–3 sentences justifying the overall score and noting main strengths and any gaps or risks.
+- **Summary:** 2–3 sentences justifying the overall score and noting main strengths and any gaps or risks. Do NOT mention formulas, weights, equations, or scoring algebra.
 
 Important scoring rules:
 - Do NOT reuse example numbers. Derive every score only from the vendor data below.
+- Do NOT discuss or display formulas, weight percentages, or equations in any user-facing section.
 - Similar products from the same vendor may differ when product stage, certifications, SLAs, autonomy, or data practices differ.
 - Spread scores across the full 0–100 range when evidence warrants it (do not cluster every vendor near the same mid-score).
 

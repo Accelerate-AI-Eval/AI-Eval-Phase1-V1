@@ -49,6 +49,7 @@ class LlmWithVectorRequest(BaseModel):
     actor_user_name: str | None = None
     actor_organization_id: int | None = None
     actor_organization_name: str | None = None
+    usage_feature: str | None = None
 
 
 class LlmWithVectorResponse(BaseModel):
@@ -74,6 +75,7 @@ async def llm_with_vector(body: LlmWithVectorRequest) -> LlmWithVectorResponse:
             user_name=body.actor_user_name,
             organization_id=body.actor_organization_id,
             organization_name=body.actor_organization_name,
+            feature=body.usage_feature,
         )
 
         query_text = (body.query_text or prompt[:2000]).strip()

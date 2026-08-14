@@ -160,6 +160,9 @@ const EditOrganization = ({ setIsEdit, id, orgData, allOrganizations = [] }) => 
                   </option>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
+                  {Number(id) !== 1 && (
+                    <option value="archived">Archived</option>
+                  )}
                 </select>
               </div>
             </div>

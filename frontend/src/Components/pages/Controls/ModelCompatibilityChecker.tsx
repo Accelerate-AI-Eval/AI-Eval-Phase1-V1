@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { BookCheck, Check, Loader2, MonitorCog } from "lucide-react";
+import { Check, Loader2, MonitorCog } from "lucide-react";
 import {
   applyLlmModel,
   fetchLlmModelConfig,
@@ -79,7 +79,7 @@ export function ModelCompatibilityChecker({
     setOptionsLoading(true);
     try {
       const result = await fetchLlmModelConfig();
-      if (!result.ok) {
+      if (result.ok === false) {
         setApplyStatusMessage(result.message);
         setApplyResult("failure");
         return;
@@ -152,7 +152,7 @@ export function ModelCompatibilityChecker({
     try {
       const result = await testLlmModel(selectedModel);
 
-      if (!result.ok) {
+      if (result.ok === false) {
         setTestResult("failure");
         setTestStatusMessage(
           "Test failed — Apply is disabled until the test passes.",
@@ -216,7 +216,7 @@ export function ModelCompatibilityChecker({
 
     try {
       const result = await applyLlmModel(selectedModel);
-      if (!result.ok) {
+      if (result.ok === false) {
         setApplyResult("failure");
         setApplyStatusMessage(result.message);
         return;

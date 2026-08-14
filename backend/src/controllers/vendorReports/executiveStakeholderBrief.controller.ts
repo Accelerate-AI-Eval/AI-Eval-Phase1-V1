@@ -8,6 +8,7 @@ import { vendorSelfAttestations } from "../../schema/assessments/vendorSelfAttes
 import { generalReports } from "../../schema/assessments/generalReports.js";
 import { getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
 import { generateExecutiveStakeholderBrief } from "../agents/executiveStakeholderBriefAgent.js";
+import { sendIfTokenQuotaExceeded } from "../../services/admin/featureTokenQuota.service.js";
 
 function toStr(v: unknown): string {
   if (v == null) return "";
@@ -158,6 +159,7 @@ const executiveStakeholderBrief = async (req: Request, res: Response): Promise<v
       },
     });
   } catch (err) {
+    if (sendIfTokenQuotaExceeded(res, err)) return;
     console.error("executiveStakeholderBrief error:", err);
     res.status(500).json({
       success: false,

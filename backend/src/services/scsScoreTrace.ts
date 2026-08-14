@@ -205,8 +205,7 @@ export function buildScsScoreTrace(input: ScsTraceInput): ScoreTrace {
   return {
     scoreType: "sales_confidence",
     finalScore: salesConfidence,
-    formula:
-      "SCS (Sales Confidence) = 100 − [(Customer_Friction × 0.35) + (Implementation × 0.35) + (Competitive × 0.30)]",
+    formula: "",
     scoringVersion: SCORING_VERSION,
     rawSubScores: {
       customerFrictionScore,

@@ -14,6 +14,16 @@ import {
   getLlmUsageEventsHandler,
   getLlmUsageHandler,
 } from "../controllers/admin/observability.controller.js";
+import {
+  getOrgTokenConfigHandler,
+  getOrgUsageHandler,
+  putOrgTokenConfigHandler,
+} from "../controllers/admin/orgControls.controller.js";
+import {
+  getAdminNotificationsHandler,
+  markAdminNotificationReadHandler,
+  markAllAdminNotificationsReadHandler,
+} from "../controllers/admin/adminNotifications.controller.js";
 
 const adminRouter = express.Router();
 
@@ -63,6 +73,42 @@ adminRouter.get(
   "/services/llm-usage/:id",
   authenticateToken,
   getLlmUsageByIdHandler,
+);
+
+adminRouter.get(
+  "/services/org-usage/:organizationId",
+  authenticateToken,
+  getOrgUsageHandler,
+);
+
+adminRouter.get(
+  "/services/org-token-config/:organizationId",
+  authenticateToken,
+  getOrgTokenConfigHandler,
+);
+
+adminRouter.put(
+  "/services/org-token-config/:organizationId",
+  authenticateToken,
+  putOrgTokenConfigHandler,
+);
+
+adminRouter.get(
+  "/services/notifications",
+  authenticateToken,
+  getAdminNotificationsHandler,
+);
+
+adminRouter.post(
+  "/services/notifications/read-all",
+  authenticateToken,
+  markAllAdminNotificationsReadHandler,
+);
+
+adminRouter.patch(
+  "/services/notifications/:id/read",
+  authenticateToken,
+  markAdminNotificationReadHandler,
 );
 
 export default adminRouter;

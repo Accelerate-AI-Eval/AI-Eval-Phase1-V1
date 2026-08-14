@@ -8,6 +8,7 @@ import { vendorSelfAttestations } from "../../schema/assessments/vendorSelfAttes
 import { generalReports } from "../../schema/assessments/generalReports.js";
 import { getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
 import { generateSalesQualificationReport } from "../agents/salesQualificationReportAgent.js";
+import { sendIfTokenQuotaExceeded } from "../../services/admin/featureTokenQuota.service.js";
 
 function toStr(v: unknown): string {
   if (v == null) return "";
@@ -157,6 +158,7 @@ const salesQualificationReport = async (req: Request, res: Response): Promise<vo
       },
     });
   } catch (err) {
+    if (sendIfTokenQuotaExceeded(res, err)) return;
     console.error("salesQualificationReport error:", err);
     res.status(500).json({
       success: false,
