@@ -506,7 +506,7 @@ function OrganizationAssessmentView() {
           {reportsLoading ? (
             <LoadingMessage message="Loading reports…" />
           ) : completeReports.length === 0 && generalReports.length === 0 ? (
-            <p className="assessment_details_no_reports" style={{ color: "#6b7280", fontSize: "0.9375rem" }}>
+            <p className="assessment_details_no_reports">
               No reports have been generated for this assessment yet.
             </p>
           ) : (

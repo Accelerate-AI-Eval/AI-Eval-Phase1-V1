@@ -209,7 +209,7 @@
   justify-content: center;
   font-size: 0.72rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   letter-spacing: -0.02rem;
   pointer-events: none;
 }
@@ -224,7 +224,7 @@
   display: block;
   font-size: 0.95rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   line-height: 1.25;
 }
 
@@ -256,7 +256,7 @@
 .bvr_priority_label {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   line-height: 1.25;
 }
 
@@ -265,7 +265,7 @@
   text-align: right;
   font-size: 0.95rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
 }
 
 .bvr_priority_note {
@@ -348,7 +348,7 @@
 .bvr_doc_title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   margin: 0 0 0.35rem;
 }
 
@@ -389,7 +389,7 @@
 .bvr_card {
   margin-top: 1.5rem;
   padding: 1.25rem 1.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle, #e2e8f0);
   border-radius: 10px;
 }
 
@@ -437,7 +437,7 @@
 }
 
 .bvr_risk_scope_split_col + .bvr_risk_scope_split_col {
-  border-left: 1px solid #e2e8f0;
+  border-left: 1px solid var(--border-subtle, #e2e8f0);
 }
 
 .bvr_recommendation {
@@ -458,7 +458,7 @@
   justify-content: center;
   font-size: 2rem;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-primary, #111827);
   background: var(--bvr-reco-accent, #16a34a);
 }
 
@@ -478,20 +478,20 @@
 .bvr_recommendation_title {
   margin: 0 0 0.35rem;
   font-size: 1.35rem;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 .bvr_recommendation_decision {
   margin: 0 0 0.5rem;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   letter-spacing: 0.02rem;
 }
 
 .bvr_recommendation_sub {
   margin: 0;
-  color: #111827;
+  color: var(--text-primary, #111827);
   font-size: 0.9rem;
 }
 
@@ -510,7 +510,7 @@
   .bvr_risk_scope_split_col + .bvr_risk_scope_split_col {
     border-left: none;
     padding-left: 0;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--border-subtle, #e2e8f0);
     padding-top: 1rem;
   }
 }
@@ -518,7 +518,7 @@
 .bvr_section_title {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   margin: 0 0 1rem;
 }
 
@@ -557,13 +557,25 @@
   border: none;
   border-radius: 8px;
   font-size: 0.9rem;
-  color: #111827;
+  color: var(--text-primary, #111827);
+}
+
+.bvr_strength_icon,
+.bvr_warning_icon {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0.28rem;
+  margin-top: 0;
+  border-radius: 0;
+  border: 1px solid transparent;
 }
 
 .bvr_strength_icon {
-  flex-shrink: 0;
   color: #16a34a;
-  margin-top: 0.1rem;
+  background: rgba(22, 163, 74, 0.1);
+  border-color: rgba(22, 163, 74, 0.22);
 }
 
 .bvr_warnings_card {
@@ -584,7 +596,7 @@
   padding: 0.65rem 0;
   border-bottom: none;
   font-size: 0.9rem;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 .bvr_warning_item:last-child {
@@ -594,13 +606,14 @@
 .bvr_strength_item span,
 .bvr_warning_item span {
   display: block;
-  color: #111827;
+  color: var(--text-primary, #111827);
   line-height: 1.5;
 }
 
 .bvr_warning_icon {
-  flex-shrink: 0;
-  color: blue;
+  color: var(--nav-active, #225bff);
+  background: #e8efff;
+  border-color: rgba(34, 91, 255, 0.14);
 }
 
 .bvr_risk_scope_block {
@@ -644,7 +657,7 @@
 .bvr_risk_domain_title {
   margin: 0;
   font-size: 0.95rem;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
 }
 
 .bvr_risk_grid {
@@ -673,7 +686,7 @@
 .bvr_risk_head h4 {
   margin: 0;
   font-size: 0.95rem;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
 }
 
 .bvr_risk_badge {
@@ -741,7 +754,7 @@
 .bvr_reco_priority_col {
   min-width: 0;
   padding: 0.75rem;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid var(--border-subtle, #e2e8f0);
 }
 
 .bvr_reco_priority_col:last-child {
@@ -780,7 +793,7 @@
   display: flex;
   gap: 1rem;
   padding: 1rem 0;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
 }
 
 .bvr_recommendation_row:last-child {
@@ -820,7 +833,7 @@
 .bvr_reco_title {
   margin: 0 0 0.35rem;
   font-size: 1rem;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
 }
 
 .bvr_reco_desc {
@@ -852,7 +865,7 @@
   }
 
   .bvr_reco_priority_col {
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--border-subtle, #e2e8f0);
   }
 
   .bvr_reco_priority_col:last-child {
@@ -1003,7 +1016,7 @@
 .ira_score_value {
   font-size: 1.75rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
 }
 
 .ira_score_out_of {
@@ -1043,7 +1056,7 @@
   padding: 0.85rem;
   background: var(--surface-elevated);
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle, #e2e8f0);
 }
 
 .ira_breakdown_title {
@@ -1101,7 +1114,147 @@
   margin: 0 0 0.75rem;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
+}
+
+html[data-theme="dark"] .bvr_card:not(.bvr_recommendation) {
+  background: var(--surface-color, #2d2a3a) !important;
+  background-image: none !important;
+  border-color: var(--border-subtle, #403c52) !important;
+  box-shadow: none;
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .bvr_card.bvr_recommendation {
+  background: color-mix(in srgb, var(--bvr-reco-accent, #16a34a) 18%, var(--surface-elevated, #2d2a3a)) !important;
+  background-image: none !important;
+  border-color: color-mix(in srgb, var(--bvr-reco-accent, #16a34a) 38%, var(--border-subtle, #403c52)) !important;
+}
+
+html[data-theme="dark"] .bvr_section_title,
+html[data-theme="dark"] .bvr_title_with_icon,
+html[data-theme="dark"] .bvr_recommendation_title,
+html[data-theme="dark"] .bvr_recommendation_decision,
+html[data-theme="dark"] .bvr_doc_title {
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .bvr_title_icon {
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .bvr_exec_text,
+html[data-theme="dark"] .bvr_recommendation_sub,
+html[data-theme="dark"] .bvr_doc_meta,
+html[data-theme="dark"] .bvr_risk_summary {
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .bvr_strength_item,
+html[data-theme="dark"] .bvr_warning_item,
+html[data-theme="dark"] .bvr_strength_item span,
+html[data-theme="dark"] .bvr_warning_item span {
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .bvr_strength_item + .bvr_strength_item,
+html[data-theme="dark"] .bvr_warning_item + .bvr_warning_item {
+  border-top: 1px solid rgba(138, 175, 255, 0.1);
+}
+
+html[data-theme="dark"] .bvr_strength_icon {
+  background: rgba(52, 211, 153, 0.16);
+  border-color: rgba(52, 211, 153, 0.32);
+  color: #6ee7b7;
+}
+
+html[data-theme="dark"] .bvr_warning_icon {
+  background: rgba(138, 175, 255, 0.14);
+  border-color: rgba(138, 175, 255, 0.28);
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .bvr_risk_block,
+html[data-theme="dark"] .ira_breakdown_card {
+  background: rgba(34, 30, 48, 0.55);
+  border-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .bvr_risk_badge {
+  background: rgba(138, 175, 255, 0.14);
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .bvr_risk_tag_vendor {
+  background: rgba(138, 175, 255, 0.14);
+  color: #b4cbff;
+  border-color: rgba(138, 175, 255, 0.28);
+}
+
+html[data-theme="dark"] .bvr_risk_tag_buyer {
+  background: rgba(167, 139, 250, 0.16);
+  color: #ddd6fe;
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+html[data-theme="dark"] .bvr_risk_tag_shared {
+  background: rgba(251, 191, 36, 0.14);
+  color: #fde68a;
+  border-color: rgba(251, 191, 36, 0.28);
+}
+
+html[data-theme="dark"] .bvr_ai_badge {
+  background: rgba(138, 175, 255, 0.14);
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .ira_breakdown_title,
+html[data-theme="dark"] .ira_gap_heading,
+html[data-theme="dark"] .ira_subheading,
+html[data-theme="dark"] .ira_rom {
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .ira_breakdown_score {
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .ira_gap_list {
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .ira_gap_empty {
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .map_action_table_wrap {
+  background: rgba(34, 30, 48, 0.55) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .map_action_sort_btn {
+  color: var(--table-header-text, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .map_action_sort_btn:hover {
+  color: var(--nav-active, #8aafff) !important;
+}
+
+html[data-theme="dark"] .map_report_root code,
+html[data-theme="dark"] .bvr_matrix_table code {
+  color: var(--nav-active, #8aafff);
+  background: rgba(138, 175, 255, 0.12);
+  border: 1px solid rgba(138, 175, 255, 0.22);
+  padding: 0.1rem 0.35rem;
+}
+
+html[data-theme="dark"] .bvr_reco_priority_cell {
+  color: var(--nav-active, #8aafff);
+  border-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .bvr_recommendations_card {
+  border-color: var(--border-subtle, #403c52);
 }
 
 @media print {

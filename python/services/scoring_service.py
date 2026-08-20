@@ -18,7 +18,7 @@ from services.compliance_cert_blobs import (
     collect_compliance_upload_file_names,
 )
 
-SCORING_VERSION = "vts-1.0"
+SCORING_VERSION = "vts-1.1"
 
 DOMAIN_WEIGHTS = {
     "Privacy & Security": 1.20,
@@ -58,6 +58,28 @@ def _pf(value: float, digits: int = 4) -> float:
     return float(f"{value:.{digits}f}")
 
 
+def _score_list(
+    raw: Any,
+    default: list[float],
+    *,
+    lo: float = 1.0,
+    hi: float = 5.0,
+) -> list[float]:
+    """Parse a list of Risk Intellect scores; fall back to hardcoded stubs if empty."""
+    if not isinstance(raw, list):
+        return list(default)
+    out: list[float] = []
+    for item in raw:
+        try:
+            n = float(item)
+        except (TypeError, ValueError):
+            continue
+        if n != n or n <= 0:
+            continue
+        out.append(max(lo, min(hi, n)))
+    return out if out else list(default)
+
+
 def calculate_likelihood(likelihood_scores: list[float]) -> dict[str, Any]:
     if not likelihood_scores:
         raise RiskCalculationException("likelihoodScores must be a non-empty array")
@@ -70,6 +92,13 @@ def calculate_impact(impact_scores: list[float]) -> dict[str, Any]:
         raise RiskCalculationException("impactScores must be a non-empty array")
     value = sum(impact_scores) / len(impact_scores)
     return {"value": _pf(value), "riskCount": len(impact_scores)}
+
+
+def calculate_severity(severity_scores: list[float]) -> dict[str, Any]:
+    if not severity_scores:
+        raise RiskCalculationException("severityScores must be a non-empty array")
+    value = sum(severity_scores) / len(severity_scores)
+    return {"value": _pf(value), "riskCount": len(severity_scores)}
 
 
 def calc_entity_type_multiplier(p: LooseInput) -> dict[str, Any]:
@@ -415,6 +444,12 @@ def calculate_confidence_factor(p: LooseInput) -> dict[str, Any]:
         "self_reported_unverified": 1.10,
         "no_formal_assessment": 1.15,
     }
+    cadence_map = {
+        "continuous": 0.94,
+        "quarterly": 0.96,
+        "annually": 0.97,
+        "ad_hoc": 0.99,
+    }
     base = method_map.get(p.get("assessmentMethod"))
     if base is None:
         raise RiskCalculationException(f"Unknown assessmentMethod: {p.get('assessmentMethod')}")
@@ -423,7 +458,20 @@ def calculate_confidence_factor(p: LooseInput) -> dict[str, Any]:
     if p.get("complianceDocumentationComplete") is True:
         factor *= 0.98
         evidence_adj.append({"reason": "compliance documentation complete", "multiplier": 0.98})
-    if p.get("penetrationTestReportAvailable") is True:
+    cadence = str(
+        p.get("independentPenTestFrequency")
+        or p.get("independent_pen_test_frequency")
+        or ""
+    ).strip().lower()
+    if cadence in cadence_map:
+        factor *= cadence_map[cadence]
+        evidence_adj.append({
+            "reason": f"independent pen-test cadence: {cadence}",
+            "multiplier": cadence_map[cadence],
+        })
+    elif cadence == "none":
+        evidence_adj.append({"reason": "independent pen-test cadence: none", "multiplier": 1.0})
+    elif p.get("penetrationTestReportAvailable") is True:
         factor *= 0.97
         evidence_adj.append({"reason": "penetration test report available", "multiplier": 0.97})
     if p.get("soc2Type2Current") is True:
@@ -432,6 +480,7 @@ def calculate_confidence_factor(p: LooseInput) -> dict[str, Any]:
     return {
         "method_base": base,
         "evidence_adjustments": evidence_adj,
+        "pen_test_cadence": cadence or None,
         "value": _pf(factor),
     }
 
@@ -632,6 +681,151 @@ def calc_policy_score(p: LooseInput) -> dict[str, Any]:
     }
 
 
+def _as_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _as_list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _pick(p: LooseInput, *keys: str) -> Any:
+    for key in keys:
+        if key in p and p.get(key) not in (None, ""):
+            return p.get(key)
+    return None
+
+
+def calc_data_protection_score(p: LooseInput) -> dict[str, Any]:
+    """Excel: encryption 0-10, TLS 0-8, data-subject rights 0-6."""
+    enc_map = {
+        "customer_managed_keys": 10,
+        "aes_256": 8,
+        "platform_managed_keys": 6,
+        "aes_128": 4,
+    }
+    tls_map = {
+        "1.3": 8,
+        "1.2+": 6,
+        "tls 1.2": 4,
+        "tls 1.2+": 6,
+        "tls 1.3": 8,
+        "other": 2,
+    }
+    rights_set = {
+        "access",
+        "rectification",
+        "erasure",
+        "restriction",
+        "portability",
+        "objection",
+    }
+    enc_raw = str(_pick(p, "encryptionAtRest", "encryption_at_rest") or "").strip().lower()
+    if enc_raw in ("not_disclosed", "not disclosed"):
+        enc_raw = ""
+    enc_pts = enc_map.get(enc_raw, 0)
+    evidence = str(
+        _pick(p, "encryptionAtRestEvidenceId", "encryption_at_rest_evidence_id") or ""
+    ).strip()
+    if enc_pts > 0 and evidence:
+        enc_pts = min(10, enc_pts + 2)
+
+    tls_raw = str(_pick(p, "tlsInTransit", "tls_in_transit") or "").strip().lower()
+    tls_pts = tls_map.get(tls_raw, 0)
+
+    rights_raw = _pick(p, "dataSubjectRights", "data_subject_rights")
+    rights = [
+        str(item).strip().lower()
+        for item in _as_list(rights_raw)
+        if str(item).strip()
+    ]
+    known = [r for r in rights if r in rights_set]
+    role = str(_pick(p, "controllerOrProcessor", "controller_or_processor") or "").strip().lower()
+    if role in ("processor", "both"):
+        dsr_pts = min(6, len(known))
+    elif role == "controller":
+        dsr_pts = min(3, int(len(known) * 0.5 + 0.5)) if known else 0
+    else:
+        dsr_pts = min(6, len(known))
+    return {
+        "encryption_points": enc_pts,
+        "tls_points": tls_pts,
+        "data_subject_rights_points": dsr_pts,
+        "value": enc_pts + tls_pts + dsr_pts,
+    }
+
+
+def calc_supply_chain_score(p: LooseInput) -> dict[str, Any]:
+    """Excel: sub-processors 0-8 (Supply Chain Security)."""
+    rows = _as_list(_pick(p, "subProcessors", "sub_processors"))
+    named = 0
+    detailed = 0
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        named += 1
+        purpose = str(item.get("purpose") or "").strip()
+        region = str(item.get("region") or "").strip()
+        if purpose and region:
+            detailed += 1
+    if named <= 0:
+        pts = 0
+    elif detailed >= 1 and named >= 2:
+        pts = 8
+    elif detailed >= 1:
+        pts = 6
+    else:
+        pts = 4
+    return {
+        "named_count": named,
+        "detailed_count": detailed,
+        "value": pts,
+    }
+
+
+def calc_adversarial_disclosure_score(p: LooseInput) -> dict[str, Any]:
+    """Excel: VDP 0-6, bug bounty 0-4 (Adversarial Robustness)."""
+    vdp = _as_dict(_pick(p, "vulnerabilityDisclosurePolicy", "vulnerability_disclosure_policy"))
+    vdp_status = str(vdp.get("status") or "").strip().lower()
+    vdp_url = str(vdp.get("url") or "").strip()
+    if vdp_status == "published" and vdp_url:
+        vdp_pts = 6
+    elif vdp_status == "published":
+        vdp_pts = 4
+    elif vdp_status == "on_request":
+        vdp_pts = 3
+    else:
+        vdp_pts = 0
+
+    bounty = _as_dict(_pick(p, "bugBounty", "bug_bounty"))
+    bounty_status = str(bounty.get("status") or "").strip().lower()
+    bounty_url = str(bounty.get("url") or "").strip()
+    if bounty_status == "public" and bounty_url:
+        bounty_pts = 4
+    elif bounty_status == "public":
+        bounty_pts = 3
+    elif bounty_status == "private":
+        bounty_pts = 2
+    else:
+        bounty_pts = 0
+    return {
+        "vdp_points": vdp_pts,
+        "bug_bounty_points": bounty_pts,
+        "value": vdp_pts + bounty_pts,
+    }
+
+
+def calc_dpa_score(p: LooseInput) -> dict[str, Any]:
+    """Excel: DPA available 0-4 (Compliance & Regulatory Adherence)."""
+    dpa_map = {"publicly_available": 4, "on_request": 2, "none": 0}
+    raw = str(_pick(p, "dpaAvailable", "dpa_available") or "").strip().lower()
+    pts = dpa_map.get(raw, 0)
+    return {"dpa_status": raw or None, "value": pts}
+
+
 def calc_operational_controls_score(p: LooseInput) -> dict[str, Any]:
     rollback_map = {
         "automated_instant": 15,
@@ -717,7 +911,21 @@ def calculate_governance_risk(p: LooseInput) -> dict[str, Any]:
     policy = calc_policy_score(p)
     ops = calc_operational_controls_score(p)
     mat = calc_vendor_maturity_adjustment(p)
-    raw_score = cert["value"] + aq["value"] + policy["value"] + ops["value"] + mat["value"]
+    data_protection = calc_data_protection_score(p)
+    supply_chain = calc_supply_chain_score(p)
+    adversarial = calc_adversarial_disclosure_score(p)
+    dpa = calc_dpa_score(p)
+    raw_score = (
+        cert["value"]
+        + aq["value"]
+        + policy["value"]
+        + ops["value"]
+        + mat["value"]
+        + data_protection["value"]
+        + supply_chain["value"]
+        + adversarial["value"]
+        + dpa["value"]
+    )
     governance_score = min(100.0, raw_score)
     governance_risk = 100 - governance_score
     return {
@@ -726,6 +934,10 @@ def calculate_governance_risk(p: LooseInput) -> dict[str, Any]:
         "policy_score": policy,
         "operational_controls_score": ops,
         "vendor_maturity_adjustment": mat,
+        "data_protection_score": data_protection,
+        "supply_chain_score": supply_chain,
+        "adversarial_disclosure_score": adversarial,
+        "dpa_score": dpa,
         "raw_governance_score": _pf(raw_score),
         "governance_score": _pf(governance_score),
         "value": _pf(governance_risk),
@@ -918,8 +1130,40 @@ def interpret_trust_score(vts: float) -> dict[str, str]:
 
 
 def calculate_vendor_trust_score(user_input: LooseInput) -> dict[str, Any]:
-    l_result = calculate_likelihood(user_input.get("likelihoodScores") or [])
-    i_result = calculate_impact(user_input.get("impactScores") or [])
+    l_scores = user_input.get("likelihoodScores") or []
+    i_scores = user_input.get("impactScores") or []
+    l_result = calculate_likelihood(l_scores)
+    i_result = calculate_impact(i_scores)
+    severity_raw = user_input.get("severityScores") or []
+    if severity_raw:
+        s_result = calculate_severity(severity_raw)
+        s_result["source"] = user_input.get("severity_score_source") or "payload"
+    else:
+        s_result = {
+            "value": _pf(l_result["value"] * i_result["value"]),
+            "riskCount": l_result["riskCount"],
+            "derived": True,
+            "source": "likelihood_x_impact",
+        }
+    if user_input.get("likelihood_score_source"):
+        l_result = {**l_result, "source": user_input.get("likelihood_score_source")}
+    if user_input.get("impact_score_source"):
+        i_result = {**i_result, "source": user_input.get("impact_score_source")}
+    print(
+        "[type-01 VTS] likelihood/impact calculation",
+        {
+            "formula": "L = sum(likelihoodScores)/n, I = sum(impactScores)/n, base_risk = L × I",
+            "likelihood_score_source": user_input.get("likelihood_score_source") or "default",
+            "impact_score_source": user_input.get("impact_score_source") or "default",
+            "likelihoodScores": l_scores,
+            "impactScores": i_scores,
+            "L": l_result,
+            "I": i_result,
+            "severityScores": severity_raw,
+            "S": s_result,
+            "base_risk_LxI": _pf(l_result["value"] * i_result["value"]),
+        },
+    )
     cm_result = calculate_combined_contextual_multiplier(user_input)
     dw_result = calculate_domain_weight(user_input.get("applicableDomains") or [])
     sm_result = calculate_sector_modifier(user_input)
@@ -948,6 +1192,7 @@ def calculate_vendor_trust_score(user_input: LooseInput) -> dict[str, Any]:
         "product_risk": {
             "likelihood": l_result,
             "impact": i_result,
+            "severity": s_result,
             "combined_contextual_multiplier": cm_result,
             "domain_weight": dw_result,
             "sector_modifier": sm_result,
@@ -1093,9 +1338,69 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
     use_vector = payload.get("_skipCategoryVector") is not True
     coverage_inputs = resolve_category_coverage_inputs(payload, use_vector=use_vector)
 
+    # Likelihood / impact / severity: prefer AI Risk Intellect values injected by Node.
+    likelihood_scores = _score_list(
+        get("likelihoodScores") if get("likelihoodScores") is not None else payload.get("likelihoodScores"),
+        [3, 3, 3],
+        lo=1.0,
+        hi=5.0,
+    )
+    impact_scores = _score_list(
+        get("impactScores") if get("impactScores") is not None else payload.get("impactScores"),
+        [3, 3, 3],
+        lo=1.0,
+        hi=5.0,
+    )
+    severity_scores = _score_list(
+        get("severityScores") if get("severityScores") is not None else payload.get("severityScores"),
+        [l * i for l, i in zip(likelihood_scores, impact_scores)]
+        if len(likelihood_scores) == len(impact_scores)
+        else [9, 9, 9],
+        lo=1.0,
+        hi=25.0,
+    )
+
+    try:
+        intentional_count = int(
+            get("intentionalRiskCount")
+            if get("intentionalRiskCount") is not None
+            else payload.get("intentionalRiskCount")
+            or 1
+        )
+    except (TypeError, ValueError):
+        intentional_count = 1
+    try:
+        unintentional_count = int(
+            get("unintentionalRiskCount")
+            if get("unintentionalRiskCount") is not None
+            else payload.get("unintentionalRiskCount")
+            or 2
+        )
+    except (TypeError, ValueError):
+        unintentional_count = 2
+    if intentional_count < 0:
+        intentional_count = 1
+    if unintentional_count < 0:
+        unintentional_count = 2
+    if intentional_count + unintentional_count == 0:
+        intentional_count, unintentional_count = 1, 2
+
     return {
-        "likelihoodScores": [3, 3, 3],
-        "impactScores": [3, 3, 3],
+        "likelihoodScores": likelihood_scores,
+        "impactScores": impact_scores,
+        "severityScores": severity_scores,
+        "likelihood_score_source": as_str(
+            get("likelihood_score_source") or payload.get("likelihood_score_source")
+        )
+        or "default",
+        "impact_score_source": as_str(
+            get("impact_score_source") or payload.get("impact_score_source")
+        )
+        or "default",
+        "severity_score_source": as_str(
+            get("severity_score_source") or payload.get("severity_score_source")
+        )
+        or "default",
         "decisionAutonomyLevel": decision_autonomy_level,
         "decisionStakeLevel": decision_stake_level,
         "devStage": dev_stage,
@@ -1107,8 +1412,8 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
         "geographicRegions": geographic_regions,
         "dataVolumeScale": "moderate",
         "aiRiskAppetite": "moderate",
-        "intentionalRiskCount": 1,
-        "unintentionalRiskCount": 2,
+        "intentionalRiskCount": intentional_count,
+        "unintentionalRiskCount": unintentional_count,
         "applicableDomains": [
             {"domain": "Privacy & Security", "riskCount": 1},
             {"domain": "AI System Safety", "riskCount": 1},
@@ -1126,7 +1431,27 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
         "_categoryCoverageMeta": coverage_inputs.get("meta") or {},
         "assessmentMethod": "internal_audit",
         "complianceDocumentationComplete": True,
-        "penetrationTestReportAvailable": bool(as_str(get("adversarial_security_testing"))),
+        "encryptionAtRest": as_str(get("encryption_at_rest")),
+        "encryptionAtRestEvidenceId": as_str(get("encryption_at_rest_evidence_id")),
+        "tlsInTransit": as_str(get("tls_in_transit")),
+        "dataSubjectRights": get("data_subject_rights") if isinstance(get("data_subject_rights"), list) else [],
+        "controllerOrProcessor": as_str(get("controller_or_processor")),
+        "subProcessors": get("sub_processors") if isinstance(get("sub_processors"), list) else [],
+        "vulnerabilityDisclosurePolicy": (
+            get("vulnerability_disclosure_policy")
+            if isinstance(get("vulnerability_disclosure_policy"), dict)
+            else {}
+        ),
+        "bugBounty": get("bug_bounty") if isinstance(get("bug_bounty"), dict) else {},
+        "independentPenTestFrequency": as_str(get("independent_pen_test_frequency")),
+        "dpaAvailable": as_str(get("dpa_available")),
+        "penetrationTestReportAvailable": bool(
+            as_str(get("adversarial_security_testing"))
+            or (
+                as_str(get("independent_pen_test_frequency"))
+                not in ("", "none")
+            )
+        ),
         "soc2Type2Current": bool(
             re.search(r"\bsoc\s*2\b|soc2", certifications_search_blob, re.I)
             and re.search(r"type\s*2|type\s*ii|type2", certifications_search_blob, re.I)

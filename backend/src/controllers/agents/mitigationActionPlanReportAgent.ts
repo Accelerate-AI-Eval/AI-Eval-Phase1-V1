@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { invokeBedrockAnthropicText } from "../../utils/invokeBedrockWithUsage.js";
+import { isTokenQuotaExceededError } from "../../services/admin/featureTokenQuota.service.js";
 
 export type MitigationActionRow = {
   rank: number;
@@ -228,6 +229,7 @@ export async function generateMitigationActionPlanReport(
     const parsed = extractJsonObject(rawText);
     if (parsed) return normalizePayload(parsed, fb);
   } catch (e) {
+    if (isTokenQuotaExceededError(e)) throw e;
     console.error("generateMitigationActionPlanReport LLM error:", e);
   }
   return fb;

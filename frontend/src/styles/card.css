@@ -179,7 +179,7 @@
 
 .onboarding_setup_card p {
   text-align: center;
-  color: #4b5563;
+  color: var(--text-secondary, #4b5563);
   line-height: 1.5rem;
 }
 .onboarding_setup_card h2 {
@@ -269,19 +269,19 @@
   font-size: 1.125rem;
   font-weight: 600;
   margin: 0;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 .signup_confirmation_card p {
   margin: 0;
   font-size: 0.9375rem;
   line-height: 1.5;
-  color: #4b5563;
+  color: var(--text-secondary, #4b5563);
 }
 
 .text_signup {
   font-size: 0.9375rem;
-  color: #4b5563;
+  color: var(--text-secondary, #4b5563);
   line-height: 1.5;
   text-align: center;
 }
@@ -351,7 +351,7 @@
 }
 
 .card_para {
-  color: #4b5563;
+  color: var(--text-secondary, #4b5563);
   font-size: 0.95rem;
   line-height: 1.4;
   text-align: justify;

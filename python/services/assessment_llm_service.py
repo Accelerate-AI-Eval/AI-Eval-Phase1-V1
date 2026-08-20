@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from config import get_bedrock_model_id, settings
 from services.bedrock_client import create_bedrock_runtime_client
+from services.feature_token_quota import prepare_feature_token_invoke, raise_quota
 from services.llm_usage import record_llm_usage, usage_from_anthropic_result
 from services.llm_usage_actor import get_usage_actor
 from utils.chunker import chunk_document, count_words
@@ -26,6 +27,38 @@ _CHUNK_MERGE_INSTRUCTION = (
     "do not invent facts that are not present in the partials."
 )
 
+_TRUNCATED_STOP_REASONS = frozenset({"max_tokens", "length", "max_length"})
+
+
+def _estimate_input_tokens(text: str) -> int:
+    return max(1, len(text or "") // 4)
+
+
+def _generation_hit_quota(
+    *,
+    capped: bool,
+    stop_reason: str,
+    output_tokens: int,
+    allowed_max: int,
+) -> bool:
+    """True when this call was cut short because remaining quota ran out."""
+    if not capped:
+        return False
+    reason = (stop_reason or "").strip().lower()
+    if reason in _TRUNCATED_STOP_REASONS:
+        return True
+    return allowed_max > 0 and output_tokens >= allowed_max
+
+
+def _raise_if_quota_hit(gate: dict, *, total_tokens: int) -> None:
+    feature = str(gate.get("feature") or "")
+    if not feature:
+        return
+    balance = dict(gate.get("balance") or {})
+    balance["output_exceeded"] = True
+    balance["consumed"] = int(balance.get("consumed") or 0) + total_tokens
+    raise_quota(feature, balance)
+
 
 def _invoke_bedrock_once(
     text: str,
@@ -33,10 +66,17 @@ def _invoke_bedrock_once(
     max_tokens: int,
     temperature: float,
     model_id: str,
+    allow_cap: bool = True,
 ) -> str:
+    gate = prepare_feature_token_invoke(
+        requested_max_tokens=int(max_tokens),
+        estimated_input_tokens=_estimate_input_tokens(text),
+        allow_cap=allow_cap,
+    )
+    allowed_max = int(gate["max_tokens"])
     body = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": int(max_tokens),
+        "max_tokens": allowed_max,
         "temperature": float(temperature),
         "messages": [
             {
@@ -47,7 +87,7 @@ def _invoke_bedrock_once(
     }
     print(
         f"[LLM] assessment invoke using model: {model_id} "
-        f"words={count_words(text)}"
+        f"words={count_words(text)} max_tokens={allowed_max}"
     )
     client = create_bedrock_runtime_client()
     response = client.invoke_model(
@@ -71,6 +111,14 @@ def _invoke_bedrock_once(
             user_name=actor.get("user_name"),
             feature=actor.get("feature"),
         )
+    stop_reason = str(result.get("stop_reason") or "")
+    if _generation_hit_quota(
+        capped=bool(gate.get("capped")),
+        stop_reason=stop_reason,
+        output_tokens=out,
+        allowed_max=allowed_max,
+    ):
+        _raise_if_quota_hit(gate, total_tokens=total)
     content = result.get("content") or []
     if content and isinstance(content[0], dict):
         return str(content[0].get("text") or "")
@@ -134,11 +182,13 @@ def invoke_bedrock_with_chunking(
         part_header = _CHUNK_PARTIAL_INSTRUCTION.format(part=index, total=total)
         parts = [p for p in (prefix, part_header, chunk) if p]
         part_text = "\n\n".join(parts)
+        # First chunk may use remaining tokens; later chunks stop if quota is short.
         partial = _invoke_bedrock_once(
             part_text,
             max_tokens=tokens,
             temperature=temp,
             model_id=resolved_model,
+            allow_cap=(index == 1),
         )
         if (partial or "").strip():
             partials.append(f"### Chunk {index}/{total} findings\n{partial.strip()}")
@@ -155,6 +205,7 @@ def invoke_bedrock_with_chunking(
         max_tokens=tokens,
         temperature=temp,
         model_id=resolved_model,
+        allow_cap=False,
     )
 
 

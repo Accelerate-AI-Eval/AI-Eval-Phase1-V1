@@ -43,6 +43,11 @@ CATEGORY_SIGNALS: dict[str, dict[str, Any]] = {
             "pii_information",
             "data_retention_policy",
             "data_residency_options",
+            "encryption_at_rest",
+            "tls_in_transit",
+            "data_subject_rights",
+            "controller_or_processor",
+            "privacy_programme_scope",
         ],
         "keywords": [
             "privacy",
@@ -53,10 +58,15 @@ CATEGORY_SIGNALS: dict[str, dict[str, Any]] = {
             "data retention",
             "data residency",
             "data governance",
+            "encryption",
+            "tls",
+            "data subject rights",
         ],
         "negative": [
             r"\bno\s+pii\b",
             r"\bnot\s+applicable\b",
+            r"\bnot_disclosed\b",
+            r"\bnot disclosed\b",
             r"\bn/?a\b",
             r"^none$",
             r"^no$",
@@ -115,6 +125,9 @@ CATEGORY_SIGNALS: dict[str, dict[str, Any]] = {
             "test_policy_document",
             "bias_testing_approach",
             "bias_ai",
+            "independent_pen_test_frequency",
+            "vulnerability_disclosure_policy",
+            "bug_bounty",
         ],
         "keywords": [
             "audit",
@@ -242,6 +255,9 @@ CATEGORY_SIGNALS: dict[str, dict[str, Any]] = {
             "security_testing",
             "bias_testing_approach",
             "bias_ai",
+            "vulnerability_disclosure_policy",
+            "bug_bounty",
+            "independent_pen_test_frequency",
         ],
         "keywords": [
             "adversarial",
@@ -261,12 +277,18 @@ CATEGORY_SIGNALS: dict[str, dict[str, Any]] = {
         "upload_category_hints": ["penetration", "security", "red team"],
     },
     "Supply Chain Security": {
-        "fields": ["ai_model_types", "ai_models_usage"],
+        "fields": [
+            "ai_model_types",
+            "ai_models_usage",
+            "sub_processors",
+        ],
         "keywords": [
             "supply chain",
             "third-party model",
             "off-the-shelf",
             "vendor dependency",
+            "sub-processor",
+            "subprocessor",
             "sbom",
             "model provenance",
         ],
@@ -281,6 +303,9 @@ CATEGORY_SIGNALS: dict[str, dict[str, Any]] = {
             "regulatorycompliance_cert_material",
             "assessment_completion_level",
             "assessment_feedback",
+            "hipaa_baa",
+            "dpa_available",
+            "fedramp_authorization",
         ],
         "keywords": [
             "compliance",
@@ -356,7 +381,7 @@ def _is_emptyish(text: str) -> bool:
         return True
     return bool(
         re.fullmatch(
-            r"(none|n/?a|na|null|undefined|not\s+specified|not\s+provided|-|—)",
+            r"(none|n/?a|na|null|undefined|not\s+specified|not\s+provided|not_disclosed|not disclosed|-|—)",
             t,
         )
     )

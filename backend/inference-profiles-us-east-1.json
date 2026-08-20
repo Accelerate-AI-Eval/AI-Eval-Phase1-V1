@@ -1,7 +1,7 @@
 {
   "region": "us-east-1",
-  "fetchedAt": "2026-08-14T09:16:27.507Z",
-  "count": 63,
+  "fetchedAt": "2026-08-20T15:34:15.909Z",
+  "count": 71,
   "profiles": [
     {
       "inferenceProfileName": "GLOBAL Amazon Nova 2 Lite",
@@ -277,6 +277,69 @@
       "foundationModelId": "cohere.embed-v4:0"
     },
     {
+      "inferenceProfileName": "Global OpenAI GPT-5.6 Luna",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/global.openai.gpt-5.6-luna",
+      "models": [
+        {
+          "modelArn": "arn:aws:bedrock:::foundation-model/openai.gpt-5.6-luna"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-5.6-luna"
+        }
+      ],
+      "inferenceProfileId": "global.openai.gpt-5.6-luna",
+      "status": "ACTIVE",
+      "type": "SYSTEM_DEFINED",
+      "description": "Routes requests to GPT-5.6 Luna globally across all supported AWS Regions.",
+      "createdAt": "2026-08-13T21:57:28.427Z",
+      "updatedAt": "2026-08-13T21:57:28.427Z",
+      "profileType": "SYSTEM_DEFINED",
+      "modelId": "global.openai.gpt-5.6-luna",
+      "foundationModelId": "openai.gpt-5.6-luna"
+    },
+    {
+      "inferenceProfileName": "Global OpenAI GPT-5.6 Sol",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/global.openai.gpt-5.6-sol",
+      "models": [
+        {
+          "modelArn": "arn:aws:bedrock:::foundation-model/openai.gpt-5.6-sol"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-5.6-sol"
+        }
+      ],
+      "inferenceProfileId": "global.openai.gpt-5.6-sol",
+      "status": "ACTIVE",
+      "type": "SYSTEM_DEFINED",
+      "description": "Routes requests to OpenAI GPT-5.6 Sol globally across all supported AWS Regions.",
+      "createdAt": "2026-08-13T21:34:59.575Z",
+      "updatedAt": "2026-08-15T00:03:16.701Z",
+      "profileType": "SYSTEM_DEFINED",
+      "modelId": "global.openai.gpt-5.6-sol",
+      "foundationModelId": "openai.gpt-5.6-sol"
+    },
+    {
+      "inferenceProfileName": "Global OpenAI GPT-5.6 Terra",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/global.openai.gpt-5.6-terra",
+      "models": [
+        {
+          "modelArn": "arn:aws:bedrock:::foundation-model/openai.gpt-5.6-terra"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-5.6-terra"
+        }
+      ],
+      "inferenceProfileId": "global.openai.gpt-5.6-terra",
+      "status": "ACTIVE",
+      "type": "SYSTEM_DEFINED",
+      "description": "Routes requests to GPT-5.6 Terra globally across all supported AWS Regions.",
+      "createdAt": "2026-08-13T21:46:41.171Z",
+      "updatedAt": "2026-08-13T21:46:41.171Z",
+      "profileType": "SYSTEM_DEFINED",
+      "modelId": "global.openai.gpt-5.6-terra",
+      "foundationModelId": "openai.gpt-5.6-terra"
+    },
+    {
       "inferenceProfileName": "GLOBAL TwelveLabs Pegasus v1.2",
       "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/global.twelvelabs.pegasus-1-2-v1:0",
       "models": [
@@ -296,6 +359,27 @@
       "profileType": "SYSTEM_DEFINED",
       "modelId": "global.twelvelabs.pegasus-1-2-v1:0",
       "foundationModelId": "twelvelabs.pegasus-1-2-v1:0"
+    },
+    {
+      "inferenceProfileName": "Global xAI Grok 4.6",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/global.xai.grok-4.6",
+      "models": [
+        {
+          "modelArn": "arn:aws:bedrock:::foundation-model/xai.grok-4.6"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/xai.grok-4.6"
+        }
+      ],
+      "inferenceProfileId": "global.xai.grok-4.6",
+      "status": "ACTIVE",
+      "type": "SYSTEM_DEFINED",
+      "description": "Routes requests to Grok 4.6 globally across all supported AWS Regions.",
+      "createdAt": "2026-08-18T23:28:38.681Z",
+      "updatedAt": "2026-08-18T23:28:38.681Z",
+      "profileType": "SYSTEM_DEFINED",
+      "modelId": "global.xai.grok-4.6",
+      "foundationModelId": "xai.grok-4.6"
     },
     {
       "inferenceProfileName": "US Amazon Nova 2 Lite",
@@ -1024,6 +1108,78 @@
       "foundationModelId": "amazon.nova-pro-v1:0"
     },
     {
+      "inferenceProfileName": "US OpenAI GPT-5.6 Luna",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/us.openai.gpt-5.6-luna",
+      "models": [
+        {
+          "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-5.6-luna"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-east-2::foundation-model/openai.gpt-5.6-luna"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-west-2::foundation-model/openai.gpt-5.6-luna"
+        }
+      ],
+      "inferenceProfileId": "us.openai.gpt-5.6-luna",
+      "status": "ACTIVE",
+      "type": "SYSTEM_DEFINED",
+      "description": "Routes requests to GPT-5.6 Luna in us-east-1, us-east-2, us-west-2.",
+      "createdAt": "2026-08-13T21:57:28.295Z",
+      "updatedAt": "2026-08-13T21:57:28.295Z",
+      "profileType": "SYSTEM_DEFINED",
+      "modelId": "us.openai.gpt-5.6-luna",
+      "foundationModelId": "openai.gpt-5.6-luna"
+    },
+    {
+      "inferenceProfileName": "US OpenAI GPT-5.6 Sol",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/us.openai.gpt-5.6-sol",
+      "models": [
+        {
+          "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-5.6-sol"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-east-2::foundation-model/openai.gpt-5.6-sol"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-west-2::foundation-model/openai.gpt-5.6-sol"
+        }
+      ],
+      "inferenceProfileId": "us.openai.gpt-5.6-sol",
+      "status": "ACTIVE",
+      "type": "SYSTEM_DEFINED",
+      "description": "Routes requests to OpenAI GPT-5.6 Sol in us-east-1, us-east-2 and us-west-2.",
+      "createdAt": "2026-08-13T21:34:59.391Z",
+      "updatedAt": "2026-08-15T00:03:13.318Z",
+      "profileType": "SYSTEM_DEFINED",
+      "modelId": "us.openai.gpt-5.6-sol",
+      "foundationModelId": "openai.gpt-5.6-sol"
+    },
+    {
+      "inferenceProfileName": "US OpenAI GPT-5.6 Terra",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/us.openai.gpt-5.6-terra",
+      "models": [
+        {
+          "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/openai.gpt-5.6-terra"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-east-2::foundation-model/openai.gpt-5.6-terra"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-west-2::foundation-model/openai.gpt-5.6-terra"
+        }
+      ],
+      "inferenceProfileId": "us.openai.gpt-5.6-terra",
+      "status": "ACTIVE",
+      "type": "SYSTEM_DEFINED",
+      "description": "Routes requests to GPT-5.6 Terra in us-east-1, us-east-2, us-west-2.",
+      "createdAt": "2026-08-13T21:46:40.995Z",
+      "updatedAt": "2026-08-13T21:46:40.995Z",
+      "profileType": "SYSTEM_DEFINED",
+      "modelId": "us.openai.gpt-5.6-terra",
+      "foundationModelId": "openai.gpt-5.6-terra"
+    },
+    {
       "inferenceProfileName": "US Pegasus v1.2",
       "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/us.twelvelabs.pegasus-1-2-v1:0",
       "models": [
@@ -1460,6 +1616,30 @@
       "profileType": "SYSTEM_DEFINED",
       "modelId": "us.writer.palmyra-x5-v1:0",
       "foundationModelId": "writer.palmyra-x5-v1:0"
+    },
+    {
+      "inferenceProfileName": "US xAI Grok 4.6",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/us.xai.grok-4.6",
+      "models": [
+        {
+          "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/xai.grok-4.6"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-east-2::foundation-model/xai.grok-4.6"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-west-2::foundation-model/xai.grok-4.6"
+        }
+      ],
+      "inferenceProfileId": "us.xai.grok-4.6",
+      "status": "ACTIVE",
+      "type": "SYSTEM_DEFINED",
+      "description": "Routes requests to Grok 4.6 in us-east-1, us-east-2, us-west-2.",
+      "createdAt": "2026-08-18T23:28:38.594Z",
+      "updatedAt": "2026-08-18T23:28:38.594Z",
+      "profileType": "SYSTEM_DEFINED",
+      "modelId": "us.xai.grok-4.6",
+      "foundationModelId": "xai.grok-4.6"
     }
   ]
 }

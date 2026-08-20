@@ -54,7 +54,7 @@ margin-right: 0.5rem;
 }
 
 .file-list li {
-background: #e9f3ff;
+background: var(--icon-chip-bg, #e9f3ff);
   padding: 3px 12px;
   margin-bottom: 8px;
   border-radius: 5px;

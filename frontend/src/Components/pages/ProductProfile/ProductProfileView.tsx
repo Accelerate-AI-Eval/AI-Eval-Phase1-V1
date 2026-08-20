@@ -326,15 +326,18 @@ function ProductProfileProductListCard({
   const statusLower = statusLabel.toLowerCase();
   const isCompleted = statusLower === "completed";
   const isExpired = statusLower === "expired";
+  const isDraft = statusLower === "draft";
   const statusPillClass = isCompleted
     ? "pill_status_active"
     : isExpired
       ? "pill_status_inactive"
       : "pill_status_pending";
-  const showStatusDot = isCompleted || isExpired;
+  const showStatusDot = isCompleted || isExpired || isDraft;
   const hasTrustScore = trustScoreDisplay !== "—";
   return (
-    <article className="product_profile_premium_card">
+    <article
+      className={`product_profile_premium_card${isDraft ? " product_profile_premium_card--draft" : isCompleted ? " product_profile_premium_card--completed" : ""}`}
+    >
       <div className="product_profile_premium_card_top">
         <div className="product_profile_premium_card_identity">
           <span className="product_profile_premium_avatar" aria-hidden>
@@ -878,7 +881,13 @@ function ProductProfileView({
                 )}
                 {!viewProductLoading && viewProductMeta && (
                   <>
-                    <div className="product_profile_detail_status_bar attestation_visible_status">
+                    <div
+                      className={`product_profile_detail_status_bar attestation_visible_status${
+                        viewProductMeta.status.toLowerCase() === "draft"
+                          ? " product_profile_detail_status_bar--draft"
+                          : ""
+                      }`}
+                    >
                       <div className="product_profile_modal_status_row">
                         <span className="product_profile_modal_status_label">
                           Attestation status

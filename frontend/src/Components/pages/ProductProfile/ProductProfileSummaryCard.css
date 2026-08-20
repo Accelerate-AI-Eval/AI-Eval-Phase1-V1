@@ -24,11 +24,11 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.9;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(34,91,255,0.05)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(34,91,255,0.11)' stroke-width='1.4'/%3E%3Cpath d='M0 118 C75 90 145 146 220 118 S345 90 420 118' fill='none' stroke='rgba(96,165,250,0.13)' stroke-width='1.25'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: top center;
-  background-size: 100% 70%;
+  background-size: 100% 58%;
 }
 
 .summary_card > * {

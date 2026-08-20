@@ -8,7 +8,7 @@
   min-height: 3rem;
   margin-bottom: 1.5rem;
   padding-bottom: 0;
-  /* border-bottom: 1px solid #e5e7eb; */
+  /* border-bottom: 1px solid var(--border-subtle, #e5e7eb); */
 }
 
 .risk_mapping_page .loading_message_wrapper--page {
@@ -349,7 +349,7 @@
   padding: 0.45rem 0.85rem;
   cursor: pointer;
   font-size: 0.875rem;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 button.risk_mapping_fw_multiselect_option {
@@ -426,12 +426,12 @@ button.risk_mapping_fw_multiselect_option.risk_mapping_fw_multiselect_row_select
   isolation: isolate;
   overflow: hidden;
   background-color: var(--surface-color, #ffffff);
-  /* background-image: linear-gradient(
+  background-image: linear-gradient(
     180deg,
     rgba(34, 91, 255, 0.045) 0%,
     rgba(248, 251, 255, 0.55) 32%,
     var(--surface-color, #ffffff) 62%
-  ); */
+  );
   border-radius: 0;
   border: 1px solid var(--border-subtle, #e2e6ec);
   padding: 1.15rem 1.2rem 1.05rem;
@@ -852,14 +852,14 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
 
 .risk_mapping_notes_value {
   font-size: 0.875rem;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   line-height: 1.35;
 }
 
 .risk_mapping_notes_block_expiry .risk_mapping_notes_expiry_value {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   letter-spacing: 0.02rem;
 }
 
@@ -987,7 +987,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary, #111827);
   line-height: 1.25;
 }
 
@@ -1033,7 +1033,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
 .fw_mapping_detail_gap_card,
 .fw_mapping_detail_controls_card {
   background: var(--surface-color);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 0;
   padding: 1.15rem 1.25rem 1.25rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -1141,7 +1141,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
   flex: 1 1 auto;
   min-width: 0;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 .fw_mapping_detail_gap_badge_met {
@@ -1203,7 +1203,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 500;
-  color: #111827;
+  color: var(--text-primary, #111827);
   line-height: 1.5;
   word-break: break-word;
 }
@@ -1231,7 +1231,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
 .fw_mapping_detail_popup_field_value {
   margin: 0;
   font-size: 0.9375rem;
-  color: #111827;
+  color: var(--text-primary, #111827);
   line-height: 1.5;
   word-break: break-word;
 }
@@ -1273,7 +1273,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
 
 .fw_mapping_control_detail_card {
   background: var(--surface-color);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 0;
   padding: 1rem 1.15rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -1343,7 +1343,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   line-height: 1.35;
   text-align: left;
   flex: 1 1 auto;
@@ -1372,7 +1372,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
 .fw_mapping_control_detail_desc {
   margin: 0;
   font-size: 0.875rem;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   line-height: 1.45;
   text-align: left;
   width: 100%;
@@ -1409,7 +1409,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
   font-size: inherit;
   font-weight: 500;
   line-height: 1;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   background: var(--surface-color);
   padding: 0 0.45rem;
   pointer-events: none;
@@ -1461,7 +1461,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
   font-size: inherit;
   font-weight: 500;
   line-height: 1;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   background: var(--surface-color);
   padding: 0 0.45rem;
   pointer-events: none;
@@ -1569,7 +1569,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
 .fw_mapping_control_detail_card_actions {
   margin-top: auto;
   padding-top: 0.75rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-subtle, #e5e7eb);
   text-align: end;
 }
 
@@ -1635,7 +1635,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
 .fw_control_detail_summary_card {
   margin-top: 2rem;
   background: var(--surface-color);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 0;
   padding: 1.25rem 1.35rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -1656,7 +1656,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
   margin: 0 0 0.65rem;
   font-size: 1.125rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 .fw_control_detail_summary_desc {
@@ -1804,7 +1804,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
 
 .fw_control_detail_mitigation_card {
   background: var(--surface-color);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 0;
   padding: 1rem 1.15rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -1840,7 +1840,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
   margin: 0;
   font-size: 0.975rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary, #111827);
   min-width: 0;
 }
 
@@ -1913,7 +1913,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
   width: fit-content;
   max-width: 100%;
   background: var(--surface-elevated);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 0;
   padding: 0.4rem 0.62rem;
   font-size: 0.79rem;
@@ -1936,7 +1936,7 @@ button.risk_mapping_risk_expand_btn.dash_view_all_btn svg {
 
 .fw_control_detail_risk_id {
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-primary, #1f2937);
   letter-spacing: 0.01rem;
   white-space: nowrap;
 }

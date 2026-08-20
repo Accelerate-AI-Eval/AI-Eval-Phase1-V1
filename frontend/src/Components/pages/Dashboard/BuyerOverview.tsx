@@ -7,6 +7,7 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  Eye,
   Sparkles,
   Workflow,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import { formatFrameworkMappingFrameworkForDisplay } from "../../../utils/framew
 import { frameworkControlsDisplayLines } from "../../../utils/frameworkMappingControlsDisplay";
 import DashboardTypewriterGreeting from "../../UI/DashboardTypewriterGreeting";
 import "./dashboard.css";
+import "../UserManagement/user_management.css";
 
 type RiskFrequency = { label: string; count: number; riskIds: string[] };
 type DomainShare = { primaryRisk: string; domainName: string; percentage: number };
@@ -1166,20 +1168,20 @@ const BuyerOverview = () => {
                               {reportMeta?.reportId ? (
                                 <Link
                                   to={`/reports/${reportMeta.reportId}`}
-                                  className="governance_assessment_link governance_assessment_link_table"
-                                  title="Open complete assessment report"
-                                  aria-label="Open complete assessment report"
+                                  className="user_table_action_btn user_table_action_btn_icon"
+                                  title="View"
+                                  aria-label="View report"
                                 >
-                                  <FileText size={18} className="governance_assessment_link_icon" aria-hidden />
+                                  <Eye size={14} />
                                 </Link>
                               ) : (
                                 <Link
                                   to={`/buyer-vendor-risk-report/${encodeURIComponent(String(a.assessmentId ?? ""))}`}
-                                  className="governance_assessment_link governance_assessment_link_table"
-                                  title="Open complete assessment report"
-                                  aria-label="Open complete assessment report"
+                                  className="user_table_action_btn user_table_action_btn_icon"
+                                  title="View"
+                                  aria-label="View report"
                                 >
-                                  <FileText size={18} className="governance_assessment_link_icon" aria-hidden />
+                                  <Eye size={14} />
                                 </Link>
                               )}
                             </td>

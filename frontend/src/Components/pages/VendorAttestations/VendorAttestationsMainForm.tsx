@@ -41,6 +41,7 @@ import {
   TabAiSafetyTesting,
   TabOperationsReliability,
   TabDeploymentArchitecture,
+  TabVendorManagement,
   TabEvidenceSupportingDoc,
 } from "./tabs";
 import "../VendorOnboarding/vendor_onboarding.css";
@@ -58,6 +59,10 @@ const defaultCompanyProfile: AttestationCompanyProfile = {
   yearFounded: "",
   headquartersLocation: "",
   operatingRegions: [],
+  fundingStatus: "",
+  financialPosition: "",
+  enterpriseCustomers: "",
+  customerRetentionRate: "",
 };
 
 const defaultAttestation: VendorSelfAttestationPayload = {};
@@ -84,6 +89,7 @@ const ATTESTATION_SECTION_KEYS = [
   "ai_safety_testing",
   "operations_reliability",
   "deployment_architecture",
+  "vendor_management",
   "evidence_supporting_documentation",
 ] as const;
 
@@ -119,6 +125,48 @@ function isAttestationStepValid(
     const value = attestation[mapping.key];
     if (!hasValue(value)) return false;
   }
+  if (sectionKey === "compliance_certifications") {
+    const fedramp = attestation.fedramp_authorization;
+    if (!(fedramp?.status ?? "").trim()) return false;
+    if (
+      (fedramp?.status === "authorized" || fedramp?.status === "in_process") &&
+      (!(fedramp.level ?? "").trim() || !(fedramp.boundary ?? "").trim())
+    )
+      return false;
+  }
+  if (sectionKey === "ai_technical_capabilities") {
+    if (!(attestation.versions_models ?? "").trim()) return false;
+    if (
+      attestation.versions_models === "yes" &&
+      !(attestation.model_versioning_method ?? "").trim()
+    )
+      return false;
+  }
+  if (sectionKey === "deployment_architecture") {
+    if (!(attestation.is_multi_tenant ?? "").trim()) return false;
+    if (
+      attestation.is_multi_tenant === "yes" &&
+      !(attestation.tenant_isolation_model ?? "").trim()
+    )
+      return false;
+  }
+  if (sectionKey === "data_handling_privacy") {
+    if (!(attestation.encryption_at_rest ?? "").trim()) return false;
+    if (!(attestation.data_subject_rights?.length ?? 0)) return false;
+    if (!(attestation.controller_or_processor ?? "").trim()) return false;
+  }
+  if (sectionKey === "ai_safety_testing") {
+    if (!(attestation.vulnerability_disclosure_policy?.status ?? "").trim()) return false;
+    if (!(attestation.bug_bounty?.status ?? "").trim()) return false;
+  }
+  if (sectionKey === "operations_reliability") {
+    if (!(attestation.has_public_security_incident ?? "").trim()) return false;
+    if (
+      attestation.has_public_security_incident === "yes" &&
+      !(attestation.security_incidents?.length ?? 0)
+    )
+      return false;
+  }
   return true;
 }
 
@@ -129,6 +177,8 @@ function isCompanyProfileValid(
   if (!(companyProfile.vendorType ?? "").trim()) return false;
   if (!(companyProfile.companyWebsite ?? "").trim()) return false;
   if (!(companyProfile.companyDescription ?? "").trim()) return false;
+  if (!(companyProfile.fundingStatus ?? "").trim()) return false;
+  if (!(companyProfile.financialPosition ?? "").trim()) return false;
   const sector = companyProfile.sector;
   if (sector && typeof sector === "object" && !Array.isArray(sector)) {
     const s = sector as Record<string, string[]>;
@@ -212,6 +262,8 @@ function getStepFieldErrors(
       errors.headquartersLocation = "Required";
     if (!(cp.operatingRegions?.length ?? 0))
       errors.operatingRegions = "Select at least one region";
+    if (!(cp.fundingStatus ?? "").trim()) errors.fundingStatus = "Required";
+    if (!(cp.financialPosition ?? "").trim()) errors.financialPosition = "Required";
     return errors;
   }
   if (stepIndex === 1) return {};
@@ -244,6 +296,36 @@ function getStepFieldErrors(
     ) {
       errors.aiGovernancePolicy = "Upload your AI governance policy document";
     }
+    if (!(formState.attestation.versions_models ?? "").trim())
+      errors.versions_models = "This field is required";
+    if (
+      formState.attestation.versions_models === "yes" &&
+      !(formState.attestation.model_versioning_method ?? "").trim()
+    )
+      errors.model_versioning_method = "This field is required";
+  }
+  if (sectionKey === "deployment_architecture") {
+    if (!(formState.attestation.is_multi_tenant ?? "").trim())
+      errors.is_multi_tenant = "This field is required";
+    if (
+      formState.attestation.is_multi_tenant === "yes" &&
+      !(formState.attestation.tenant_isolation_model ?? "").trim()
+    )
+      errors.tenant_isolation_model = "This field is required";
+  }
+  if (sectionKey === "data_handling_privacy") {
+    if (!(formState.attestation.encryption_at_rest ?? "").trim())
+      errors.encryption_at_rest = "This field is required";
+    if (!(formState.attestation.data_subject_rights?.length ?? 0))
+      errors.data_subject_rights = "Select at least one data subject right";
+    if (!(formState.attestation.controller_or_processor ?? "").trim())
+      errors.controller_or_processor = "Select controller, processor, or both";
+  }
+  if (sectionKey === "ai_safety_testing") {
+    if (!(formState.attestation.vulnerability_disclosure_policy?.status ?? "").trim())
+      errors.vulnerability_disclosure_policy = "This field is required";
+    if (!(formState.attestation.bug_bounty?.status ?? "").trim())
+      errors.bug_bounty = "This field is required";
   }
   const dataEntries = Object.entries(sectionData).filter(
     ([k]) =>
@@ -257,6 +339,26 @@ function getStepFieldErrors(
     if (!mapping?.key) continue;
     const value = formState.attestation[mapping.key];
     if (!hasValue(value)) errors[mapping.key] = "This field is required";
+  }
+  if (sectionKey === "compliance_certifications") {
+    const fedramp = formState.attestation.fedramp_authorization;
+    if (!(fedramp?.status ?? "").trim())
+      errors.fedramp_authorization = "This field is required";
+    if (fedramp?.status === "authorized" || fedramp?.status === "in_process") {
+      if (!(fedramp.level ?? "").trim())
+        errors.fedramp_level = "This field is required";
+      if (!(fedramp.boundary ?? "").trim())
+        errors.fedramp_boundary = "This field is required";
+    }
+  }
+  if (sectionKey === "operations_reliability") {
+    if (!(formState.attestation.has_public_security_incident ?? "").trim())
+      errors.has_public_security_incident = "This field is required";
+    if (
+      formState.attestation.has_public_security_incident === "yes" &&
+      !(formState.attestation.security_incidents?.length ?? 0)
+    )
+      errors.security_incidents = "Add at least one publicly disclosed incident";
   }
   return errors;
 }
@@ -298,6 +400,16 @@ function mapApiCompanyProfile(
     operatingRegions: Array.isArray(api.operatingRegions)
       ? (api.operatingRegions as string[])
       : [],
+    fundingStatus: (api.fundingStatus as string) ?? "",
+    financialPosition: (api.financialPosition as string) ?? "",
+    enterpriseCustomers:
+      api.enterpriseCustomers != null && api.enterpriseCustomers !== ""
+        ? String(api.enterpriseCustomers)
+        : "",
+    customerRetentionRate:
+      api.customerRetentionRate != null && api.customerRetentionRate !== ""
+        ? String(api.customerRetentionRate)
+        : "",
   };
 }
 
@@ -944,6 +1056,8 @@ const VendorAttestationsMainForm = () => {
                   title={stepHeaderProps.title}
                   subTitle={stepHeaderProps.subTitle}
                   icon={stepHeaderProps.icon}
+                  attestationId={attestationId}
+                  onUploadDocument={uploadDocument}
                 />
               );
             }
@@ -988,6 +1102,19 @@ const VendorAttestationsMainForm = () => {
             }
             if (index === 9) {
               return (
+                <TabVendorManagement
+                  attestation={formState.attestation}
+                  setAttestation={setAttestation}
+                  data={VENDOR_SELF_ATTESTATION.vendor_management}
+                  fieldErrors={effectiveFieldErrors}
+                  title={stepHeaderProps.title}
+                  subTitle={stepHeaderProps.subTitle}
+                  icon={stepHeaderProps.icon}
+                />
+              );
+            }
+            if (index === 10) {
+              return (
                 <TabEvidenceSupportingDoc
                   attestation={formState.attestation}
                   setAttestation={setAttestation}
@@ -1008,7 +1135,7 @@ const VendorAttestationsMainForm = () => {
                 />
               );
             }
-            // index === 10: Review
+            // index === 11: Review
             return (
               <StepVendorSelfAttestationPrev
                 formState={formState}

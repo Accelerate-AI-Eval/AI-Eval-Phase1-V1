@@ -382,11 +382,11 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.9;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(34,91,255,0.05)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(34,91,255,0.11)' stroke-width='1.4'/%3E%3Cpath d='M0 118 C75 90 145 146 220 118 S345 90 420 118' fill='none' stroke='rgba(96,165,250,0.13)' stroke-width='1.25'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: top center;
-  background-size: 100% 70%;
+  background-size: 100% 58%;
 }
 
 .product_profile_summary_card > * {
@@ -472,11 +472,11 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.75;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(34,91,255,0.04)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(34,91,255,0.1)' stroke-width='1.4'/%3E%3C/svg%3E");
+  opacity: 0.9;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(34,91,255,0.05)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(34,91,255,0.11)' stroke-width='1.4'/%3E%3Cpath d='M0 118 C75 90 145 146 220 118 S345 90 420 118' fill='none' stroke='rgba(96,165,250,0.13)' stroke-width='1.25'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: top center;
-  background-size: 100% 45%;
+  background-size: 100% 58%;
 }
 
 .product_profile_detail_card > * {
@@ -894,6 +894,14 @@
   background: transparent;
 }
 
+.product_profile_premium_card--draft {
+  border-bottom: 3px solid #f59e0b;
+}
+
+.product_profile_premium_card--completed {
+  border-bottom: 3px solid #10b981;
+}
+
 /* Trust score on product cards */
 .product_profile_card_risk_top_with_trust {
   justify-content: space-between;
@@ -1112,6 +1120,11 @@ button.product_profile_product_card_view_btn {
   box-shadow: none;
 }
 
+.product_profile_detail_status_bar--draft {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
 .product_profile_modal_status_label {
   font-size: 0.65rem;
   font-weight: 400;
@@ -1214,4 +1227,123 @@ button.product_profile_product_card_view_btn {
   gap: 0.4rem;
   min-width: 0;
   flex: 1;
+}
+
+/* Dark mode — product detail chrome (back button, breadcrumb, status) */
+html[data-theme="dark"] .product_profile_back_to_products_btn {
+  background: rgba(138, 175, 255, 0.14);
+  color: var(--nav-active, #8aafff);
+  border-color: rgba(138, 175, 255, 0.28);
+}
+
+html[data-theme="dark"] .product_profile_back_to_products_btn:hover {
+  background: rgba(138, 175, 255, 0.22);
+  color: #c7d7ff;
+  border-color: rgba(138, 175, 255, 0.45);
+}
+
+html[data-theme="dark"] .product_profile_breadcrumb {
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .product_profile_breadcrumb_root {
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .product_profile_breadcrumb_root:hover {
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .product_profile_breadcrumb_sep {
+  color: var(--border-strong, #524e68);
+}
+
+html[data-theme="dark"] .product_profile_breadcrumb_current {
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .product_profile_detail_on_page {
+  background: var(--surface-color, #252231);
+  border-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .product_profile_detail_on_page_title {
+  color: var(--text-primary, #ebe9f3);
+  border-bottom-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .product_profile_detail_on_page_body {
+  border-top-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .product_profile_detail_status_bar,
+html[data-theme="dark"] .product_profile_detail_on_page_body .attestation_visible_status {
+  background: var(--surface-muted, #221f2e);
+  border-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .product_profile_detail_status_bar--draft {
+  background: rgba(250, 204, 21, 0.12);
+  border-color: rgba(250, 204, 21, 0.38);
+}
+
+html[data-theme="dark"] .product_profile_modal_status_label,
+html[data-theme="dark"] .product_profile_modal_status_sub {
+  color: var(--text-muted, #9a95ab) !important;
+  -webkit-text-fill-color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .product_profile_modal_visibility,
+html[data-theme="dark"] .product_profile_toggle_wrap {
+  background: var(--surface-muted, #221f2e);
+  border-color: var(--border-subtle, #403c52);
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .product_profile_modal_visibility_label {
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .product_profile_product_card_status {
+  -webkit-text-fill-color: unset;
+}
+
+html[data-theme="dark"] .product_profile_product_card_status_completed {
+  background: rgba(52, 211, 153, 0.18);
+  color: #6ee7b7;
+  -webkit-text-fill-color: #6ee7b7;
+}
+
+html[data-theme="dark"] .product_profile_product_card_status_draft {
+  background: rgba(250, 204, 21, 0.22);
+  border: 1px solid rgba(250, 204, 21, 0.5);
+  color: #fde68a;
+  -webkit-text-fill-color: #fde68a;
+}
+
+html[data-theme="dark"] .product_profile_product_card_status_rejected {
+  background: rgba(248, 113, 113, 0.18);
+  color: #fca5a5;
+  -webkit-text-fill-color: #fca5a5;
+}
+
+html[data-theme="dark"] .product_profile_product_card_status_submitted,
+html[data-theme="dark"] .product_profile_product_card_status_pending {
+  background: rgba(138, 175, 255, 0.14);
+  color: #c7d7ff;
+  -webkit-text-fill-color: #c7d7ff;
+}
+
+html[data-theme="dark"] .product_profile_product_card_view_btn.dash_view_all_btn,
+html[data-theme="dark"] button.product_profile_product_card_view_btn {
+  background: rgba(138, 175, 255, 0.14);
+  border-color: rgba(138, 175, 255, 0.28);
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .product_profile_product_card_view_btn.dash_view_all_btn:hover,
+html[data-theme="dark"] button.product_profile_product_card_view_btn:hover {
+  background: rgba(138, 175, 255, 0.22);
+  border-color: rgba(138, 175, 255, 0.45);
+  color: #c7d7ff;
 }

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { CircleX } from "lucide-react";
 import MyAccount from "./MyAccount";
 import "../../../styles/popovers.css";
@@ -15,12 +16,17 @@ const AccountSettingsModal = ({ onClose }: AccountSettingsModalProps) => {
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
-      className="profile_modal_overlay"
+      className="profile_modal_overlay account_settings_modal_overlay"
       role="dialog"
       aria-modal="true"
       aria-label="Account settings"
@@ -46,7 +52,8 @@ const AccountSettingsModal = ({ onClose }: AccountSettingsModalProps) => {
           <MyAccount hidePageHeader />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

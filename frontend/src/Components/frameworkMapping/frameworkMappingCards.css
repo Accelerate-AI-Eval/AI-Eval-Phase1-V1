@@ -22,12 +22,12 @@
   flex-direction: column;
   min-height: 0;
   background-color: var(--surface-color, #ffffff);
-  /* background-image: linear-gradient(
+  background-image: linear-gradient(
     180deg,
     rgba(34, 91, 255, 0.045) 0%,
     rgba(248, 251, 255, 0.55) 32%,
     var(--surface-color, #ffffff) 62%
-  ); */
+  );
   border-radius: 0;
   border: 1px solid var(--border-subtle, #e2e6ec);
   padding: 1.15rem 1.2rem 1.05rem;

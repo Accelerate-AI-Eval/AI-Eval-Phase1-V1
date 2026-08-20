@@ -188,63 +188,86 @@ function deleteTrailingBlankPdfPages(
   }
 }
 
+function waitNextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
+/** PDFs always use light tokens; do not persist this to theme storage. */
+function forceDocumentLightTheme(doc: Document): string | null {
+  const root = doc.documentElement;
+  const previousTheme = root.getAttribute("data-theme");
+  root.setAttribute("data-theme", "light");
+  root.style.setProperty("color-scheme", "light");
+  return previousTheme;
+}
+
+function restoreDocumentTheme(doc: Document, previousTheme: string | null): void {
+  const root = doc.documentElement;
+  if (previousTheme) {
+    root.setAttribute("data-theme", previousTheme);
+  } else {
+    root.removeAttribute("data-theme");
+  }
+  root.style.removeProperty("color-scheme");
+}
+
 /** Renders the given element to a PDF and triggers a browser download. */
 export async function downloadElementAsPdf(element: HTMLElement, filename: string): Promise<void> {
-  removeReportPdfFlowSpacers(element);
-  element.classList.add("report_pdf_capture");
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => resolve());
-  });
-  /* Second frame: layout settles after capture class (scale/width) applies. */
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => resolve());
-  });
-
-  const marginMm = [26, 8, 14, 8] as [number, number, number, number];
-  const html2canvasScale = 2;
-  const jsPdfOpts = {
-    unit: "mm",
-    format: "a4",
-    orientation: "portrait" as const,
-  };
-
-  insertReportPdfFlowSpacers(element, marginMm, html2canvasScale, jsPdfOpts);
-  /* Second pass after spacers reflow layout (nested blocks, shifted Y). */
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => resolve());
-  });
-  insertReportPdfFlowSpacers(element, marginMm, html2canvasScale, jsPdfOpts);
-
-  const opt = {
-    margin: marginMm,
-    filename,
-    image: { type: "jpeg" as const, quality: 0.94 },
-    html2canvas: {
-      scale: html2canvasScale,
-      useCORS: true,
-      logging: false,
-      scrollY: -window.scrollY,
-      scrollX: 0,
-      windowWidth: element.scrollWidth,
-      letterRendering: true,
-      backgroundColor: "#ffffff",
-    },
-    jsPDF: jsPdfOpts,
-    /**
-     * Built-in pagebreak uses viewport rects without subtracting the container offset
-     * (see html2pdf `pagebreaks.js`), which splits cards when the capture root is scaled.
-     * Custom spacers in `insertReportPdfFlowSpacers` use root-relative Y and the same
-     * slice height as `toPdf` (`floor(canvas.width * inner.ratio)`).
-     */
-    pagebreak: {
-      mode: [] as string[],
-      before: [] as string[],
-      after: [] as string[],
-      avoid: [] as string[],
-    },
-  };
-
+  const previousTheme = forceDocumentLightTheme(document);
   try {
+    removeReportPdfFlowSpacers(element);
+    element.classList.add("report_pdf_capture");
+    await waitNextPaint();
+    /* Second frame: layout settles after light theme + capture class (scale/width) apply. */
+    await waitNextPaint();
+
+    const marginMm = [26, 8, 14, 8] as [number, number, number, number];
+    const html2canvasScale = 2;
+    const jsPdfOpts = {
+      unit: "mm",
+      format: "a4",
+      orientation: "portrait" as const,
+    };
+
+    insertReportPdfFlowSpacers(element, marginMm, html2canvasScale, jsPdfOpts);
+    /* Second pass after spacers reflow layout (nested blocks, shifted Y). */
+    await waitNextPaint();
+    insertReportPdfFlowSpacers(element, marginMm, html2canvasScale, jsPdfOpts);
+
+    const opt = {
+      margin: marginMm,
+      filename,
+      image: { type: "jpeg" as const, quality: 0.94 },
+      html2canvas: {
+        scale: html2canvasScale,
+        useCORS: true,
+        logging: false,
+        scrollY: -window.scrollY,
+        scrollX: 0,
+        windowWidth: element.scrollWidth,
+        letterRendering: true,
+        backgroundColor: "#ffffff",
+        onclone: (clonedDoc: Document) => {
+          forceDocumentLightTheme(clonedDoc);
+        },
+      },
+      jsPDF: jsPdfOpts,
+      /**
+       * Built-in pagebreak uses viewport rects without subtracting the container offset
+       * (see html2pdf `pagebreaks.js`), which splits cards when the capture root is scaled.
+       * Custom spacers in `insertReportPdfFlowSpacers` use root-relative Y and the same
+       * slice height as `toPdf` (`floor(canvas.width * inner.ratio)`).
+       */
+      pagebreak: {
+        mode: [] as string[],
+        before: [] as string[],
+        after: [] as string[],
+        avoid: [] as string[],
+      },
+    };
+
     const exportedAt = new Date();
     const worker = html2pdf().set(opt).from(element);
     await worker.toPdf();
@@ -263,5 +286,6 @@ export async function downloadElementAsPdf(element: HTMLElement, filename: strin
   } finally {
     removeReportPdfFlowSpacers(element);
     element.classList.remove("report_pdf_capture");
+    restoreDocumentTheme(document, previousTheme);
   }
 }

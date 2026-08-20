@@ -748,7 +748,7 @@ const Organizations = () => {
                                 return (
                                   <article
                                     key={a.id}
-                                    className={`vendor_directory_card general_rpr_card${isExpired ? " general_rpr_card_archived" : ""}`}
+                                    className={`vendor_directory_card general_rpr_card${isExpired ? " general_rpr_card_archived" : isDraft ? " assessment_card--draft" : isCompleted ? " assessment_card--completed" : ""}`}
                                     data-accent="sales"
                                   >
                                     <div className="general_report_card_header">
@@ -1013,7 +1013,7 @@ const Organizations = () => {
                                   return (
                                     <article
                                       key={row.assessmentId}
-                                      className={`vendor_directory_card general_rpr_card${archived ? " general_rpr_card_archived" : ""}`}
+                                      className={`vendor_directory_card general_rpr_card${archived ? " general_rpr_card_archived" : isDraft ? " assessment_card--draft" : statusLabel === "Completed" ? " assessment_card--completed" : ""}`}
                                       data-accent="risk"
                                     >
                                       <div className="general_report_card_header">

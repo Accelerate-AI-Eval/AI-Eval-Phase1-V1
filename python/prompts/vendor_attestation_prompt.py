@@ -53,6 +53,9 @@ Then continue with the detailed sections below.
 - **Training Data Documentation:** [level of training data documentation]
 - **Bias Detection:** [red team, third-party audits, monitoring, statistical tools]
 - **Penetration Testing:** [frequency and type]
+- **Independent Penetration Test Frequency:** [continuous / quarterly / annually / ad hoc / none]
+- **Vulnerability Disclosure Policy:** [status, URL, acknowledgement SLA]
+- **Bug Bounty:** [status, URL, scope]
 
 ## 5. AI Governance (Ethics, oversight, and governance)
 - **AI Ethics Policy:** [usage policies, safety guidelines]
@@ -72,7 +75,10 @@ Then continue with the detailed sections below.
 - **Data Retention:** [default and optional zero retention]
 - **Data Location / Residency:** [US, EU, customer choice, etc.]
 - **Data Deletion:** [on request, automated]
-- **Sub-processors:** [infrastructure, payments, auth if known]
+- **Encryption at Rest:** [algorithm or Not disclosed]
+- **TLS in Transit:** [TLS 1.2 / 1.2+ / 1.3 / Other]
+- **Data Subject Rights:** [rights supported and controller / processor / both]
+- **Sub-processors:** [name, purpose, region, source URL if known]
 
 ## 8. Compliance & Certifications
 - **Certifications:** [SOC 2, ISO, FedRAMP, HIPAA, GDPR, etc.]
@@ -80,6 +86,7 @@ Then continue with the detailed sections below.
 - **Regulatory Frameworks:** [NIST, GDPR, CCPA, EU AI Act readiness]
 - **HIPAA Compliance:** [BAA eligibility]
 - **GDPR Compliance:** [DPA availability]
+- **DPA Available:** [publicly available / on request / none]
 - **EU AI Act Readiness:** [engagement, preparation]
 - **Audit Frequency / Last Audit Date / Audit Findings:** [if stated]
 
@@ -92,6 +99,7 @@ Then continue with the detailed sections below.
 - **Critical Vendors:** [infrastructure, payments]
 - **Vendor Assessment:** [frequency of risk assessments]
 - **Vendor SLAs:** [key SLAs from critical vendors]
+- **Sub-processors:** [name, purpose, region, source URL]
 
 ## 11. Evidence & Trust
 Use only vendor attestation facts for this section. Do NOT include score calculation data, VTS formula details, category scores, risk units, factor explanations, rationale, or scoring rubrics.

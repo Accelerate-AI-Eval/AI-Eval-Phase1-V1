@@ -627,7 +627,7 @@
   color: #16a34a;
 }
 .assessment_list_rows .vendor_overview_attestation_icon_draft {
-  color: #6b7280;
+  color: #b45309;
 }
 .assessment_list_rows .vendor_overview_attestation_content {
   flex: 1;
@@ -652,7 +652,7 @@
   letter-spacing: 0.02rem;
 }
 .assessment_list_rows .vendor_overview_attestation_status_label_draft {
-  color: #6b7280;
+  color: #b45309;
 }
 .assessment_list_rows .vendor_overview_attestation_status_label_expired {
   color: #dc2626;
@@ -683,7 +683,7 @@
   .general_report_card_header
   p.assessment_card_status_draft
   .general_rpr_card_report_type_icon {
-  color: #6b7280;
+  color: #b45309;
   font-weight: 600;
 }
 .assessment_list_rows
@@ -748,6 +748,16 @@
   display: flex;
   flex-direction: column;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.assessment_list_rows .vendor_directory_card.general_rpr_card.assessment_card--draft,
+.attestation_list_rows .vendor_directory_card.general_rpr_card.assessment_card--draft {
+  border-bottom: 3px solid #f59e0b;
+}
+
+.assessment_list_rows .vendor_directory_card.general_rpr_card.assessment_card--completed,
+.attestation_list_rows .vendor_directory_card.general_rpr_card.assessment_card--completed {
+  border-bottom: 3px solid #10b981;
 }
 
 .assessment_list_rows .vendor_directory_card.general_rpr_card:hover {
@@ -1554,10 +1564,21 @@ html[data-theme="dark"] .general_rpr_card_download_btn:hover {
   border-color: #e2e8f0;
 }
 
-.assessments_ledger_action_btn:disabled:hover,
-.assessments_ledger_action_btn[disabled]:hover {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
+html[data-theme="dark"] .assessments_ledger_action_btn:not(:disabled):not([disabled]) {
+  background: rgba(138, 175, 255, 0.14);
+  border-color: rgba(138, 175, 255, 0.28);
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .assessments_ledger_action_btn:hover:not(:disabled):not([disabled]) {
+  background: rgba(138, 175, 255, 0.22);
+  border-color: rgba(138, 175, 255, 0.4);
+  color: #b4cbff;
+}
+
+html[data-theme="dark"] .assessments_ledger_action_btn svg {
+  color: inherit;
+  stroke: currentColor;
 }
 
 .assessments_ledger_action_group {

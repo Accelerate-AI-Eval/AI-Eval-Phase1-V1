@@ -334,7 +334,7 @@
 .sales_enablement_assistant_icon {
   width: 38px;
   height: 38px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--icon-chip-color, var(--nav-active, #225bff));
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
   padding: 5px;
@@ -356,13 +356,16 @@
   display: block;
 }
 
-/* Always use the blue AIQ mark (light + dark) */
 .sales_enablement_aiq_icon--dark {
-  display: none !important;
+  display: none;
 }
 
 html[data-theme="dark"] .sales_enablement_aiq_icon--light {
-  display: block !important;
+  display: none;
+}
+
+html[data-theme="dark"] .sales_enablement_aiq_icon--dark {
+  display: block;
 }
 
 .sales_enablement_page_logo {
@@ -371,7 +374,7 @@ html[data-theme="dark"] .sales_enablement_aiq_icon--light {
   justify-content: center;
   padding: 0.3rem;
   box-sizing: border-box;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border-radius: 10px;
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
 }
@@ -673,7 +676,7 @@ html[data-theme="dark"] .sales_enablement_thinking_dots span {
 
 .sales_enablement_input_shell:focus-within {
   box-shadow: inset 0 0 0 1px rgba(34, 91, 255, 0.22), 0 0 0 3px rgba(34, 91, 255, 0.08);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 .sales_enablement_input_shell .input_wrapper {
@@ -966,7 +969,7 @@ html[data-theme="dark"] .sales_enablement_thinking_dots span {
   padding-left: 1.25rem;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: #374151;
+  color: var(--text-secondary, #374151);
 }
 
 .sales_enablement_battle_card_section ul li {
@@ -1002,7 +1005,7 @@ html[data-theme="dark"] .sales_enablement_thinking_dots span {
 
 .sales_enablement_battle_card_a {
   margin: 0;
-  color: #374151;
+  color: var(--text-secondary, #374151);
 }
 
 .sales_enablement_battle_card_qa_blocks {
@@ -1030,13 +1033,13 @@ html[data-theme="dark"] .sales_enablement_thinking_dots span {
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   line-height: 1.5;
-  color: #374151;
+  color: var(--text-secondary, #374151);
 }
 
 .sales_enablement_battle_card_icp_title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 0.35rem;
 }
 
@@ -1049,7 +1052,7 @@ html[data-theme="dark"] .sales_enablement_thinking_dots span {
   padding-left: 1.25rem;
   font-size: 0.875rem;
   line-height: 1.5;
-  color: #374151;
+  color: var(--text-secondary, #374151);
 }
 
 .sales_enablement_battle_card ul li {
@@ -1071,7 +1074,7 @@ html[data-theme="dark"] .sales_enablement_thinking_dots span {
   margin-top: 0;
   width: 2rem;
   height: 2rem;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--icon-chip-color, var(--nav-active, #225bff));
   padding: 4px;
   box-sizing: border-box;
@@ -1155,7 +1158,7 @@ html[data-theme="dark"] .sales_enablement_thinking_dots span {
 }
 
 .tool_calls_summary__header:hover {
-  color: #374151;
+  color: var(--text-secondary, #374151);
 }
 
 .tool_calls_summary__wrench,
@@ -1263,7 +1266,7 @@ html[data-theme="dark"] .tool_calls_summary--live {
 
 .tool_calls_summary__name {
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.78rem;
 }
@@ -1406,21 +1409,21 @@ html[data-theme="dark"] .sales_enablement_select_wrapper .select_input {
 }
 
 html[data-theme="dark"] .sales_enablement_chat_main {
-  background: linear-gradient(165deg, rgba(36, 36, 36, 0.9) 0%, rgba(28, 28, 28, 0.95) 100%);
+  background: var(--app-bg-color, #1c1a27);
   box-shadow: none;
 }
 
 html[data-theme="dark"] .sales_enablement_assistant_icon,
 html[data-theme="dark"] .sales_enablement_agent_icon,
 html[data-theme="dark"] .sales_enablement_page_logo {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--surface-elevated, #2d2a3a);
   color: var(--nav-active, #8aafff);
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px var(--border-subtle, #403c52);
 }
 
 html[data-theme="dark"] .sales_enablement_status_pill {
-  background: rgba(255, 255, 255, 0.06);
-  color: #a8a29e;
+  background: rgba(138, 175, 255, 0.08);
+  color: var(--text-muted, #9a95ab);
 }
 
 html[data-theme="dark"] .sales_enablement_status_pill--ready {

@@ -861,7 +861,7 @@
   color: #16a34a;
 }
 .attestation_list_rows .vendor_overview_attestation_icon_draft {
-  color: #6b7280;
+  color: #b45309;
 }
 .attestation_list_rows .vendor_overview_attestation_icon_rejected {
   color: #dc2626;
@@ -887,7 +887,7 @@
   letter-spacing: 0.02rem;
 }
 .attestation_list_rows .vendor_overview_attestation_status_label_draft {
-  color: #6b7280;
+  color: #b45309;
 }
 .attestation_list_rows .vendor_overview_attestation_status_label_rejected {
   color: #dc2626;
@@ -1093,7 +1093,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  min-height: 0;
+  min-height: 12.5rem;
+  height: 100%;
   padding: 0;
   border-radius: 0 !important;
   background: var(--surface-color, #ffffff);
@@ -1115,21 +1116,35 @@
   box-shadow: var(--shadow-elevated, 0 4px 14px rgba(15, 23, 42, 0.08));
 }
 
+.attestation_list_rows .attestation_soft_card--draft {
+  border-bottom: 3px solid #f59e0b;
+}
+
+.attestation_list_rows .attestation_soft_card--completed {
+  border-bottom: 3px solid #10b981;
+}
+
+.attestation_list_rows .attestation_soft_card--expired,
+.attestation_list_rows .attestation_soft_card--rejected {
+  border-bottom: 3px solid #ef4444;
+}
+
 /* 1) Hero — product name + assessment-style icon actions */
 .attestation_soft_card__hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 0.55rem;
   padding: 0.85rem 1.15rem 1.15rem;
   text-align: center;
-  background-color: var(--surface-color, #ffffff);
+  background-color: transparent;
   background-image: linear-gradient(
     180deg,
-    rgba(34, 91, 255, 0.045) 0%,
-    rgba(248, 244, 237, 0.32) 48%,
-    var(--surface-color, #ffffff) 100%
+    rgba(34, 91, 255, 0.04) 0%,
+    transparent 72%
   );
   border-bottom: 1px solid var(--border-subtle, #e2e6ec);
 }
@@ -1209,11 +1224,13 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem 1rem;
-  margin: 0;
+  margin: auto 0 0;
   padding: 0.9rem 1.15rem 1.05rem;
   border: none;
-  background: #ffffff;
+  background: transparent;
   align-items: start;
+  flex-shrink: 0;
+  width: 100%;
 }
 
 .attestation_soft_card__meta_item {
@@ -1274,12 +1291,11 @@ html[data-theme="dark"]
 }
 
 html[data-theme="dark"] .attestation_soft_card__hero {
-  background-color: var(--surface-color, #2c2926);
+  background-color: transparent;
   background-image: linear-gradient(
     180deg,
-    rgba(34, 91, 255, 0.08) 0%,
-    rgba(30, 28, 26, 0.35) 50%,
-    var(--surface-color) 100%
+    rgba(91, 140, 255, 0.1) 0%,
+    transparent 72%
   );
   border-bottom-color: var(--border-subtle, #413c38);
 }
@@ -1289,7 +1305,7 @@ html[data-theme="dark"] .attestation_soft_card__title {
 }
 
 html[data-theme="dark"] .attestation_soft_card__meta {
-  background: var(--surface-color, #2c2926);
+  background: transparent;
 }
 
 html[data-theme="dark"] .attestation_soft_card__meta_value {
@@ -1431,13 +1447,33 @@ html[data-theme="dark"]
   color: #ebe9f3 !important;
 }
 
+html[data-theme="dark"]
+  .attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--draft {
+  border-bottom-color: #f59e0b !important;
+}
+
+html[data-theme="dark"]
+  .attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--completed {
+  border-bottom-color: #10b981 !important;
+}
+
+html[data-theme="dark"]
+  .attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--expired,
+html[data-theme="dark"]
+  .attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--rejected {
+  border-bottom-color: #ef4444 !important;
+}
+
 html[data-theme="dark"] .attestation_soft_card__hero {
-  background-color: var(--surface-elevated, #2d2a3a) !important;
+  background-color: transparent !important;
   background-image: linear-gradient(
     180deg,
     rgba(91, 140, 255, 0.1) 0%,
-    rgba(28, 26, 39, 0.35) 50%,
-    var(--surface-elevated, #2d2a3a) 100%
+    transparent 72%
   ) !important;
   border-bottom-color: var(--border-subtle, #403c52) !important;
 }
@@ -1482,8 +1518,8 @@ html[data-theme="dark"] .attestation_soft_card__meta_label {
 }
 
 html[data-theme="dark"] .attestation_soft_card__meta_item {
-  background: rgba(138, 175, 255, 0.05) !important;
-  border-color: var(--border-subtle, #403c52) !important;
+  background: transparent !important;
+  border: none !important;
 }
 
 html[data-theme="dark"] .attestation_soft_card__meta_value {

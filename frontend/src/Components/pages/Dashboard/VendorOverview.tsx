@@ -28,6 +28,7 @@ import {
   type CompleteReportLetterGrade,
 } from "../../../utils/completeReportGrade";
 import "./dashboard.css";
+import "../UserManagement/user_management.css";
 import ClickTooltip from "../../UI/ClickTooltip";
 import DashboardTypewriterGreeting from "../../UI/DashboardTypewriterGreeting";
 
@@ -659,7 +660,7 @@ const VendorOverview = () => {
                         <span className="vendor_portal_attestation_score_label">
                           {trustSubtitle}
                           <ClickTooltip content="Trust Score is displayed out of 100">
-                            <Info size={14} color="#6B7280" />
+                            <Info size={14} />
                           </ClickTooltip>
                         </span>
                       </>
@@ -911,9 +912,11 @@ const VendorOverview = () => {
                         {reportId ? (
                           <Link
                             to={`/reports/${reportId}`}
-                            className="vendor_portal_table_link user_table_action_btn "
+                            className="user_table_action_btn user_table_action_btn_icon"
+                            title="View"
+                            aria-label="View report"
                           >
-                            <Eye width={16}/>View
+                            <Eye size={14} />
                           </Link>
                         ) : (
                           <span className="vendor_portal_grade_na">—</span>

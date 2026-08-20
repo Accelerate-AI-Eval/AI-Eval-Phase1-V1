@@ -6,10 +6,17 @@ import { llmModelUsageEvents } from "../../schema/observability/llmModelUsageEve
 import { resolveActorSnapshot } from "../observability/llmUsage.service.js";
 import {
   ORG_CONTROL_FEATURE_LABELS,
+  normalizeOrgControlFeature,
   type OrgControlFeature,
 } from "./orgControlFeatures.js";
 
 export const TOKEN_QUOTA_EXCEEDED_CODE = "TOKEN_QUOTA_EXCEEDED";
+
+/** Too small to finish a useful report / assessment / chat turn. Stop instead. */
+export const MIN_REMAINING_OUTPUT_TOKENS = 128;
+
+const QUOTA_MESSAGE_RE =
+  /token quota is exhausted|no tokens have been allocated|contact platform admin/i;
 
 export class TokenQuotaExceededError extends Error {
   readonly status = 403;
@@ -32,18 +39,42 @@ function asNonNegInt(value: unknown): number {
   return Math.floor(n);
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value != null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
 export function isTokenQuotaExceededError(
   error: unknown,
 ): error is TokenQuotaExceededError {
   return error instanceof TokenQuotaExceededError;
 }
 
+export function isTokenQuotaExceededMessage(
+  message: string | null | undefined,
+): boolean {
+  if (!message) return false;
+  return QUOTA_MESSAGE_RE.test(message);
+}
+
 export function sendIfTokenQuotaExceeded(res: Response, error: unknown): boolean {
-  if (!isTokenQuotaExceededError(error)) return false;
-  res.status(error.status).json({
+  if (isTokenQuotaExceededError(error)) {
+    res.status(error.status).json({
+      success: false,
+      code: error.code,
+      message: error.message,
+    });
+    return true;
+  }
+  const message = error instanceof Error ? error.message : "";
+  if (!isTokenQuotaExceededMessage(message)) return false;
+  res.status(403).json({
     success: false,
-    code: error.code,
-    message: error.message,
+    code: TOKEN_QUOTA_EXCEEDED_CODE,
+    message: /contact platform admin/i.test(message)
+      ? message
+      : `${message.replace(/\.*$/, "")}. Contact platform admin`,
   });
   return true;
 }
@@ -56,6 +87,8 @@ export type FeatureTokenBalance = {
   allocated: number;
   consumed: number;
   remaining: number;
+  remainingInput: number | null;
+  remainingOutput: number | null;
   inputExceeded: boolean;
   outputExceeded: boolean;
   exhausted: boolean;
@@ -74,6 +107,8 @@ export async function getFeatureTokenBalance(input: {
     allocated: 0,
     consumed: 0,
     remaining: 0,
+    remainingInput: 0,
+    remainingOutput: 0,
     inputExceeded: false,
     outputExceeded: false,
     exhausted: true,
@@ -115,6 +150,10 @@ export async function getFeatureTokenBalance(input: {
   const consumedOutput = asNonNegInt(usageRow?.consumedOutput);
   const allocated = allocatedInput + allocatedOutput;
   const consumed = consumedInput + consumedOutput;
+  const remainingInput =
+    allocatedInput > 0 ? Math.max(0, allocatedInput - consumedInput) : null;
+  const remainingOutput =
+    allocatedOutput > 0 ? Math.max(0, allocatedOutput - consumedOutput) : null;
   const inputExceeded = allocatedInput > 0 && consumedInput >= allocatedInput;
   const outputExceeded = allocatedOutput > 0 && consumedOutput >= allocatedOutput;
   const exhausted =
@@ -128,6 +167,8 @@ export async function getFeatureTokenBalance(input: {
     allocated,
     consumed,
     remaining: Math.max(0, allocated - consumed),
+    remainingInput,
+    remainingOutput,
     inputExceeded,
     outputExceeded,
     exhausted,
@@ -143,18 +184,33 @@ function quotaExceededMessage(
 ): string {
   const label = ORG_CONTROL_FEATURE_LABELS[feature];
   if (balance.allocated <= 0) {
-    return `No tokens have been allocated for ${label}. Contact a platform admin.`;
+    return `No tokens have been allocated for ${label}. Contact platform admin`;
   }
   if (balance.inputExceeded && balance.outputExceeded) {
-    return `Your ${label} input and output token quotas are exhausted. Contact a platform admin.`;
+    return `Your ${label} input and output token quotas are exhausted. Contact platform admin`;
   }
   if (balance.inputExceeded) {
-    return `Your ${label} input token quota is exhausted. Contact a platform admin.`;
+    return `Your ${label} input token quota is exhausted. Contact platform admin`;
   }
   if (balance.outputExceeded) {
-    return `Your ${label} output token quota is exhausted. Contact a platform admin.`;
+    return `Your ${label} output token quota is exhausted. Contact platform admin`;
   }
-  return `Your ${label} token quota is exhausted. Contact a platform admin.`;
+  return `Your ${label} token quota is exhausted. Contact platform admin`;
+}
+
+export function throwTokenQuotaExceeded(
+  feature: OrgControlFeature,
+  balance: Pick<
+    FeatureTokenBalance,
+    "allocated" | "consumed" | "inputExceeded" | "outputExceeded"
+  >,
+): never {
+  throw new TokenQuotaExceededError(
+    quotaExceededMessage(feature, balance),
+    feature,
+    balance.allocated,
+    balance.consumed,
+  );
 }
 
 /**
@@ -164,19 +220,32 @@ function quotaExceededMessage(
 export async function assertFeatureTokenQuota(
   feature: OrgControlFeature,
 ): Promise<void> {
+  await prepareFeatureTokenInvoke(feature, 1);
+}
+
+/**
+ * Assert quota before an LLM call. Caps max_tokens to remaining output on the
+ * first step of a generation. Later steps should pass allowCap=false so the
+ * feature stops immediately instead of emitting a truncated chunk.
+ */
+export async function prepareFeatureTokenInvoke(
+  feature: OrgControlFeature,
+  requestedMaxTokens: number,
+  estimatedInputTokens = 0,
+  allowCap = true,
+): Promise<{ maxTokens: number; capped: boolean; balance: FeatureTokenBalance | null }> {
+  const requested = Math.max(1, asNonNegInt(requestedMaxTokens) || 1);
   const actor = await resolveActorSnapshot();
-  if (actor.userId == null) return;
+  if (actor.userId == null) {
+    return { maxTokens: requested, capped: false, balance: null };
+  }
   if (actor.organizationId == null) {
-    throw new TokenQuotaExceededError(
-      quotaExceededMessage(feature, {
-        allocated: 0,
-        inputExceeded: false,
-        outputExceeded: false,
-      }),
-      feature,
-      0,
-      0,
-    );
+    throwTokenQuotaExceeded(feature, {
+      allocated: 0,
+      consumed: 0,
+      inputExceeded: false,
+      outputExceeded: false,
+    });
   }
 
   const balance = await getFeatureTokenBalance({
@@ -184,12 +253,77 @@ export async function assertFeatureTokenQuota(
     organizationId: actor.organizationId,
     feature,
   });
-  if (!balance.exhausted) return;
+  if (balance.exhausted) {
+    throwTokenQuotaExceeded(feature, balance);
+  }
+  if (
+    balance.remainingInput != null &&
+    estimatedInputTokens > 0 &&
+    estimatedInputTokens > balance.remainingInput
+  ) {
+    throwTokenQuotaExceeded(feature, { ...balance, inputExceeded: true });
+  }
 
+  let maxTokens = requested;
+  let capped = false;
+  if (balance.remainingOutput != null) {
+    if (balance.remainingOutput < MIN_REMAINING_OUTPUT_TOKENS) {
+      throwTokenQuotaExceeded(feature, { ...balance, outputExceeded: true });
+    }
+    if (balance.remainingOutput < requested) {
+      if (!allowCap) {
+        throwTokenQuotaExceeded(feature, { ...balance, outputExceeded: true });
+      }
+      maxTokens = balance.remainingOutput;
+      capped = true;
+    }
+  }
+  return { maxTokens, capped, balance };
+}
+
+function parseTokenQuotaHttpBody(
+  status: number,
+  body: unknown,
+): {
+  message: string;
+  feature: OrgControlFeature | null;
+  allocated: number;
+  consumed: number;
+} | null {
+  const root = asRecord(body);
+  const detail = root?.detail;
+  const payload = asRecord(detail) ?? root;
+  const code = payload?.code;
+  const messageFromPayload =
+    typeof payload?.message === "string" ? payload.message.trim() : "";
+  const messageFromDetail = typeof detail === "string" ? detail.trim() : "";
+  const message = messageFromPayload || messageFromDetail;
+  const isQuota =
+    code === TOKEN_QUOTA_EXCEEDED_CODE || isTokenQuotaExceededMessage(message);
+  if (!isQuota) return null;
+  if (status !== 403 && status !== 429 && code !== TOKEN_QUOTA_EXCEEDED_CODE) {
+    if (!isTokenQuotaExceededMessage(message)) return null;
+  }
+  return {
+    message: message || "Your token quota is exhausted. Contact platform admin",
+    feature: normalizeOrgControlFeature(payload?.feature),
+    allocated: asNonNegInt(payload?.allocated),
+    consumed: asNonNegInt(payload?.consumed),
+  };
+}
+
+/** Convert a Python/FastAPI 403 token-quota body into TokenQuotaExceededError. */
+export function throwIfTokenQuotaHttpError(
+  status: number,
+  body: unknown,
+  fallbackFeature: OrgControlFeature,
+): void {
+  const parsed = parseTokenQuotaHttpBody(status, body);
+  if (!parsed) return;
   throw new TokenQuotaExceededError(
-    quotaExceededMessage(feature, balance),
-    feature,
-    balance.allocated,
-    balance.consumed,
+    parsed.message,
+    parsed.feature ?? fallbackFeature,
+    parsed.allocated,
+    parsed.consumed,
   );
 }

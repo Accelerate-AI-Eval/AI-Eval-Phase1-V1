@@ -73,6 +73,7 @@ def _bool_yes_local(v: Any) -> bool:
 
 _VTS_KEY_FIELDS: list[tuple[str, tuple[str, ...]]] = [
     ("Security certifications", ("security_certifications", "security_compliance_certificates")),
+    ("HIPAA BAA", ("hipaa_baa",)),
     ("Incident response plan", ("incident_response_plan",)),
     ("Uptime / SLA", ("uptime_sla", "sla_guarantee")),
     ("PII handling", ("pii_handling", "pii_information")),
@@ -85,6 +86,14 @@ _VTS_KEY_FIELDS: list[tuple[str, tuple[str, ...]]] = [
     ("Training data documentation", ("training_data_documentation", "training_data_document")),
     ("Audit logs", ("audit_logs_available", "audit_logs")),
     ("Audit frequency", ("audit_frequency",)),
+    ("Encryption at rest", ("encryption_at_rest",)),
+    ("TLS in transit", ("tls_in_transit",)),
+    ("Data subject rights", ("data_subject_rights",)),
+    ("Sub-processors", ("sub_processors",)),
+    ("Vulnerability disclosure policy", ("vulnerability_disclosure_policy",)),
+    ("Bug bounty", ("bug_bounty",)),
+    ("Independent pen-test frequency", ("independent_pen_test_frequency",)),
+    ("DPA available", ("dpa_available",)),
     ("Rollback capability", ("rollback_capability", "rollback_deployment_issues")),
     ("Support SLAs", ("support_slas",)),
     ("Decision autonomy", ("decision_autonomy", "ai_autonomy_level")),

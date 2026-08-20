@@ -850,7 +850,19 @@ const VendorAttestationDetails = () => {
                       return (
                         <article
                           key={item.id}
-                          className={`vendor_directory_card general_rpr_card attestation_soft_card${cardInArchived ? " general_rpr_card_archived" : ""}`}
+                          className={`vendor_directory_card general_rpr_card attestation_soft_card${
+                            isArchivedStatus
+                              ? " attestation_soft_card--archived"
+                              : item.status === "Completed"
+                                ? " attestation_soft_card--completed"
+                                : item.status === "Draft"
+                                  ? " attestation_soft_card--draft"
+                                  : item.status === "Expired"
+                                    ? " attestation_soft_card--expired"
+                                    : item.status === "Rejected"
+                                      ? " attestation_soft_card--rejected"
+                                      : ""
+                          }${cardInArchived ? " general_rpr_card_archived" : ""}`}
                           data-accent="sales"
                         >
                           {/* Hero — product name + assessment-style action icons */}

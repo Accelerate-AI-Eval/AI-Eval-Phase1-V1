@@ -3,7 +3,7 @@ type InputProps = {
   labelName: string | React.ReactNode;
   id: string;
   icon?: React.ReactNode;
-  type?: "text" | "email" | "password" | "number" | "textarea" | "file";
+  type?: "text" | "email" | "password" | "number" | "textarea" | "file" | "date" | "url";
   name: string;
   value: string;
   onChange?: (
@@ -12,6 +12,7 @@ type InputProps = {
   rows?: number;
   cols?: number;
   required ?: boolean;
+  inputMode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal" | "search";
 };
 
 const Input = ({

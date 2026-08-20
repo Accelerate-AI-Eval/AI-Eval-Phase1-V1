@@ -6,6 +6,7 @@ import type {
   CapabilityGapsByVendor,
 } from "./buyerVendorRiskReportAgent.js";
 import { invokeBedrockAnthropicText } from "../../utils/invokeBedrockWithUsage.js";
+import { isTokenQuotaExceededError } from "../../services/admin/featureTokenQuota.service.js";
 
 export type VendorComparisonMatrixPayload = {
   buyerPrioritiesAndWeights: BuyerPriorityWeight[];
@@ -199,6 +200,7 @@ export async function generateVendorComparisonMatrixFromCompleteReport(
     const parsed = extractJsonObject(rawText);
     if (parsed) return normalizePayload(parsed, fb);
   } catch (e) {
+    if (isTokenQuotaExceededError(e)) throw e;
     console.error("generateVendorComparisonMatrixFromCompleteReport LLM error:", e);
   }
   return fb;

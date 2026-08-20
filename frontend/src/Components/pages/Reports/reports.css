@@ -45,7 +45,7 @@
   padding: 0.75rem 1.25rem;
   font-size: 0.9375rem;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -55,7 +55,7 @@
 }
 
 .reports_tab:hover {
-  color: #374151;
+  color: var(--text-secondary, #374151);
 }
 
 .reports_tab_active {
@@ -75,7 +75,7 @@
   max-width: 320px;
 }
 .reports_search_icon {
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   flex-shrink: 0;
 }
 .reports_search_input {
@@ -85,7 +85,7 @@
   /* border: 1px solid #d1d5db; */
   border-radius: var(--ui-border-radius, 8px);
   font-size: 0.875rem;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 .reports_search_input::placeholder {
   color: #9ca3af;
@@ -128,7 +128,7 @@
   margin-top: 0.5rem;
   min-height: 2.5rem;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   justify-content: end;
 }
 .reports_pagination > * {
@@ -139,7 +139,7 @@
 .reports_pagination_rows_label {
   font-size: 13px;
   line-height: 1.4;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   flex-shrink: 0;
 }
 .reports_pagination_select {
@@ -149,11 +149,11 @@
   line-height: 1.4;
   vertical-align: middle;
   border-radius: 0;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle, #e2e8f0);
   min-height: 2rem;
   min-width: 3.25rem;
   background: var(--surface-color);
-  color: #374151;
+  color: var(--text-secondary, #374151);
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
@@ -171,7 +171,7 @@
 .reports_pagination_page {
   font-size: 13px;
   line-height: 1.4;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   flex-shrink: 0;
 }
 .reports_pagination_buttons {
@@ -190,7 +190,7 @@
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   cursor: pointer;
   transition:
     background-color 0.4s,
@@ -198,7 +198,7 @@
 }
 .reports_pagination_btn:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.04);
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 .reports_pagination_btn:disabled {
   color: #9ca3af;
@@ -214,7 +214,7 @@
   gap: 1rem;
   padding: 1rem 1.25rem;
   background: var(--surface-color);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: var(--ui-border-radius, 8px);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   cursor: pointer;
@@ -248,14 +248,14 @@
 .report_card_title {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 0.25rem 0;
   line-height: 1.4;
 }
 
 .report_card_meta {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0;
 }
 
@@ -331,7 +331,7 @@
 }
 .report_delete_modal_message {
   font-size: 0.9375rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0 0 1rem 0;
   line-height: 1.45;
 }
@@ -354,7 +354,7 @@
 .report_delete_modal_content .settings_form_actions .orgCancelBtn:hover {
   background-color: #f3f4f6;
   border: 1px solid #d1d5db;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   cursor: pointer;
 }
 
@@ -368,13 +368,26 @@
   border: none;
   border-radius: var(--ui-border-radius, 8px);
   background: transparent;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   cursor: pointer;
 }
 
 .report_card_download:hover {
   background: #f3f4f6;
-  color: #374151;
+  color: var(--text-secondary, #374151);
+}
+
+html[data-theme="dark"] .report_card_download {
+  background: rgba(138, 175, 255, 0.14);
+  border: 1px solid rgba(138, 175, 255, 0.28);
+  border-radius: 0;
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .report_card_download:hover {
+  background: rgba(138, 175, 255, 0.22);
+  border-color: rgba(138, 175, 255, 0.4);
+  color: #b4cbff;
 }
 
 /* ---- Report Detail page ---- */
@@ -451,7 +464,7 @@
   border-radius: 0;
   border: 1px solid #dbe3ef;
   background: #f1f5f9;
-  color: #334155;
+  color: var(--text-secondary, #334155);
   font-size: 0.72rem;
   line-height: 1.3;
   gap: 0;
@@ -465,12 +478,12 @@
 
 .report_llm_model_tag .admin_llm_model_label_text strong {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
 }
 
 .report_detail_breadcrumb {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0.25rem 0 0 0;
 }
 
@@ -491,7 +504,7 @@
 /* Section cards (all sections) – same look as report_risk_category_block */
 .report_section_card {
   background: var(--surface-color);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 0;
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
@@ -558,8 +571,8 @@
 
 .report_framework_notice_info {
   background: var(--surface-elevated);
-  border: 1px solid #e2e8f0;
-  color: #475569;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  color: var(--text-secondary, #475569);
 }
 
 .report_framework_notice_info .report_framework_notice_icon {
@@ -567,7 +580,7 @@
 }
 
 .report_framework_table_shell {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle, #e2e8f0);
   border-radius: 0;
   overflow: hidden;
   background: #fcfcfc;
@@ -611,20 +624,20 @@
 
 .report_framework_td_name {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   max-width: 11rem;
   word-break: break-word;
 }
 
 .report_framework_td_coverage {
-  color: #334155;
+  color: var(--text-secondary, #334155);
   min-width: 8rem;
   max-width: 16rem;
   word-break: break-word;
 }
 
 .report_framework_td_controls {
-  color: #334155;
+  color: var(--text-secondary, #334155);
   line-height: 1.45;
   word-break: break-word;
 }
@@ -701,7 +714,7 @@
   margin: 0 0 0.35rem 0;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--text-secondary, #475569);
 }
 
 .report_framework_empty_desc {
@@ -791,7 +804,7 @@
 }
 
 .report_table td {
-  color: #475569;
+  color: var(--text-secondary, #475569);
 }
 
 .report_table tbody tr:nth-child(odd) td {
@@ -799,7 +812,7 @@
 }
 
 .report_table tbody tr:nth-child(even) td {
-  background: whitesmoke;
+  background: var(--table-row-alt, whitesmoke);
 }
 
 .report_table tbody tr:hover td {
@@ -811,7 +824,7 @@
 }
 
 .report_table tbody tr:nth-child(even):hover td {
-  background: whitesmoke;
+  background: var(--table-row-alt, whitesmoke);
 }
 
 .report_table_empty {
@@ -876,7 +889,7 @@
 
 .report_risk_item_text {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--text-secondary, #374151);
 }
 
 .report_risk_icon_ok {
@@ -920,7 +933,7 @@
 .report_attachment_empty,
 .report_comments_placeholder {
   font-size: 0.9375rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   font-style: italic;
   margin: 0;
 }
@@ -958,14 +971,14 @@
 .report_detail_title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0;
   line-height: 1.3;
 }
 
 .report_detail_subtitle {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0.25rem 0 0 0;
 }
 
@@ -1012,7 +1025,7 @@
   gap: 0.5rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 0.75rem 0;
 }
 
@@ -1023,21 +1036,21 @@
 .report_recommendation_text {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   line-height: 1.5;
   margin: 0 0 0.5rem 0;
 }
 
 .report_recommendation_score {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0;
 }
 
 /* Executive Summary – white card */
 .report_summary_card {
   background: var(--surface-color);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: var(--ui-border-radius, 8px);
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.5rem;
@@ -1047,13 +1060,13 @@
 .report_summary_heading {
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 0.75rem 0;
 }
 
 .report_summary_body {
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   line-height: 1.6;
   margin: 0;
   white-space: pre-line;
@@ -1072,7 +1085,7 @@
 .report_exec_brief_section_title {
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 0.5rem 0;
   padding-bottom: 0.25rem;
   border-bottom: 1px solid #e5e7eb;
@@ -1086,7 +1099,7 @@
 }
 .report_exec_brief_section_body {
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   line-height: 1.6;
   margin: 0;
 }
@@ -1105,7 +1118,7 @@
 /* Customer Risk Mitigation Plan – Ownership matrix table */
 .report_ownership_matrix_wrap {
   margin: 0.35rem 0 0.15rem;
-  border: 1px solid #e8edf5;
+  border: 1px solid var(--border-subtle, #e8edf5);
   border-radius: 10px;
   overflow-x: auto;
   background: var(--surface-color, #fff);
@@ -1120,7 +1133,7 @@
 
 .report_ownership_matrix_table th,
 .report_ownership_matrix_table td {
-  border: 1px solid #e8edf5;
+  border: 1px solid var(--border-subtle, #e8edf5);
   vertical-align: top;
   padding: 0.65rem 0.85rem;
   word-break: break-word;
@@ -1136,7 +1149,7 @@
 }
 
 .report_ownership_matrix_table td {
-  color: #475569;
+  color: var(--text-secondary, #475569);
   background: var(--surface-color, #fff);
 }
 
@@ -1220,7 +1233,7 @@ html[data-theme="dark"] .report_ownership_badge {
   margin-bottom: 0;
   padding: 5px;
   border-radius: var(--ui-border-radius, 8px);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   background: var(--surface-muted);
 }
 @media (max-width: 900px) {
@@ -1229,7 +1242,7 @@ html[data-theme="dark"] .report_ownership_badge {
   }
 }
 .report_blocker_main {
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 .report_blocker_meta {
   margin-top: 0.2rem;
@@ -1241,7 +1254,7 @@ html[data-theme="dark"] .report_ownership_badge {
   align-items: center;
 }
 .report_blocker_metric {
-  color: #4b5563;
+  color: var(--text-muted, #4b5563);
 }
 .report_blocker_metric_value {
   font-weight: 700;
@@ -1262,11 +1275,45 @@ html[data-theme="dark"] .report_ownership_badge {
   background: #dbeafe;
 }
 .report_severity_unknown {
-  color: #374151;
+  color: var(--text-secondary, #374151);
   background: #e5e7eb;
 }
 .report_blocker_evidence {
-  color: #4b5563;
+  color: var(--text-muted, #4b5563);
+}
+
+html[data-theme="dark"] .report_blocker_item {
+  background: var(--surface-elevated, #2d2a3a);
+  border-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .report_blocker_main {
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .report_blocker_metric,
+html[data-theme="dark"] .report_blocker_evidence {
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .report_severity_high {
+  color: #fecdd3;
+  background: #5c2a38;
+}
+
+html[data-theme="dark"] .report_severity_medium {
+  color: #fdba74;
+  background: #5c3a22;
+}
+
+html[data-theme="dark"] .report_severity_low {
+  color: #bfdbfe;
+  background: #1e3a5f;
+}
+
+html[data-theme="dark"] .report_severity_unknown {
+  color: var(--text-secondary, #c8c4d6);
+  background: var(--surface-muted, #221f2e);
 }
 
 /* Assessment details key-value list */
@@ -1289,12 +1336,12 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_detail_dt {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0;
 }
 .report_detail_dd {
   font-size: 0.9375rem;
-  color: #111827;
+  color: var(--text-primary, #111827);
   line-height: 1.5;
   margin: 0;
   white-space: pre-wrap;
@@ -1316,13 +1363,13 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_detail_empty_title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 0.5rem 0;
 }
 
 .report_detail_empty_text {
   font-size: 0.9375rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   line-height: 1.5;
   /* margin: 0 0 1.25rem 0; */
 }
@@ -1341,7 +1388,7 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .report_contract_header {
   background: var(--surface-color);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 0;
   padding: 1rem 1.5rem;
   margin-bottom: 1.25rem;
@@ -1373,19 +1420,19 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_contract_main_title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 0.25rem 0;
 }
 
 .report_contract_subtitle {
   font-size: 1rem;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   margin: 0;
 }
 
 .report_contract_id {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0.25rem 0 0 0;
 }
 
@@ -1403,7 +1450,7 @@ html[data-theme="dark"] .report_ownership_badge {
   padding: 0.75rem 1rem;
   background: #f3f4f6;
   border-radius: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   position: relative;
   padding-right: 2.25rem;
 }
@@ -1411,12 +1458,12 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_assessment_value {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 .report_assessment_label {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
 }
 
 .report_assessment_icon {
@@ -1441,7 +1488,7 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_section_subheading {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   margin: 0 0 0.75rem 0;
 }
 
@@ -1463,13 +1510,13 @@ html[data-theme="dark"] .report_ownership_badge {
   gap: 0.5rem;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 0.75rem 0;
 }
 
 .report_risk_card {
   background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 0;
   padding: 1rem 1.25rem;
   margin-bottom: 0.75rem;
@@ -1482,7 +1529,7 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_risk_card_title {
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 0.5rem 0;
 }
 
@@ -1504,13 +1551,13 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .report_risk_card_row dt {
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0;
 }
 
 .report_risk_card_row dd {
   margin: 0;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 .report_risk_card_status dd.report_risk_status_cell {
@@ -1521,9 +1568,25 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .report_risk_card_desc {
   font-size: 0.875rem;
-  color: #4b5563;
+  color: var(--text-muted, #4b5563);
   line-height: 1.5;
   margin: 0.5rem 0 0.75rem 0;
+}
+
+html[data-theme="dark"] .report_risk_card {
+  background: var(--surface-elevated, #2d2a3a);
+  border-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .report_risk_card_title,
+html[data-theme="dark"] .report_risk_card_row dd {
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .report_risk_card_row dt,
+html[data-theme="dark"] .report_risk_card_desc,
+html[data-theme="dark"] .report_risk_related {
+  color: var(--text-secondary, #c8c4d6);
 }
 
 .report_risk_details_btn {
@@ -1541,7 +1604,7 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .report_risk_related {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin-top: 0.5rem;
 }
 
@@ -1562,7 +1625,7 @@ html[data-theme="dark"] .report_ownership_badge {
   margin: 0;
   padding-left: 1.25rem;
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   line-height: 1.6;
 }
 
@@ -1574,20 +1637,20 @@ html[data-theme="dark"] .report_ownership_badge {
   margin: 0;
   padding-left: 1.25rem;
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   line-height: 1.6;
 }
 
 .report_no_risks,
 .report_attachment_empty {
   font-size: 0.9375rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0;
 }
 
 .report_risk_analysis_intro {
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   margin: 0 0 0.5rem 0;
   line-height: 1.5;
 }
@@ -1630,6 +1693,27 @@ html[data-theme="dark"] .report_ownership_badge {
   text-decoration: none;
 }
 
+html[data-theme="dark"] .report_assessment_back {
+  color: var(--nav-active, #8aafff);
+  -webkit-text-fill-color: var(--nav-active, #8aafff);
+  background: rgba(138, 175, 255, 0.14);
+  border: 1px solid rgba(138, 175, 255, 0.28);
+  padding: 0.35rem 0.7rem 0.35rem 0.45rem;
+  border-radius: 0;
+}
+
+html[data-theme="dark"] .report_assessment_back:hover {
+  color: #b4cbff;
+  -webkit-text-fill-color: #b4cbff;
+  background: rgba(138, 175, 255, 0.22);
+  border-color: rgba(138, 175, 255, 0.4);
+}
+
+html[data-theme="dark"] .report_assessment_back svg {
+  color: inherit;
+  stroke: currentColor;
+}
+
 .report_assessment_title_row {
   display: flex;
   align-items: center;
@@ -1649,7 +1733,7 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_assessment_title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0;
   line-height: 1.3;
   flex: 1;
@@ -1658,14 +1742,14 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .report_assessment_subtitle {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0 0 1rem 0;
 }
 
 /* Vendor-Side Context Panel – same card color as report_section_card */
 .report_context_panel {
   background: var(--surface-color);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 0;
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
@@ -1701,7 +1785,7 @@ html[data-theme="dark"] .report_ownership_badge {
   gap: 0.35rem;
   max-width: 100%;
   font-size: 0.75rem;
-  color: #475569;
+  color: var(--text-secondary, #475569);
   line-height: 1.35;
 }
 
@@ -1713,7 +1797,7 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .admin_llm_model_label_text strong {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
 }
 
 .report_context_inner {
@@ -1732,13 +1816,13 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .report_context_meta {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0 0 0.75rem 0;
 }
 
 .report_context_desc {
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   line-height: 1.6;
   margin: 0;
 }
@@ -1757,7 +1841,7 @@ html[data-theme="dark"] .report_ownership_badge {
   gap: 0.3rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0;
   margin-bottom: 0.75rem;
 }
@@ -1803,7 +1887,7 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_context_grade {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary, #111827);
   line-height: 1;
 }
 
@@ -1812,7 +1896,7 @@ html[data-theme="dark"] .report_ownership_badge {
   display: block;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   line-height: 1.2;
   text-align: center;
 }
@@ -1950,9 +2034,9 @@ html[data-theme="dark"] .report_ownership_badge {
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.75rem 1rem;
-  background: #fbfbfb;
+  background: var(--surface-elevated, #fbfbfb);
   border-radius: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
 }
 
 .report_deployment_label,
@@ -1963,7 +2047,7 @@ html[data-theme="dark"] .report_ownership_badge {
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.05rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
 }
 
 .report_metric_label_icon {
@@ -1972,8 +2056,23 @@ html[data-theme="dark"] .report_ownership_badge {
   height: 24px;
   padding: 5px;
   border-radius: 50%;
-  background: #efefef;
+  background: var(--icon-chip-bg, #efefef);
   color: currentColor;
+}
+
+html[data-theme="dark"] .report_deployment_item,
+html[data-theme="dark"] .report_roi_card {
+  background: var(--surface-elevated, #2d2a3a) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .report_deployment_value,
+html[data-theme="dark"] .report_roi_value {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .report_metric_label_icon {
+  background: rgba(138, 175, 255, 0.16);
 }
 
 /* Deployment card heading colors (icon inherits heading color). */
@@ -2018,14 +2117,14 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .report_deployment_value {
   font-size: 0.9375rem;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 /* ROI Analysis */
 .report_roi_heading {
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 1rem 0;
 }
 
@@ -2041,15 +2140,15 @@ html[data-theme="dark"] .report_ownership_badge {
   flex-direction: column;
   gap: 0.25rem;
   padding: 1rem;
-  background: #fbfbfb;
+  background: var(--surface-elevated, #fbfbfb);
   border-radius: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
 }
 
 .report_roi_value {
   font-size: 1rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 .report_roi_sub {
@@ -2060,7 +2159,7 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_subheading {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   margin: 0 0 0.75rem 0;
 }
 
@@ -2093,6 +2192,8 @@ html[data-theme="dark"] .report_ownership_badge {
   gap: 0.6rem 1rem;
   flex-wrap: wrap;
   margin: 0 0 1rem 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .report_overall_risk_right {
@@ -2111,7 +2212,7 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_overall_risk_score_label {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--text-secondary, #475569);
 }
 
 .report_overall_risk_score_wrap {
@@ -2163,6 +2264,18 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_table.report_risk_assessment_table {
   table-layout: fixed;
   width: 100%;
+  max-width: 100%;
+}
+
+.report_table_wrap:has(.report_risk_assessment_table) {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.report_section_card:has(.report_risk_assessment_table) {
+  overflow-x: hidden;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .report_risk_assessment_table th,
@@ -2171,14 +2284,14 @@ html[data-theme="dark"] .report_ownership_badge {
   font-size: 0.8125rem;
   line-height: 1.45;
   word-wrap: break-word;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 /* Column widths + alignment (6 columns) */
 .report_risk_assessment_table th:nth-child(1),
 .report_risk_assessment_table td:nth-child(1) {
   width: 12%;
-  min-width: 6.5rem;
 }
 
 .report_risk_assessment_table th:nth-child(2),
@@ -2191,7 +2304,6 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_risk_assessment_table th:nth-child(4),
 .report_risk_assessment_table td:nth-child(4) {
   width: 23%;
-  min-width: 0;
 }
 
 .report_risk_assessment_table th:nth-child(5),
@@ -2202,10 +2314,9 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_risk_assessment_table th:nth-child(6),
 .report_risk_assessment_table td:nth-child(6) {
   width: 8%;
-  min-width: 5.75rem;
   text-align: right;
   vertical-align: middle;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .report_assessment_layout_vendor .report_risk_assessment_table th:nth-child(6),
@@ -2215,7 +2326,7 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .report_risk_assessment_score_cell {
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
 }
 
 .report_risk_score_circle {
@@ -2266,7 +2377,8 @@ html[data-theme="dark"] .report_ownership_badge {
 }
 
 .report_risk_assessment_table .report_risk_badge {
-  white-space: nowrap;
+  white-space: normal;
+  max-width: 100%;
 }
 
 /* Risk Type column: domain/category tag (distinct from residual risk level pills) */
@@ -2279,9 +2391,9 @@ html[data-theme="dark"] .report_ownership_badge {
   letter-spacing: 0.06rem;
   text-transform: uppercase;
   border-radius: 9999px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle, #e2e8f0);
   background: #f1f5f9;
-  color: #334155;
+  color: var(--text-secondary, #334155);
 }
 
 /* Security posture row: keep label in sentence case */
@@ -2294,7 +2406,7 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .report_risk_assessment_table .report_risk_type_cell_badge {
   white-space: normal;
-  max-width: 14rem;
+  max-width: 100%;
 }
 
 .report_risk_assessment_type_cell,
@@ -2305,7 +2417,7 @@ html[data-theme="dark"] .report_ownership_badge {
 .report_risk_assessment_type_text {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--text-secondary, #334155);
 }
 
 .report_risk_assessment_name_cell {
@@ -2326,12 +2438,12 @@ html[data-theme="dark"] .report_ownership_badge {
   max-width: 100%;
   padding: 0.55rem 0.65rem;
   border-radius: 0;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle, #e2e8f0);
   background: var(--surface-elevated);
   font-size: 0.8125rem;
   font-weight: 400;
   line-height: 1.5;
-  color: #475569;
+  color: var(--text-secondary, #475569);
   white-space: normal;
 }
 
@@ -2417,7 +2529,7 @@ html[data-theme="dark"] .report_ownership_badge {
 /* Inner cards – platform gray variant for contrast inside section cards */
 .report_risk_category_block {
   background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 0;
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
@@ -2448,7 +2560,7 @@ html[data-theme="dark"] .report_ownership_badge {
   font-weight: 700;
   letter-spacing: 0.05rem;
   text-transform: uppercase;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   margin: 0 0 0.35rem 0;
 }
 
@@ -2457,7 +2569,7 @@ html[data-theme="dark"] .report_ownership_badge {
   margin: 0 0 0.75rem 0;
   padding-left: 1.25rem;
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--text-secondary, #374151);
   line-height: 1.5;
 }
 
@@ -2482,7 +2594,7 @@ html[data-theme="dark"] .report_ownership_badge {
 
 /* Compliance — Met | Pending as 2 columns; 3 cards per row inside each */
 .report_compliance_recommendations_shell {
-  border-color: #e5e7eb;
+  border-color: var(--border-subtle, #e5e7eb);
   background: var(--surface-color);
 }
 
@@ -2505,7 +2617,7 @@ html[data-theme="dark"] .report_ownership_badge {
 
 .report_compliance_priority_table {
   margin-top: 2pt;
-  border: 1px solid #e8edf5;
+  border: 1px solid var(--border-subtle, #e8edf5);
   background: #fcfcfc;
   overflow: hidden;
 }
@@ -2560,7 +2672,7 @@ html[data-theme="dark"] .report_ownership_badge {
   height: 100%;
   margin: 0;
   padding: 11pt 11pt 11pt 12pt;
-  border: 1px solid #e8edf5;
+  border: 1px solid var(--border-subtle, #e8edf5);
   border-radius: 0;
   background: var(--surface-elevated, #fff);
   box-shadow:
@@ -2605,7 +2717,7 @@ html[data-theme="dark"] .report_ownership_badge {
   font-weight: 650;
   letter-spacing: -0.01em;
   line-height: 1.35;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 .report_compliance_card_desc {
@@ -2865,7 +2977,7 @@ html[data-theme="dark"] .report_compliance_card_desc {
 
 .report_tags {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
 }
 
 /* Recommendations with priority */
@@ -2899,7 +3011,7 @@ html[data-theme="dark"] .report_compliance_card_desc {
 }
 .report_rec_timeline {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
 }
 
 /* Appendix — glossary layout (bold term, body on next line) */
@@ -2923,7 +3035,7 @@ html[data-theme="dark"] .report_compliance_card_desc {
   display: block;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary, #111827);
   margin: 0 0 0.4rem 0;
   line-height: 1.35;
 }
@@ -2934,7 +3046,7 @@ html[data-theme="dark"] .report_compliance_card_desc {
   font-size: 0.9375rem;
   font-weight: 400;
   line-height: 1.55;
-  color: #374151;
+  color: var(--text-secondary, #374151);
 }
 
 .report_appendix_sublist {
@@ -2944,7 +3056,7 @@ html[data-theme="dark"] .report_compliance_card_desc {
   font-size: 0.9375rem;
   font-weight: 400;
   line-height: 1.55;
-  color: #374151;
+  color: var(--text-secondary, #374151);
 }
 
 .report_appendix_sublist li {
@@ -2959,7 +3071,7 @@ html[data-theme="dark"] .report_compliance_card_desc {
   margin: 1.5rem 0 0.75rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary, #111827);
 }
 
 /* Subheading for methodology / metadata cards */
@@ -2998,7 +3110,7 @@ html[data-theme="dark"] .report_compliance_card_desc {
   min-width: 0;
   padding: 1rem 1.15rem;
   background: var(--surface-elevated);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle, #e2e8f0);
   border-radius: 0;
 }
 
@@ -3046,7 +3158,7 @@ html[data-theme="dark"] .report_compliance_card_desc {
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.55;
-  color: #334155;
+  color: var(--text-secondary, #334155);
   flex: 1;
 }
 
@@ -3056,7 +3168,7 @@ html[data-theme="dark"] .report_compliance_card_desc {
   list-style: none;
   font-size: 0.875rem;
   line-height: 1.55;
-  color: #334155;
+  color: var(--text-secondary, #334155);
 }
 
 .report_appendix_card_list li {
@@ -3086,7 +3198,7 @@ html[data-theme="dark"] .report_compliance_card_desc {
   margin: 0.5rem 0 0 1.25rem;
   padding: 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
 }
 
 /* Dark mode: list-style report cards */

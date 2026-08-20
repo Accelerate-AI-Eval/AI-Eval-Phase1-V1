@@ -16,7 +16,11 @@ from typing import Any, Literal
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from exceptions.custom_exceptions import raise_http_exception
+from exceptions.custom_exceptions import (
+    TokenQuotaExceededError,
+    raise_http_exception,
+    raise_token_quota_http,
+)
 from services.assessment_llm_service import invoke_assessment_llm
 from services.llm_usage_actor import clear_usage_actor, set_usage_actor
 from services.vts_vector_retrieval import (
@@ -120,6 +124,8 @@ async def llm_with_vector(body: LlmWithVectorRequest) -> LlmWithVectorResponse:
             scoring_source=source,
             vector=vector_meta,
         )
+    except TokenQuotaExceededError as exc:
+        raise_token_quota_http(exc)
     except Exception as exc:
         # FastAPI/Starlette HTTPException already has status_code
         if type(exc).__name__ == "HTTPException" or getattr(exc, "status_code", None):

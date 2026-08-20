@@ -13,6 +13,13 @@ import {
   isTokenQuotaExceededError,
   sendIfTokenQuotaExceeded,
 } from "../../services/admin/featureTokenQuota.service.js";
+import { persistVendorOnboardingBusinessFields } from "../../utils/normalizeVendorOnboardingBusinessFields.js";
+import { normalizeFedrampAuthorization } from "../../utils/normalizeFedrampAuthorization.js";
+import {
+  attestationExtendedColumnSelect,
+  mapExtendedFieldsToApi,
+  parseAttestationExtendedFields,
+} from "../../utils/attestationExtendedFields.js";
 
 const UPLOADS_DIR = path.resolve(process.cwd(), "public", "uploads_vendor_attestations");
 
@@ -283,6 +290,8 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
     const security_compliance_certificates = asJson(get("security_certifications"));
     const assessment_feedback = get("assessment_completion_level") != null ? String(get("assessment_completion_level")).slice(0, 100) : null;
     const audit_frequency = get("audit_frequency") != null ? String(get("audit_frequency")).slice(0, 100) : null;
+    const hipaa_baa = get("hipaa_baa") != null ? String(get("hipaa_baa")).slice(0, 100) : null;
+    const fedramp_authorization = normalizeFedrampAuthorization(get("fedramp_authorization"));
     const pii_information = get("pii_handling") != null ? String(get("pii_handling")).slice(0, 100) : null;
     const data_residency_options = asJson(get("data_residency_options"));
     const data_retention_policy = get("data_retention_policy") != null ? String(get("data_retention_policy")) : null;
@@ -326,7 +335,30 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       year_founded: (() => { const v = cpGet("yearFounded"); if (v == null || String(v).trim() === "") return null; const n = parseInt(String(v), 10); return Number.isInteger(n) ? n : null; })(),
       headquarter_location: cpGet("headquartersLocation") != null ? String(cpGet("headquartersLocation")).slice(0, 255) : null,
       operate_regions,
+      funding_status: cpGet("fundingStatus") != null ? String(cpGet("fundingStatus")).slice(0, 50) : null,
+      financial_position: cpGet("financialPosition") != null ? String(cpGet("financialPosition")).slice(0, 50) : null,
+      enterprise_customers: (() => {
+        const v = cpGet("enterpriseCustomers");
+        if (v == null || String(v).trim() === "") return null;
+        const n = parseInt(String(v), 10);
+        return Number.isInteger(n) && n >= 0 ? n : null;
+      })(),
+      customer_retention_rate: (() => {
+        const v = cpGet("customerRetentionRate");
+        if (v == null || String(v).trim() === "") return null;
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 && n <= 100 ? n.toFixed(2) : null;
+      })(),
     };
+
+    const trust_centre_url = get("trust_centre_url") != null ? String(get("trust_centre_url")).slice(0, 500) : null;
+    const has_public_security_incident =
+      get("has_public_security_incident") != null
+        ? String(get("has_public_security_incident")).slice(0, 10)
+        : null;
+    const security_incidents_raw = get("security_incidents");
+    const security_incidents = Array.isArray(security_incidents_raw) ? security_incidents_raw : [];
+    const extendedFields = parseAttestationExtendedFields(get);
 
     // Saving a draft does NOT mark as completed. Only final Submit sets COMPLETED.
     const rawDraft = get("is_draft");
@@ -360,6 +392,12 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       security_compliance_certificates,
       assessment_feedback,
       audit_frequency,
+      hipaa_baa,
+      fedramp_authorization,
+      trust_centre_url,
+      has_public_security_incident,
+      security_incidents,
+      ...extendedFields,
       pii_information,
       data_residency_options,
       data_retention_policy,
@@ -380,6 +418,18 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       test_results,
       document_uploads,
     };
+
+    if (organizationIdStr) {
+      try {
+        await persistVendorOnboardingBusinessFields(organizationIdStr, {
+          ...(cp as Record<string, unknown>),
+          trustCentreUrl: trust_centre_url,
+          securityIncidents: security_incidents,
+        });
+      } catch (err) {
+        console.error("Failed to sync vendor onboarding business fields:", err);
+      }
+    }
 
     const rawNew = get("newAttestation");
     const newAttestation =
@@ -410,6 +460,12 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       security_certifications: row.security_compliance_certificates ?? undefined,
       assessment_completion_level: row.assessment_feedback ?? undefined,
       audit_frequency: row.audit_frequency ?? undefined,
+      hipaa_baa: row.hipaa_baa ?? undefined,
+      fedramp_authorization: row.fedramp_authorization ?? undefined,
+      ...mapExtendedFieldsToApi(row),
+      trust_centre_url: row.trust_centre_url ?? undefined,
+      has_public_security_incident: row.has_public_security_incident ?? undefined,
+      security_incidents: Array.isArray(row.security_incidents) ? row.security_incidents : [],
       pii_handling: row.pii_information ?? undefined,
       data_residency_options: row.data_residency_options ?? undefined,
       data_retention_policy: row.data_retention_policy ?? undefined,
@@ -456,6 +512,12 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
           security_compliance_certificates: vendorSelfAttestations.security_compliance_certificates,
           assessment_feedback: vendorSelfAttestations.assessment_feedback,
           audit_frequency: vendorSelfAttestations.audit_frequency,
+          hipaa_baa: vendorSelfAttestations.hipaa_baa,
+          fedramp_authorization: vendorSelfAttestations.fedramp_authorization,
+          ...attestationExtendedColumnSelect,
+          trust_centre_url: vendorSelfAttestations.trust_centre_url,
+          has_public_security_incident: vendorSelfAttestations.has_public_security_incident,
+          security_incidents: vendorSelfAttestations.security_incidents,
           pii_information: vendorSelfAttestations.pii_information,
           data_residency_options: vendorSelfAttestations.data_residency_options,
           data_retention_policy: vendorSelfAttestations.data_retention_policy,
@@ -516,6 +578,12 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
               security_compliance_certificates: vendorSelfAttestations.security_compliance_certificates,
               assessment_feedback: vendorSelfAttestations.assessment_feedback,
               audit_frequency: vendorSelfAttestations.audit_frequency,
+          hipaa_baa: vendorSelfAttestations.hipaa_baa,
+          fedramp_authorization: vendorSelfAttestations.fedramp_authorization,
+          ...attestationExtendedColumnSelect,
+          trust_centre_url: vendorSelfAttestations.trust_centre_url,
+          has_public_security_incident: vendorSelfAttestations.has_public_security_incident,
+          security_incidents: vendorSelfAttestations.security_incidents,
               pii_information: vendorSelfAttestations.pii_information,
               data_residency_options: vendorSelfAttestations.data_residency_options,
               data_retention_policy: vendorSelfAttestations.data_retention_policy,
@@ -640,6 +708,12 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
           security_compliance_certificates: vendorSelfAttestations.security_compliance_certificates,
           assessment_feedback: vendorSelfAttestations.assessment_feedback,
           audit_frequency: vendorSelfAttestations.audit_frequency,
+          hipaa_baa: vendorSelfAttestations.hipaa_baa,
+          fedramp_authorization: vendorSelfAttestations.fedramp_authorization,
+          ...attestationExtendedColumnSelect,
+          trust_centre_url: vendorSelfAttestations.trust_centre_url,
+          has_public_security_incident: vendorSelfAttestations.has_public_security_incident,
+          security_incidents: vendorSelfAttestations.security_incidents,
           pii_information: vendorSelfAttestations.pii_information,
           data_residency_options: vendorSelfAttestations.data_residency_options,
           data_retention_policy: vendorSelfAttestations.data_retention_policy,

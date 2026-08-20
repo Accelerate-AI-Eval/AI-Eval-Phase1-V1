@@ -58,7 +58,7 @@ export function AiRiskApiKeyCard({ idPrefix }: AiRiskApiKeyCardProps) {
       setStatusMessage(
         result.config.baseUrlConfigured
           ? ""
-          : "API key can be saved; also set AI_RISK_INTELLECT_BASE_URL (or RI_BASE_URL) so types 2 and 3 can calculate intent from AI Risk Intellect.",
+          : "API key can be saved; also set AI_RISK_INTELLECT_BASE_URL (or RI_BASE_URL) so scoring can use likelihood, impact, severity, and intent from AI Risk Intellect.",
       );
     } finally {
       setIsLoading(false);
@@ -116,8 +116,8 @@ export function AiRiskApiKeyCard({ idPrefix }: AiRiskApiKeyCardProps) {
       setSaveStatus("success");
       setStatusMessage(
         result.config.baseUrlConfigured
-          ? "AI Risk API key saved. Types 2 and 3 will use AI Risk Intellect for intent scoring after matching risks from the AI-Q risk DB."
-          : "AI Risk API key saved. Set AI_RISK_INTELLECT_BASE_URL (or RI_BASE_URL) on the server to enable Risk Intellect intent scoring.",
+          ? "AI Risk API key saved. Product (VTS) scoring will use likelihood, impact, and severity from AI Risk Intellect; Vendor and Buyer COTS will use it for intent after matching risks from the AI-Q risk DB."
+          : "AI Risk API key saved. Set AI_RISK_INTELLECT_BASE_URL (or RI_BASE_URL) on the server to enable Risk Intellect scoring.",
       );
     } finally {
       setIsSaving(false);
@@ -145,7 +145,7 @@ export function AiRiskApiKeyCard({ idPrefix }: AiRiskApiKeyCardProps) {
             AI Risk API Key
           </h2>
           <p className="controlsPage__cardHint">
-            Used for intent scoring on Vendor and Buyer COTS assessments.
+            Used for likelihood, impact, and severity on Product Profile (VTS) scoring, and intent scoring on Vendor and Buyer COTS assessments.
           </p>
         </div>
       </div>

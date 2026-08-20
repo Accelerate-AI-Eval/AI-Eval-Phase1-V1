@@ -26,6 +26,7 @@ import ToolCallsSummary, {
   type ToolCallStep,
 } from "./ToolCallsSummary";
 import aiQLogoBlue from "../../../assets/images/mainLogo/new_logo/ai_q_logo_blue.png";
+import aiQLogoGray from "../../../assets/images/mainLogo/new_logo/ai_q_logo_gray.png";
 import "../UserManagement/user_management.css";
 import "./sales_enablement.css";
 import { apiErrorMessage, errorToUserMessage } from "../../../utils/tokenQuotaError";
@@ -130,6 +131,12 @@ function AiQChatIcon({ className = "" }: { className?: string }) {
         src={aiQLogoBlue}
         alt=""
         className="sales_enablement_aiq_icon sales_enablement_aiq_icon--light"
+        aria-hidden
+      />
+      <img
+        src={aiQLogoGray}
+        alt=""
+        className="sales_enablement_aiq_icon sales_enablement_aiq_icon--dark"
         aria-hidden
       />
     </span>

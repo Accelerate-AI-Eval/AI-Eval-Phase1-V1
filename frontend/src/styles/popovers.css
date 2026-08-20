@@ -27,7 +27,7 @@
 .profile_detail_popover_label {
   font-size: 0.75rem;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--text-muted, #6b7280);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -40,7 +40,7 @@
 
 .profile_detail_popover_value {
   font-size: 0.875rem;
-  color: #1e293b;
+  color: var(--text-primary, #1e293b);
   word-break: break-word;
 }
 
@@ -54,9 +54,9 @@
   width: 100%;
   padding: 0.35rem 0.5rem;
   font-size: 0.875rem;
-  color: #1e293b;
+  color: var(--text-primary, #1e293b);
   background: var(--surface-elevated);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle, #e2e8f0);
   border-radius: 4px;
   box-sizing: border-box;
   cursor: not-allowed;
@@ -295,7 +295,7 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-primary, #1e293b);
 }
 
 .profile_modal_body {

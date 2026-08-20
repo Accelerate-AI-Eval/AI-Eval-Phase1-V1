@@ -266,7 +266,7 @@
   justify-content: space-between;
   flex-shrink: 0;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-subtle, #e5e7eb);
   background: var(--surface-muted);
 }
 
@@ -292,7 +292,7 @@
 }
 
 .vendor_attestation_doc_viewer_close:hover {
-  background: #e5e7eb;
+  background: var(--border-subtle, #e5e7eb);
   color: #374151;
 }
 
@@ -336,7 +336,7 @@
 .vendor-attestation-preview .vendor_preview_framework_table_wrap {
   overflow-x: auto;
   margin-top: 0.25rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle, #e5e7eb);
   border-radius: 8px;
 }
 .vendor-attestation-preview .vendor_preview_framework_table {
@@ -349,7 +349,7 @@
   padding: 0.5rem 0.65rem;
   text-align: left;
   vertical-align: top;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-subtle, #e5e7eb);
 }
 .vendor-attestation-preview .vendor_preview_framework_table th {
   background: var(--surface-muted);

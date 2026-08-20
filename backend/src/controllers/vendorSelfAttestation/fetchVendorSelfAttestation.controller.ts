@@ -3,6 +3,10 @@ import { db } from "../../database/db.js";
 import { createOrganization, vendors, vendorSelfAttestations, usersTable, generatedProfileReports } from "../../schema/schema.js";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { mergeSummaryIntoReport } from "../../utils/mergeProfileReportSummary.js";
+import {
+  attestationExtendedColumnSelect,
+  mapExtendedFieldsToApi,
+} from "../../utils/attestationExtendedFields.js";
 
 function userDisplayName(u: { user_name?: string | null; user_first_name?: string | null; user_last_name?: string | null; email?: string | null }): string {
   const name = (u.user_name ?? "").trim();
@@ -220,6 +224,14 @@ function mapAttestationRow(attestRow: Record<string, unknown>, completedByName?:
     security_certifications: attestRow.security_compliance_certificates ?? undefined,
     assessment_completion_level: attestRow.assessment_feedback ?? undefined,
     audit_frequency: attestRow.audit_frequency ?? undefined,
+    hipaa_baa: attestRow.hipaa_baa ?? undefined,
+    fedramp_authorization: attestRow.fedramp_authorization ?? undefined,
+    ...mapExtendedFieldsToApi(attestRow),
+    trust_centre_url: attestRow.trust_centre_url ?? undefined,
+    has_public_security_incident: attestRow.has_public_security_incident ?? undefined,
+    security_incidents: Array.isArray(attestRow.security_incidents)
+      ? attestRow.security_incidents
+      : [],
     pii_handling: attestRow.pii_information ?? undefined,
     data_residency_options: attestRow.data_residency_options ?? undefined,
     data_retention_policy: attestRow.data_retention_policy ?? undefined,
@@ -290,6 +302,10 @@ function companyProfileFromAttestationRow(row: Record<string, unknown>): Record<
     yearFounded: row.year_founded ?? null,
     headquartersLocation: row.headquarter_location ?? "",
     operatingRegions,
+    fundingStatus: row.funding_status ?? "",
+    financialPosition: row.financial_position ?? "",
+    enterpriseCustomers: row.enterprise_customers ?? "",
+    customerRetentionRate: row.customer_retention_rate ?? "",
   };
 }
 
@@ -398,6 +414,12 @@ const fetchVendorSelfAttestation = async (req: Request, res: Response): Promise<
       yearFounded: vendors.yearFounded,
       headquartersLocation: vendors.headquartersLocation,
       operatingRegions: vendors.operatingRegions,
+      fundingStatus: vendors.fundingStatus,
+      financialPosition: vendors.financialPosition,
+      enterpriseCustomers: vendors.enterpriseCustomers,
+      customerRetentionRate: vendors.customerRetentionRate,
+      trustCentreUrl: vendors.trustCentreUrl,
+      securityIncidents: vendors.securityIncidents,
     };
     const vendorRows = organizationId
       ? await db.select(vendorSelect).from(vendors).where(eq(vendors.organizationId, organizationId)).limit(1)
@@ -419,6 +441,13 @@ const fetchVendorSelfAttestation = async (req: Request, res: Response): Promise<
       year_founded: vendorSelfAttestations.year_founded,
       headquarter_location: vendorSelfAttestations.headquarter_location,
       operate_regions: vendorSelfAttestations.operate_regions,
+      funding_status: vendorSelfAttestations.funding_status,
+      financial_position: vendorSelfAttestations.financial_position,
+      enterprise_customers: vendorSelfAttestations.enterprise_customers,
+      customer_retention_rate: vendorSelfAttestations.customer_retention_rate,
+      trust_centre_url: vendorSelfAttestations.trust_centre_url,
+      has_public_security_incident: vendorSelfAttestations.has_public_security_incident,
+      security_incidents: vendorSelfAttestations.security_incidents,
       product_name: vendorSelfAttestations.product_name,
       market_product_material: vendorSelfAttestations.market_product_material,
       tech_product_specifications: vendorSelfAttestations.tech_product_specifications,
@@ -436,6 +465,9 @@ const fetchVendorSelfAttestation = async (req: Request, res: Response): Promise<
       security_compliance_certificates: vendorSelfAttestations.security_compliance_certificates,
       assessment_feedback: vendorSelfAttestations.assessment_feedback,
       audit_frequency: vendorSelfAttestations.audit_frequency,
+      hipaa_baa: vendorSelfAttestations.hipaa_baa,
+      fedramp_authorization: vendorSelfAttestations.fedramp_authorization,
+      ...attestationExtendedColumnSelect,
       pii_information: vendorSelfAttestations.pii_information,
       data_residency_options: vendorSelfAttestations.data_residency_options,
       data_retention_policy: vendorSelfAttestations.data_retention_policy,
@@ -521,6 +553,12 @@ const fetchVendorSelfAttestation = async (req: Request, res: Response): Promise<
           : r.operatingRegions != null && typeof r.operatingRegions === "object"
             ? (r.operatingRegions as string[])
             : [],
+        fundingStatus: r.fundingStatus ?? "",
+        financialPosition: r.financialPosition ?? "",
+        enterpriseCustomers: r.enterpriseCustomers ?? "",
+        customerRetentionRate: r.customerRetentionRate ?? "",
+        trustCentreUrl: r.trustCentreUrl ?? "",
+        securityIncidents: Array.isArray(r.securityIncidents) ? r.securityIncidents : [],
       };
     }
 

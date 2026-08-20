@@ -33,9 +33,16 @@ export function formatPreviewValue(
   }
 
   if (Array.isArray(value)) {
-    return value.length
-      ? value.map((item) => String(item)).join(", ")
-      : <span className="vendor_preview_na">—</span>
+    if (!value.length) return <span className="vendor_preview_na">—</span>
+    if (typeof value[0] === "object" && value[0] !== null)
+      return (
+        <ul className="vendor_preview_nested_list">
+          {value.map((item, index) => (
+            <li key={index}>{formatIncidentItem(item as Record<string, unknown>)}</li>
+          ))}
+        </ul>
+      )
+    return value.map((item) => String(item)).join(", ")
   }
 
   if (typeof value === "object") {
@@ -50,7 +57,11 @@ export function formatPreviewValue(
       </a>
     )
   }
-  if (label?.toLowerCase().includes("website")) {
+  if (
+    label?.toLowerCase().includes("website") ||
+    label?.toLowerCase().includes("url") ||
+    label?.toLowerCase().includes("trust centre")
+  ) {
     const href = displayStr.startsWith("http") ? displayStr : `https://${displayStr}`
     return (
       <a href={href} target="_blank" rel="noopener noreferrer" className="vendor_preview_link">
@@ -82,6 +93,14 @@ function formatPreviewObject(obj: Record<string, unknown>): React.ReactNode {
       ))}
     </ul>
   )
+}
+
+function formatIncidentItem(item: Record<string, unknown>): string {
+  const date = item.date != null && String(item.date).trim() !== "" ? String(item.date) : "Date not provided"
+  const summary = item.summary != null ? String(item.summary) : "No summary"
+  const severity = item.severity != null && String(item.severity).trim() !== "" ? String(item.severity) : "unspecified"
+  const resolved = item.resolved ? "resolved" : "open"
+  return `${date} — ${severity} — ${resolved}: ${summary}`
 }
 
 function formatLabel(key: string): string {

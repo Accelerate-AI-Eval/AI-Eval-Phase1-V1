@@ -8,7 +8,10 @@
 
 import { resolveActorSnapshot } from "./observability/llmUsage.service.js";
 import { getRequestActor } from "../utils/requestActorContext.js";
-import { assertFeatureTokenQuota } from "./admin/featureTokenQuota.service.js";
+import {
+  assertFeatureTokenQuota,
+  throwIfTokenQuotaHttpError,
+} from "./admin/featureTokenQuota.service.js";
 import { maybeNotifyTokenQuotaExhausted } from "./admin/tokenQuotaAlert.service.js";
 
 export interface PythonScoreResult {
@@ -138,6 +141,7 @@ async function postJson(
   }
 
   if (!response.ok) {
+    throwIfTokenQuotaHttpError(response.status, parsed, "attestation");
     const detail =
       parsed && typeof parsed === "object" && parsed !== null && "detail" in parsed
         ? String((parsed as { detail: unknown }).detail)

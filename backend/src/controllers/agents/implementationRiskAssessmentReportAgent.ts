@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { invokeBedrockAnthropicText } from "../../utils/invokeBedrockWithUsage.js";
+import { isTokenQuotaExceededError } from "../../services/admin/featureTokenQuota.service.js";
 
 export type ImplementationRecommendation = "Proceed" | "Proceed with conditions" | "Defer";
 
@@ -217,6 +218,7 @@ export async function generateImplementationRiskAssessmentReport(
     const parsed = extractJsonObject(rawText);
     if (parsed) return normalizePayload(parsed, fb);
   } catch (e) {
+    if (isTokenQuotaExceededError(e)) throw e;
     console.error("generateImplementationRiskAssessmentReport LLM error:", e);
   }
   return fb;

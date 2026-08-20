@@ -11,6 +11,14 @@ html[data-theme="dark"] textarea {
   color: var(--input-text);
 }
 
+/* Password field wrap owns the border; the inner input must not draw a second ring */
+html[data-theme="dark"] .signin-input-wrap > input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 html[data-theme="dark"] input::placeholder,
 html[data-theme="dark"] textarea::placeholder {
   color: var(--text-muted);
@@ -719,8 +727,6 @@ html[data-theme="dark"] .vendor_intel_start_assessment_btn,
 html[data-theme="dark"] .generate_rpr_btn,
 html[data-theme="dark"] .report_detail_export_btn,
 html[data-theme="dark"] .bvr_export_btn,
-html[data-theme="dark"] .back_btn,
-html[data-theme="dark"] .vendor_attestation_save_draft_btn_form,
 html[data-theme="dark"] .adminPage__modelApplyBtn,
 html[data-theme="dark"] .controlsPage .usersPage__btn--primary,
 html[data-theme="dark"] .authPage--minimal .loginForm--signin .signin-submit.login-btn {
@@ -761,8 +767,6 @@ html[data-theme="dark"] .vendor_intel_start_assessment_btn:hover:not(:disabled),
 html[data-theme="dark"] .generate_rpr_btn:hover:not(:disabled),
 html[data-theme="dark"] .report_detail_export_btn:hover:not(:disabled),
 html[data-theme="dark"] .bvr_export_btn:hover:not(:disabled),
-html[data-theme="dark"] .back_btn:hover:not(:disabled):not(.disabled_css),
-html[data-theme="dark"] .vendor_attestation_save_draft_btn_form:hover:not(:disabled):not(.disabled_css),
 html[data-theme="dark"] .adminPage__modelApplyBtn:hover:not(:disabled),
 html[data-theme="dark"] .controlsPage .usersPage__btn--primary.adminPage__modelApplyBtn:hover:not(:disabled),
 html[data-theme="dark"] .authPage--minimal .loginForm--signin .signin-submit.login-btn:hover:not(:disabled) {
@@ -788,6 +792,45 @@ html[data-theme="dark"] .adminPage__modelTestBtn:hover:not(:disabled) {
     var(--btn-3d-shadow-color, #606266) !important;
 }
 
+/* Form wizard: keep Back / Save draft / Continue visually distinct like light mode */
+html[data-theme="dark"] .back_btn {
+  background: var(--surface-elevated, #2d2a3a) !important;
+  background-color: var(--surface-elevated, #2d2a3a) !important;
+  color: var(--text-primary, #ebe9f3) !important;
+  border: 1px solid var(--border-strong, #524e68) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--btn-3d-offset) var(--btn-3d-offset) 0 0
+    var(--btn-3d-shadow-color, #606266) !important;
+}
+
+html[data-theme="dark"] .vendor_attestation_save_draft_btn_form {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--nav-active, #8aafff) !important;
+  border: 1px solid rgba(138, 175, 255, 0.55) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--btn-3d-offset) var(--btn-3d-offset) 0 0
+    var(--btn-3d-shadow-color, #606266) !important;
+}
+
+html[data-theme="dark"] .back_btn:hover:not(:disabled):not(.disabled_css) {
+  background: var(--surface-hover, #353145) !important;
+  background-color: var(--surface-hover, #353145) !important;
+  color: var(--text-primary, #ebe9f3) !important;
+  border-color: #6b6680 !important;
+  filter: none;
+  transform: none;
+}
+
+html[data-theme="dark"] .vendor_attestation_save_draft_btn_form:hover:not(:disabled):not(.disabled_css) {
+  background: rgba(138, 175, 255, 0.14) !important;
+  background-color: rgba(138, 175, 255, 0.14) !important;
+  color: #b4cbff !important;
+  border-color: rgba(138, 175, 255, 0.75) !important;
+  filter: none;
+  transform: none;
+}
+
 html[data-theme="dark"] .invite_user_btn:active:not(:disabled):not(.disabled_css),
 html[data-theme="dark"] .login-btn:active:not(:disabled):not(.disabled_css),
 html[data-theme="dark"] .signin-submit:active:not(:disabled):not(.disabled_css),
@@ -804,11 +847,11 @@ html[data-theme="dark"] .vendor_intel_start_assessment_btn:active:not(:disabled)
 html[data-theme="dark"] .generate_rpr_btn:active:not(:disabled),
 html[data-theme="dark"] .report_detail_export_btn:active:not(:disabled),
 html[data-theme="dark"] .bvr_export_btn:active:not(:disabled),
-html[data-theme="dark"] .back_btn:active:not(:disabled):not(.disabled_css),
-html[data-theme="dark"] .vendor_attestation_save_draft_btn_form:active:not(:disabled):not(.disabled_css),
 html[data-theme="dark"] .adminPage__modelApplyBtn:active:not(:disabled),
 html[data-theme="dark"] .adminPage__modelTestBtn:active:not(:disabled),
 html[data-theme="dark"] .adminPage__ghostBtn:active:not(:disabled),
+html[data-theme="dark"] .back_btn:active:not(:disabled):not(.disabled_css),
+html[data-theme="dark"] .vendor_attestation_save_draft_btn_form:active:not(:disabled):not(.disabled_css),
 html[data-theme="dark"] .authPage--minimal .loginForm--signin .signin-submit.login-btn:active:not(:disabled) {
   transform: translate(var(--btn-3d-press), var(--btn-3d-press));
   box-shadow: calc(var(--btn-3d-offset) - var(--btn-3d-press))
@@ -1090,8 +1133,9 @@ html[data-theme="dark"] .product_profile_premium_card {
 html[data-theme="dark"] .product_profile_premium_card::before,
 html[data-theme="dark"] .product_profile_summary_card::before,
 html[data-theme="dark"] .product_profile_detail_card::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(138,175,255,0.12)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(168,190,255,0.42)' stroke-width='1.5'/%3E%3Cpath d='M0 118 C75 90 145 146 220 118 S345 90 420 118' fill='none' stroke='rgba(138,175,255,0.34)' stroke-width='1.35'/%3E%3Cpath d='M0 148 C80 124 150 172 230 148 S350 124 420 148' fill='none' stroke='rgba(138,175,255,0.26)' stroke-width='1.2'/%3E%3C/svg%3E");
-  opacity: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(138,175,255,0.12)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(168,190,255,0.42)' stroke-width='1.5'/%3E%3Cpath d='M0 118 C75 90 145 146 220 118 S345 90 420 118' fill='none' stroke='rgba(138,175,255,0.34)' stroke-width='1.35'/%3E%3Cpath d='M0 148 C80 124 150 172 230 148 S350 124 420 148' fill='none' stroke='rgba(147,197,253,0.22)' stroke-width='1.2'/%3E%3C/svg%3E");
+  opacity: 0.9;
+  background-size: 100% 58%;
 }
 
 html[data-theme="dark"] .product_profile_detail_on_page,
@@ -1111,9 +1155,33 @@ html[data-theme="dark"] .product_profile_premium_card_footer {
   border-top-color: rgba(138, 175, 255, 0.1);
 }
 
+html[data-theme="dark"] .product_profile_premium_card--draft,
+html[data-theme="dark"] .assessment_card--draft,
+html[data-theme="dark"] .attestation_soft_card--draft,
+html[data-theme="dark"] .assessment_list_rows .vendor_directory_card.general_rpr_card.assessment_card--draft,
+html[data-theme="dark"] .attestation_list_rows .vendor_directory_card.general_rpr_card.assessment_card--draft,
+html[data-theme="dark"] .attestation_list_rows .attestation_soft_card--draft {
+  border-bottom-color: #f59e0b !important;
+}
+
+html[data-theme="dark"] .product_profile_premium_card--completed,
+html[data-theme="dark"] .assessment_card--completed,
+html[data-theme="dark"] .attestation_soft_card--completed,
+html[data-theme="dark"] .assessment_list_rows .vendor_directory_card.general_rpr_card.assessment_card--completed,
+html[data-theme="dark"] .attestation_list_rows .vendor_directory_card.general_rpr_card.assessment_card--completed,
+html[data-theme="dark"] .attestation_list_rows .attestation_soft_card--completed {
+  border-bottom-color: #10b981 !important;
+}
+
+html[data-theme="dark"] .attestation_list_rows .attestation_soft_card--expired,
+html[data-theme="dark"] .attestation_list_rows .attestation_soft_card--rejected {
+  border-bottom-color: #ef4444 !important;
+}
+
 html[data-theme="dark"] .summary_card::before {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(138,175,255,0.12)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(168,190,255,0.42)' stroke-width='1.5'/%3E%3Cpath d='M0 118 C75 90 145 146 220 118 S345 90 420 118' fill='none' stroke='rgba(138,175,255,0.34)' stroke-width='1.35'/%3E%3C/svg%3E");
-  opacity: 1;
+  opacity: 0.9;
+  background-size: 100% 58%;
 }
 
 html[data-theme="dark"] .product_profile_premium_avatar,
@@ -1226,22 +1294,25 @@ html[data-theme="dark"] .sales_enablement_select_wrapper .select_input {
 html[data-theme="dark"] .sales_enablement_chip,
 html[data-theme="dark"] .sales_enablement_chip--action,
 html[data-theme="dark"] .sales_enablement_chip_wrap {
-  background: #44403c;
-  color: #f5f5f4;
+  background: var(--surface-muted, #221f2e);
+  color: var(--text-secondary, #c8c4d6);
+  border-color: var(--border-subtle, #403c52);
   box-shadow: none;
 }
 
 html[data-theme="dark"] .sales_enablement_chip--action {
-  background: linear-gradient(180deg, #57534e 0%, #44403c 100%);
+  background: var(--surface-hover, #353145);
 }
 
 html[data-theme="dark"] .sales_enablement_chip:hover:not(:disabled),
 html[data-theme="dark"] .sales_enablement_chip_wrap:hover {
-  background: #57534e;
+  background: var(--surface-hover, #353145);
+  color: var(--text-primary, #ebe9f3);
+  border-color: var(--nav-active, #8aafff);
 }
 
 html[data-theme="dark"] .sales_enablement_send_btn {
-  background: #78716c;
+  background: var(--surface-hover, #353145);
 }
 
 html[data-theme="dark"] .sales_enablement_send_btn--ready,
@@ -1436,8 +1507,7 @@ html[data-theme="dark"] .vd_list_labels_popover {
   box-shadow: var(--shadow-soft);
 }
 
-html[data-theme="dark"] .vd_list_filter_btn,
-html[data-theme="dark"] .vd_list_toolbar_icon_btn {
+html[data-theme="dark"] .vd_list_filter_btn {
   background: var(--surface-muted, #221f2e) !important;
   border-color: var(--border-subtle) !important;
   color: var(--text-secondary) !important;
@@ -1467,8 +1537,8 @@ html[data-theme="dark"] .general_rpr_card.vendor_directory_card:not(.attestation
   background-color: #2d2a3a !important;
   background-image: linear-gradient(
     180deg,
-    rgba(138, 175, 255, 0.16) 0%,
-    rgba(45, 42, 58, 0.55) 34%,
+    rgba(91, 140, 255, 0.07) 0%,
+    rgba(45, 42, 58, 0.78) 34%,
     #2d2a3a 68%
   ) !important;
   border-top-color: var(--border-subtle, #403c52) !important;
@@ -1670,18 +1740,61 @@ html[data-theme="dark"] .orgDataTable .rdt_TableBodyRow:not(:last-of-type) .rdt_
   box-shadow: none !important;
 }
 
-/* Table action icons + common dark text that stayed slate/black */
+/* Table / card action icons — same indigo chip as User Management */
 html[data-theme="dark"] .user_table_action_btn,
-html[data-theme="dark"] .orgDataTable .user_table_action_btn {
+html[data-theme="dark"] .orgDataTable .user_table_action_btn,
+html[data-theme="dark"] .user_table_action_btn_icon,
+html[data-theme="dark"] .vendor_portal_table .user_table_action_btn,
+html[data-theme="dark"] .governance_table .user_table_action_btn,
+html[data-theme="dark"] .governance_assessment_link_table,
+html[data-theme="dark"] .general_rpr_card_download_btn,
+html[data-theme="dark"] .assessment_card_header_action_btn,
+html[data-theme="dark"] .kebab_menu_btn,
+html[data-theme="dark"] .assessments_ledger_action_btn:not(:disabled):not([disabled]),
+html[data-theme="dark"] .vd_list_toolbar_icon_btn,
+html[data-theme="dark"] .report_card_download,
+html[data-theme="dark"] .compliance_doc_action_btn {
   background: rgba(138, 175, 255, 0.14) !important;
-  border-color: rgba(138, 175, 255, 0.28) !important;
+  background-color: rgba(138, 175, 255, 0.14) !important;
+  border: 1px solid rgba(138, 175, 255, 0.28) !important;
+  border-radius: 0 !important;
   color: var(--nav-active, #8aafff) !important;
 }
 
+html[data-theme="dark"] .user_table_action_btn:hover:not(:disabled),
+html[data-theme="dark"] .orgDataTable .user_table_action_btn:hover:not(:disabled),
+html[data-theme="dark"] .user_table_action_btn_icon:hover:not(:disabled),
+html[data-theme="dark"] .vendor_portal_table .user_table_action_btn:hover:not(:disabled),
+html[data-theme="dark"] .governance_table .user_table_action_btn:hover:not(:disabled),
+html[data-theme="dark"] .governance_assessment_link_table:hover,
+html[data-theme="dark"] .general_rpr_card_download_btn:hover:not(:disabled),
+html[data-theme="dark"] .assessment_card_header_action_btn:hover:not(:disabled),
+html[data-theme="dark"] .kebab_menu_btn:hover,
+html[data-theme="dark"] .assessments_ledger_action_btn:hover:not(:disabled):not([disabled]),
+html[data-theme="dark"] .vd_list_toolbar_icon_btn:hover,
+html[data-theme="dark"] .report_card_download:hover,
+html[data-theme="dark"] .compliance_doc_action_btn:hover {
+  background: rgba(138, 175, 255, 0.22) !important;
+  background-color: rgba(138, 175, 255, 0.22) !important;
+  border-color: rgba(138, 175, 255, 0.4) !important;
+  color: #b4cbff !important;
+}
+
 html[data-theme="dark"] .user_table_action_btn svg,
-html[data-theme="dark"] .orgDataTable .user_table_action_btn svg {
-  color: inherit;
-  stroke: currentColor;
+html[data-theme="dark"] .orgDataTable .user_table_action_btn svg,
+html[data-theme="dark"] .user_table_action_btn_icon svg,
+html[data-theme="dark"] .vendor_portal_table .user_table_action_btn svg,
+html[data-theme="dark"] .governance_table .user_table_action_btn svg,
+html[data-theme="dark"] .governance_assessment_link_table svg,
+html[data-theme="dark"] .general_rpr_card_download_btn svg,
+html[data-theme="dark"] .assessment_card_header_action_btn svg,
+html[data-theme="dark"] .kebab_menu_btn svg,
+html[data-theme="dark"] .assessments_ledger_action_btn svg,
+html[data-theme="dark"] .vd_list_toolbar_icon_btn svg,
+html[data-theme="dark"] .report_card_download svg,
+html[data-theme="dark"] .compliance_doc_action_btn svg {
+  color: inherit !important;
+  stroke: currentColor !important;
 }
 
 html[data-theme="dark"] .team_member_name,
@@ -1832,10 +1945,13 @@ html[data-theme="dark"] .assessment_list_rows .assessment_card_status_rejected .
 }
 
 html[data-theme="dark"] .assessment_list_rows .assessment_card_status_user_archived,
-html[data-theme="dark"] .assessment_list_rows .assessment_card_status_user_archived .general_rpr_card_report_type_icon,
+html[data-theme="dark"] .assessment_list_rows .assessment_card_status_user_archived .general_rpr_card_report_type_icon {
+  color: #cbd5e1 !important;
+}
+
 html[data-theme="dark"] .assessment_list_rows .assessment_card_status_draft,
 html[data-theme="dark"] .assessment_list_rows .assessment_card_status_draft .general_rpr_card_report_type_icon {
-  color: #cbd5e1 !important;
+  color: #fde68a !important;
 }
 
 /* Role Guide — category panels + cards on indigo */
@@ -2009,19 +2125,39 @@ html[data-theme="dark"] .assessments_ledger_search_input {
 
 /* Search icon/placeholder colors come from search.css (nav blue wash) */
 
-html[data-theme="dark"] .vd_list_filter_btn,
-html[data-theme="dark"] .vd_list_toolbar_icon_btn,
-html[data-theme="dark"] .account_theme_options {
+html[data-theme="dark"] .vd_list_filter_btn {
   background: var(--surface-muted) !important;
   border-color: var(--border-subtle) !important;
   color: var(--text-secondary) !important;
 }
 
-html[data-theme="dark"] .vd_list_filter_btn--active,
-html[data-theme="dark"] .account_theme_option--active {
+html[data-theme="dark"] .account_theme_options {
+  background: rgba(138, 175, 255, 0.1) !important;
+  border-color: rgba(138, 175, 255, 0.24) !important;
+  color: var(--text-secondary, #c8c4d6) !important;
+}
+
+html[data-theme="dark"] .vd_list_filter_btn--active {
   background: var(--surface-elevated) !important;
   color: var(--text-primary) !important;
   border-color: var(--border-strong) !important;
+}
+
+html[data-theme="dark"] .account_theme_option {
+  color: var(--text-muted, #9a95ab) !important;
+  background: transparent !important;
+}
+
+html[data-theme="dark"] .account_theme_option:hover {
+  color: #b4cbff !important;
+  background: rgba(138, 175, 255, 0.12) !important;
+}
+
+html[data-theme="dark"] .account_theme_option--active,
+html[data-theme="dark"] .account_theme_option--active:hover {
+  background: rgba(138, 175, 255, 0.2) !important;
+  color: var(--nav-active, #8aafff) !important;
+  border-color: rgba(138, 175, 255, 0.36) !important;
 }
 
 html[data-theme="dark"] .account_menu_item:hover,
@@ -2030,7 +2166,7 @@ html[data-theme="dark"] .account_settings_nav_item:hover {
 }
 
 html[data-theme="dark"] .account_settings_nav_item--active {
-  background-color: var(--surface-elevated) !important;
+  background-color: var(--surface-hover) !important;
   color: var(--text-primary) !important;
 }
 
@@ -2247,8 +2383,8 @@ html[data-theme="dark"] .risk_mapping_fw_card {
   background-color: #2d2a3a !important;
   background-image: linear-gradient(
     180deg,
-    rgba(138, 175, 255, 0.16) 0%,
-    rgba(45, 42, 58, 0.55) 34%,
+    rgba(91, 140, 255, 0.07) 0%,
+    rgba(45, 42, 58, 0.78) 34%,
     #2d2a3a 68%
   ) !important;
   border-color: var(--border-subtle, #403c52) !important;
@@ -2257,8 +2393,9 @@ html[data-theme="dark"] .risk_mapping_fw_card {
 }
 
 html[data-theme="dark"] .risk_mapping_fw_card::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(138,175,255,0.12)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(168,190,255,0.42)' stroke-width='1.5'/%3E%3Cpath d='M0 118 C75 90 145 146 220 118 S345 90 420 118' fill='none' stroke='rgba(138,175,255,0.34)' stroke-width='1.35'/%3E%3Cpath d='M0 148 C80 124 150 172 230 148 S350 124 420 148' fill='none' stroke='rgba(138,175,255,0.26)' stroke-width='1.2'/%3E%3C/svg%3E");
-  opacity: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(138,175,255,0.12)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(168,190,255,0.42)' stroke-width='1.5'/%3E%3Cpath d='M0 118 C75 90 145 146 220 118 S345 90 420 118' fill='none' stroke='rgba(138,175,255,0.34)' stroke-width='1.35'/%3E%3Cpath d='M0 148 C80 124 150 172 230 148 S350 124 420 148' fill='none' stroke='rgba(147,197,253,0.22)' stroke-width='1.2'/%3E%3C/svg%3E");
+  opacity: 0.9;
+  background-size: 100% 58%;
 }
 
 /* Risk cards — same blue wash + wave as Complete Reports */
@@ -2266,8 +2403,8 @@ html[data-theme="dark"] .risk_mapping_risk_card {
   background-color: #2d2a3a !important;
   background-image: linear-gradient(
     180deg,
-    rgba(138, 175, 255, 0.16) 0%,
-    rgba(45, 42, 58, 0.55) 34%,
+    rgba(91, 140, 255, 0.07) 0%,
+    rgba(45, 42, 58, 0.78) 34%,
     #2d2a3a 68%
   ) !important;
   border-color: var(--border-subtle, #403c52) !important;
@@ -2276,8 +2413,9 @@ html[data-theme="dark"] .risk_mapping_risk_card {
 }
 
 html[data-theme="dark"] .risk_mapping_risk_card::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(138,175,255,0.12)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(168,190,255,0.42)' stroke-width='1.5'/%3E%3Cpath d='M0 118 C75 90 145 146 220 118 S345 90 420 118' fill='none' stroke='rgba(138,175,255,0.34)' stroke-width='1.35'/%3E%3Cpath d='M0 148 C80 124 150 172 230 148 S350 124 420 148' fill='none' stroke='rgba(138,175,255,0.26)' stroke-width='1.2'/%3E%3C/svg%3E");
-  opacity: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 58 C70 28 140 88 210 58 S350 28 420 58 V0 H0 Z' fill='rgba(138,175,255,0.12)'/%3E%3Cpath d='M0 92 C70 62 140 122 210 92 S350 62 420 92' fill='none' stroke='rgba(168,190,255,0.42)' stroke-width='1.5'/%3E%3Cpath d='M0 118 C75 90 145 146 220 118 S345 90 420 118' fill='none' stroke='rgba(138,175,255,0.34)' stroke-width='1.35'/%3E%3Cpath d='M0 148 C80 124 150 172 230 148 S350 124 420 148' fill='none' stroke='rgba(147,197,253,0.22)' stroke-width='1.2'/%3E%3C/svg%3E");
+  opacity: 0.9;
+  background-size: 100% 58%;
 }
 
 html[data-theme="dark"] .risk_mapping_panel_title,
@@ -2541,8 +2679,7 @@ html[data-theme="dark"] .card__label {
 }
 
 html[data-theme="dark"] .governance_domain_tile .tile_value,
-html[data-theme="dark"] .governance_assessment_link:hover,
-html[data-theme="dark"] .governance_assessment_link_table {
+html[data-theme="dark"] .governance_assessment_link:hover {
   color: var(--nav-active, #8aafff) !important;
 }
 
@@ -2588,7 +2725,12 @@ html[data-theme="dark"] .bvr_matrix_table td {
   color: var(--text-primary, #ebe9f3) !important;
 }
 
-html[data-theme="dark"] .bvr_matrix_table th,
+html[data-theme="dark"] .bvr_matrix_table th {
+  background: var(--table-header-bg, #3f3d5a) !important;
+  color: var(--table-header-text, #ebe9f3) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
 html[data-theme="dark"] .bvr_vcm_priority_note,
 html[data-theme="dark"] .bvr_priority_note,
 html[data-theme="dark"] .bvr_reco_desc,
@@ -2647,13 +2789,13 @@ html[data-theme="dark"] .product_profile_no_products {
 html[data-theme="dark"] .report_section_card,
 html[data-theme="dark"] .report_context_panel,
 html[data-theme="dark"] .report_contract_header,
+html[data-theme="dark"] .report_deployment_item,
 html[data-theme="dark"] .report_roi_card,
 html[data-theme="dark"] .report_framework_table_shell,
 html[data-theme="dark"] .report_compliance_recommendations_shell,
 html[data-theme="dark"] .report_risk_category_block,
 html[data-theme="dark"] .report_summary_card,
-html[data-theme="dark"] .report_detail_page .bvr_recommendations_card,
-html[data-theme="dark"] .bvr_card {
+html[data-theme="dark"] .report_detail_page .bvr_recommendations_card {
   background: var(--surface-color, #2d2a3a) !important;
   border-color: var(--border-subtle, #403c52) !important;
   box-shadow: none;
@@ -2792,4 +2934,445 @@ html[data-theme="dark"] .general_report_section_title {
 html[data-theme="dark"] .general_report_body,
 html[data-theme="dark"] .general_report_section_body {
   color: var(--text-muted, #9a95ab) !important;
+}
+
+/* ── Premium dark sweep: leftover text, borders, and surfaces ─────────────── */
+
+html[data-theme="dark"] .controlsPage {
+  --adm-shadow: none;
+}
+
+html[data-theme="dark"] .input_readonly,
+html[data-theme="dark"] select.input_readonly,
+html[data-theme="dark"] select:disabled,
+html[data-theme="dark"] input:disabled:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+html[data-theme="dark"] textarea:disabled {
+  background-color: var(--surface-muted, #221f2e) !important;
+  color: var(--text-secondary, #c8c4d6) !important;
+  border-color: var(--input-border, #4a455c) !important;
+}
+
+html[data-theme="dark"] .assessment_details_no_reports {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .assessment_details_reports_heading {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .page-not {
+  background-color: var(--bg-colour-main, #1c1a27);
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .file-list li {
+  background: rgba(138, 175, 255, 0.12);
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .chat_message_header {
+  border-bottom-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .chat_message_title {
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .chat_message_subtitle {
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .chat_message_icon {
+  background: var(--icon-chip-bg);
+  color: var(--icon-chip-color);
+}
+
+html[data-theme="dark"] .chat_message_icon--user {
+  background: var(--surface-muted, #221f2e);
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .orgDataTable .rdt_Pagination select {
+  background-color: var(--input-bg, #221f2e);
+  border-color: var(--input-border, #4a455c);
+  color: var(--input-text, #ebe9f3);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%239a95ab'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+}
+
+html[data-theme="dark"] .organizationOnboardingSectionTitle {
+  color: var(--org-section-title-color, var(--text-secondary));
+  border-bottom-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .organizationDetailCard {
+  background: var(--org-detail-card-bg, var(--surface-elevated));
+  border-color: var(--org-detail-card-border, var(--border-subtle));
+  box-shadow: var(--shadow-soft);
+}
+
+html[data-theme="dark"] .organizationDetailCardTitle {
+  color: var(--org-detail-title-color, var(--text-primary));
+}
+
+html[data-theme="dark"] .kebab_menu_option {
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .kebab_menu_option:hover,
+html[data-theme="dark"] .kebab_menu_option:focus-visible {
+  background: var(--surface-hover, #353145);
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .breadcrumb-item,
+html[data-theme="dark"] .breadcrumbs {
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .vendor_directory_product_card {
+  background: var(--surface-elevated, #2d2a3a);
+  border-color: var(--border-subtle, #403c52);
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .vendor_directory_product_card:hover {
+  background: var(--surface-hover, #353145);
+  border-color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .vendor_directory_product_card_icon {
+  background: rgba(138, 175, 255, 0.16);
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .orgControlFeatureList__icon {
+  background: var(--surface-muted, #221f2e);
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .orgControlFeatureList__item--active .orgControlFeatureList__icon {
+  background: var(--surface-elevated, #2d2a3a);
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .orgControlQuota__icon {
+  background: var(--surface-elevated, #2d2a3a);
+  box-shadow: inset 0 0 0 1px rgba(138, 175, 255, 0.18);
+}
+
+html[data-theme="dark"] .adminPage__modelStatus {
+  background: var(--surface-muted, #221f2e);
+  border-color: var(--border-subtle, #403c52);
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .dash_feature_card--pa {
+  background: var(--surface-elevated, #2d2a3a);
+  border-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .dash_stat_card__thumb,
+html[data-theme="dark"] .dash_stat_card__badge {
+  background: var(--surface-elevated, #2d2a3a);
+  border-color: var(--border-subtle, #403c52);
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .attestation_soft_card__meta {
+  background: transparent !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__meta_label {
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .signup_confirmation_card h2,
+html[data-theme="dark"] .card_list li,
+html[data-theme="dark"] .title_card {
+  color: var(--text-primary, #ebe9f3);
+}
+
+/* Score Trace drawer */
+html[data-theme="dark"] .stp_overlay {
+  background: var(--overlay-scrim, rgba(12, 10, 22, 0.64));
+}
+
+html[data-theme="dark"] .stp_panel {
+  background: var(--surface-color, #252231);
+  border-left-color: var(--border-subtle, #403c52);
+  box-shadow: -8px 0 36px rgba(10, 8, 20, 0.45);
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .stp_header,
+html[data-theme="dark"] .stp_footer {
+  background: var(--surface-elevated, #2d2a3a);
+  border-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .stp_title,
+html[data-theme="dark"] .stp_card_title,
+html[data-theme="dark"] .stp_section_title,
+html[data-theme="dark"] .stp_score_number,
+html[data-theme="dark"] .stp_subscore_value,
+html[data-theme="dark"] .stp_cat_name,
+html[data-theme="dark"] .stp_cat_score,
+html[data-theme="dark"] .stp_exec_meta_value,
+html[data-theme="dark"] .stp_improve_title,
+html[data-theme="dark"] .aiq_vts_score_value,
+html[data-theme="dark"] .stp_driver_factor_header,
+html[data-theme="dark"] .stp_field_value {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .stp_subtitle,
+html[data-theme="dark"] .stp_llm_model_label,
+html[data-theme="dark"] .stp_llm_model_row .admin_llm_model_label_text,
+html[data-theme="dark"] .stp_loading,
+html[data-theme="dark"] .stp_score_type_label,
+html[data-theme="dark"] .stp_score_version,
+html[data-theme="dark"] .stp_subscore_key,
+html[data-theme="dark"] .stp_field_label,
+html[data-theme="dark"] .stp_card_reason_text,
+html[data-theme="dark"] .stp_exec_meta_label,
+html[data-theme="dark"] .stp_ai_insight_label,
+html[data-theme="dark"] .stp_ai_insight_text,
+html[data-theme="dark"] .stp_cat_factor_hint_name,
+html[data-theme="dark"] .aiq_vts_score_label,
+html[data-theme="dark"] .aiq_vts_score_denom,
+html[data-theme="dark"] .stp_score_denom,
+html[data-theme="dark"] .stp_improve_why,
+html[data-theme="dark"] .stp_improve_disclaimer {
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .stp_llm_model_label strong,
+html[data-theme="dark"] .stp_llm_model_row .admin_llm_model_label_text strong {
+  color: var(--text-primary, #ebe9f3) !important;
+}
+
+html[data-theme="dark"] .stp_close_btn {
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .stp_close_btn:hover {
+  color: var(--text-primary, #ebe9f3);
+  background: var(--surface-hover, #353145);
+}
+
+html[data-theme="dark"] .stp_spinner {
+  border-color: var(--border-subtle, #403c52);
+  border-top-color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .stp_score_hero,
+html[data-theme="dark"] .stp_formula,
+html[data-theme="dark"] .stp_card,
+html[data-theme="dark"] .stp_subscore_item,
+html[data-theme="dark"] .stp_cat_card,
+html[data-theme="dark"] .stp_exec_summary,
+html[data-theme="dark"] .stp_improve_card,
+html[data-theme="dark"] .stp_formula_section,
+html[data-theme="dark"] .aiq_vts_score_block {
+  background: var(--surface-elevated, #2d2a3a) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .stp_card_top,
+html[data-theme="dark"] .stp_cat_card_header,
+html[data-theme="dark"] .stp_cat_factor_hints,
+html[data-theme="dark"] .stp_ai_insight {
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .stp_internal_badge {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fde68a;
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+html[data-theme="dark"] .stp_error {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.32);
+  color: #fca5a5;
+}
+
+html[data-theme="dark"] .stp_score_circle.stp_score_good,
+html[data-theme="dark"] .stp_subscore_item.stp_subscore_good,
+html[data-theme="dark"] .stp_cat_excellent,
+html[data-theme="dark"] .stp_cat_good {
+  background: rgba(52, 211, 153, 0.12) !important;
+  border-color: rgba(52, 211, 153, 0.38) !important;
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="dark"] .stp_score_circle.stp_score_medium,
+html[data-theme="dark"] .stp_subscore_item.stp_subscore_medium,
+html[data-theme="dark"] .stp_cat_acceptable,
+html[data-theme="dark"] .stp_formula_section {
+  background: rgba(251, 191, 36, 0.12) !important;
+  border-color: rgba(251, 191, 36, 0.38) !important;
+}
+
+html[data-theme="dark"] .stp_score_circle.stp_score_poor,
+html[data-theme="dark"] .stp_subscore_item.stp_subscore_poor,
+html[data-theme="dark"] .stp_cat_poor {
+  background: rgba(248, 113, 113, 0.12) !important;
+  border-color: rgba(248, 113, 113, 0.38) !important;
+  color: #fca5a5 !important;
+}
+
+html[data-theme="dark"] .stp_score_circle.stp_score_concerning,
+html[data-theme="dark"] .stp_cat_needswork {
+  background: rgba(251, 146, 60, 0.12) !important;
+  border-color: rgba(251, 146, 60, 0.38) !important;
+}
+
+html[data-theme="dark"] .stp_impact_positive,
+html[data-theme="dark"] .stp_impact_low_concern,
+html[data-theme="dark"] .stp_chip_good,
+html[data-theme="dark"] .stp_risk_verylow,
+html[data-theme="dark"] .stp_risk_low,
+html[data-theme="dark"] .stp_coverage_high,
+html[data-theme="dark"] .aiq_vts_rating_low {
+  background: rgba(52, 211, 153, 0.16) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(52, 211, 153, 0.35) !important;
+}
+
+html[data-theme="dark"] .stp_impact_moderate,
+html[data-theme="dark"] .stp_chip_medium,
+html[data-theme="dark"] .stp_risk_moderate,
+html[data-theme="dark"] .stp_coverage_medium,
+html[data-theme="dark"] .aiq_vts_rating_moderate {
+  background: rgba(251, 191, 36, 0.16) !important;
+  color: #fde68a !important;
+  border-color: rgba(251, 191, 36, 0.35) !important;
+}
+
+html[data-theme="dark"] .stp_impact_negative,
+html[data-theme="dark"] .stp_chip_poor,
+html[data-theme="dark"] .stp_risk_high,
+html[data-theme="dark"] .stp_risk_critical,
+html[data-theme="dark"] .stp_coverage_low,
+html[data-theme="dark"] .aiq_vts_rating_high,
+html[data-theme="dark"] .aiq_vts_rating_critical {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(248, 113, 113, 0.35) !important;
+}
+
+html[data-theme="dark"] .stp_impact_neutral {
+  background: var(--surface-muted, #221f2e) !important;
+  color: var(--text-muted, #9a95ab) !important;
+}
+
+html[data-theme="dark"] .stp_evidence_item {
+  background: rgba(138, 175, 255, 0.08);
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .stp_warning_item,
+html[data-theme="dark"] .stp_factor_missing,
+html[data-theme="dark"] .stp_factor_row_missing {
+  background: rgba(248, 113, 113, 0.1) !important;
+  color: #fca5a5;
+}
+
+html[data-theme="dark"] .stp_factor_weak,
+html[data-theme="dark"] .stp_factor_row_partial {
+  background: rgba(251, 191, 36, 0.1) !important;
+}
+
+html[data-theme="dark"] .stp_card_btn {
+  background: var(--surface-muted, #221f2e);
+  border-color: var(--border-subtle, #403c52);
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .stp_card_btn:hover {
+  background: var(--surface-hover, #353145);
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .stp_category_pill {
+  background: var(--surface-muted, #221f2e);
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .stp_footer_dot {
+  color: var(--border-strong, #524e68);
+}
+
+html[data-theme="dark"] .stp_cat_progress,
+html[data-theme="dark"] .stp_wf_bar_base {
+  background: var(--surface-muted, #221f2e) !important;
+}
+
+/* Reports leftover surfaces */
+html[data-theme="dark"] .report_detail_page,
+html[data-theme="dark"] .reports_page,
+html[data-theme="dark"] .bvr_page {
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .report_detail_breadcrumb,
+html[data-theme="dark"] .report_detail_breadcrumb_sep {
+  color: var(--text-muted, #9a95ab);
+}
+
+html[data-theme="dark"] .report_roi_card,
+html[data-theme="dark"] .report_deployment_item,
+html[data-theme="dark"] .report_contract_header,
+html[data-theme="dark"] .report_appendix_card,
+html[data-theme="dark"] .report_rec_item,
+html[data-theme="dark"] .report_risk_expanded {
+  background: var(--surface-elevated, #2d2a3a);
+  border-color: var(--border-subtle, #403c52);
+}
+
+html[data-theme="dark"] .bvr_matrix_table th {
+  background: var(--table-header-bg, #3f3d5a) !important;
+  color: var(--table-header-text, #ebe9f3) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .bvr_matrix_table td,
+html[data-theme="dark"] .bvr_matrix_table tbody tr:nth-child(odd) td {
+  background: var(--table-row-bg, #252231) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+  color: var(--text-secondary, #c8c4d6) !important;
+}
+
+html[data-theme="dark"] .bvr_matrix_table tbody tr:nth-child(even) td {
+  background: var(--table-row-alt, #2d2a3a) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+  color: var(--text-secondary, #c8c4d6) !important;
+}
+
+html[data-theme="dark"] .bvr_matrix_table tbody tr:hover td {
+  background: var(--surface-hover, #353145) !important;
+}
+
+html[data-theme="dark"] .sales_enablement_input_shell {
+  background: var(--surface-elevated, #2d2a3a) !important;
+}
+
+html[data-theme="dark"] .sales_enablement_input_shell:focus-within {
+  background: var(--surface-hover, #353145) !important;
+}
+
+html[data-theme="dark"] .click_tooltip_bubble {
+  background-color: var(--surface-elevated, #2d2a3a);
+  border-color: var(--border-strong, #524e68);
+  color: var(--text-primary, #ebe9f3);
+  box-shadow: var(--shadow-elevated);
+}
+
+html[data-theme="dark"] .home__title {
+  color: var(--text-primary, #ebe9f3);
+}
+
+html[data-theme="dark"] .access-denied-message {
+  color: var(--text-muted, #9a95ab);
 }

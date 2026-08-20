@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { invokeBedrockAnthropicText } from "../../utils/invokeBedrockWithUsage.js";
+import { isTokenQuotaExceededError } from "../../services/admin/featureTokenQuota.service.js";
 
 export type RagLevel = "Red" | "Amber" | "Green";
 
@@ -214,6 +215,7 @@ export async function generateComplianceRiskSummaryReport(
     const parsed = extractJsonObject(rawText);
     if (parsed) return normalizePayload(parsed, fb);
   } catch (e) {
+    if (isTokenQuotaExceededError(e)) throw e;
     console.error("generateComplianceRiskSummaryReport LLM error:", e);
   }
   return fb;

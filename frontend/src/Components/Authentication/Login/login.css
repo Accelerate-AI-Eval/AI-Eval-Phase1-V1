@@ -445,13 +445,13 @@ body:has(.authPage--signin) {
   border: 1px solid var(--auth-signin-input-border, #b8c9f3);
   border-radius: 0;
   font-size: 0.95rem;
-  color: #0f172a;
+  color: var(--input-text, #0f172a);
   background-color: var(--auth-signin-input-bg, #f2f6fc);
   box-sizing: border-box;
 }
 
 .signin-input::placeholder {
-  color: #94a3b8;
+  color: var(--text-muted, #94a3b8);
 }
 
 .signin-input:focus {
@@ -461,8 +461,8 @@ body:has(.authPage--signin) {
 
 .signin-input[readonly],
 .signin-input--readonly {
-  color: #64748b;
-  background-color: #e8edf3;
+  color: var(--text-muted, #64748b);
+  background-color: var(--surface-muted, #e8edf3);
   cursor: no-drop;
 }
 
@@ -939,9 +939,9 @@ html[data-theme="dark"] .signin-lockup__name {
 
 html[data-theme="dark"] .signin-input,
 html[data-theme="dark"] .authPage--minimal .signin-input,
-html[data-theme="dark"] .emailData input,
-html[data-theme="dark"] .passwordData input,
-html[data-theme="dark"] .authPage input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="dark"] .emailData > input,
+html[data-theme="dark"] .passwordData > input,
+html[data-theme="dark"] .authPage :not(.signin-input-wrap) > input:not([type="checkbox"]):not([type="radio"]),
 html[data-theme="dark"] .authPage select,
 html[data-theme="dark"] .authPage textarea {
   background-color: var(--auth-signin-input-bg, #221f2e) !important;
@@ -951,17 +951,20 @@ html[data-theme="dark"] .authPage textarea {
 }
 
 html[data-theme="dark"] .signin-input-wrap,
-html[data-theme="dark"] .authPage--minimal .signin-input-wrap {
+html[data-theme="dark"] .authPage--minimal .signin-input-wrap,
+html[data-theme="dark"] .authPage .signin-input-wrap {
   background-color: var(--auth-signin-input-bg, #221f2e) !important;
   border: 1px solid var(--auth-signin-input-border, #4a455c) !important;
   outline: none !important;
+  box-shadow: none !important;
 }
 
-/* Wrap owns the single border — never draw a second ring on the inner password input */
-html[data-theme="dark"] .signin-input-wrap .signin-input,
-html[data-theme="dark"] .authPage--minimal .signin-input-wrap .signin-input,
-html[data-theme="dark"] .passwordData .signin-input-wrap input,
-html[data-theme="dark"] .authPage .signin-input-wrap input {
+/* Wrap owns the single border. Match :not() specificity so the inner field never redraws a ring. */
+html[data-theme="dark"] .signin-input-wrap > .signin-input,
+html[data-theme="dark"] .authPage--minimal .signin-input-wrap > .signin-input,
+html[data-theme="dark"] .passwordData .signin-input-wrap > input,
+html[data-theme="dark"] .authPage .signin-input-wrap > input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="dark"] .authPage--minimal .signin-input-wrap > input:not([type="checkbox"]):not([type="radio"]) {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
@@ -978,24 +981,26 @@ html[data-theme="dark"] .authPage input::placeholder {
   opacity: 1;
 }
 
-html[data-theme="dark"] .signin-input:focus,
-html[data-theme="dark"] .authPage--minimal .signin-input:focus {
+html[data-theme="dark"] .authPage :not(.signin-input-wrap) > .signin-input:focus,
+html[data-theme="dark"] .emailData > .signin-input:focus {
   outline: 2px solid rgba(91, 140, 255, 0.35) !important;
   border-color: #5b8cff !important;
 }
 
 /* Password wrap: one border only (no outline stacked on border) */
 html[data-theme="dark"] .signin-input-wrap:focus-within,
-html[data-theme="dark"] .authPage--minimal .signin-input-wrap:focus-within {
+html[data-theme="dark"] .authPage--minimal .signin-input-wrap:focus-within,
+html[data-theme="dark"] .authPage .signin-input-wrap:focus-within {
   outline: none !important;
   border-color: #5b8cff !important;
   box-shadow: 0 0 0 2px rgba(91, 140, 255, 0.35) !important;
 }
 
-html[data-theme="dark"] .signin-input-wrap .signin-input:focus,
-html[data-theme="dark"] .authPage--minimal .signin-input-wrap .signin-input:focus,
-html[data-theme="dark"] .passwordData .signin-input-wrap input:focus,
-html[data-theme="dark"] .authPage .signin-input-wrap input:focus {
+html[data-theme="dark"] .signin-input-wrap > .signin-input:focus,
+html[data-theme="dark"] .authPage--minimal .signin-input-wrap > .signin-input:focus,
+html[data-theme="dark"] .passwordData .signin-input-wrap > input:focus,
+html[data-theme="dark"] .authPage .signin-input-wrap > input:not([type="checkbox"]):not([type="radio"]):focus,
+html[data-theme="dark"] .authPage--minimal .signin-input-wrap > input:not([type="checkbox"]):not([type="radio"]):focus {
   outline: none !important;
   border: none !important;
   box-shadow: none !important;

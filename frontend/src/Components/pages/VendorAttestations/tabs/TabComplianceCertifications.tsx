@@ -9,14 +9,26 @@ import AttestationDynamicStep from "../AttestationDynamicStep";
 import FormField from "../../../UI/FormField";
 import FileUpload from "../../../UI/FileUpload";
 import ChipMultiSelect from "../../../UI/ChipMultiSelect";
+import Select from "../../../UI/Select";
+import Input from "../../../UI/Input";
 import {
   DOCUMENT_CATEGORIES,
   MAX_FILE_SIZE_BYTES,
 } from "../../../../constants/vendorAttestationDocumentConstants";
+import {
+  FEDRAMP_LEVEL_OPTIONS,
+  FEDRAMP_STATUS_OPTIONS,
+} from "../../../../constants/vendorAttestationOptions";
 import type {
   VendorSelfAttestationPayload,
   DocumentUploadState,
+  FedrampAuthorization,
 } from "../../../../types/vendorSelfAttestation";
+import {
+  EMPTY_FEDRAMP_AUTHORIZATION,
+  needsFedrampDetails,
+  normalizeFedrampAuthorization,
+} from "../../../../utils/fedrampAuthorization";
 
 export interface TabComplianceCertificationsProps {
   attestation: VendorSelfAttestationPayload;
@@ -119,6 +131,17 @@ function TabComplianceCertifications({
     }
   };
 
+  const fedramp = normalizeFedrampAuthorization(attestation.fedramp_authorization);
+  const showFedrampDetails = needsFedrampDetails(fedramp.status);
+
+  function updateFedramp(patch: Partial<FedrampAuthorization>) {
+    const nextStatus = patch.status ?? fedramp.status;
+    const next = needsFedrampDetails(nextStatus)
+      ? { ...fedramp, ...patch }
+      : { ...EMPTY_FEDRAMP_AUTHORIZATION, status: nextStatus };
+    setAttestation((prev) => ({ ...prev, fedramp_authorization: next }));
+  }
+
   return (
     <>
       <AttestationDynamicStep
@@ -131,6 +154,99 @@ function TabComplianceCertifications({
         setAttestation={setAttestation}
         fieldErrors={fieldErrors}
       />
+
+      <div className="form_fields_vendor">
+        <FormField
+          label="Do you hold a FedRAMP authorization? Level and boundary"
+          mandatory={true}
+          tooltipText="Select authorization status. If authorized or in process, provide level, boundary, marketplace ID, and authorization date."
+          errorText={fieldErrors?.fedramp_authorization}
+        >
+          <Select
+            labelName=""
+            id="fedramp_authorization_status"
+            name="fedramp_authorization_status"
+            value={fedramp.status}
+            onChange={(e) => updateFedramp({ status: e.target.value })}
+            default_option="Select authorization status"
+            options={FEDRAMP_STATUS_OPTIONS}
+            required
+          />
+        </FormField>
+      </div>
+
+      {showFedrampDetails && (
+        <>
+          <div className="form_fields_vendor">
+            <FormField
+              label="FedRAMP level"
+              mandatory={true}
+              tooltipText="Authorization impact level."
+              errorText={fieldErrors?.fedramp_level}
+            >
+              <Select
+                labelName=""
+                id="fedramp_authorization_level"
+                name="fedramp_authorization_level"
+                value={fedramp.level}
+                onChange={(e) => updateFedramp({ level: e.target.value })}
+                default_option="Select level"
+                options={FEDRAMP_LEVEL_OPTIONS}
+                required
+              />
+            </FormField>
+          </div>
+          <div className="form_fields_vendor">
+            <FormField
+              label="Authorization boundary"
+              mandatory={true}
+              tooltipText="Describe the system or offering covered by the authorization."
+              errorText={fieldErrors?.fedramp_boundary}
+            >
+              <Input
+                labelName=""
+                type="text"
+                id="fedramp_authorization_boundary"
+                name="fedramp_authorization_boundary"
+                value={fedramp.boundary}
+                onChange={(e) => updateFedramp({ boundary: e.target.value })}
+              />
+            </FormField>
+          </div>
+          <div className="form_fields_vendor">
+            <FormField
+              label="FedRAMP Marketplace ID"
+              mandatory={false}
+              tooltipText="Marketplace listing ID, if published."
+            >
+              <Input
+                labelName=""
+                type="text"
+                id="fedramp_authorization_marketplace_id"
+                name="fedramp_authorization_marketplace_id"
+                value={fedramp.marketplace_id}
+                onChange={(e) => updateFedramp({ marketplace_id: e.target.value })}
+              />
+            </FormField>
+          </div>
+          <div className="form_fields_vendor">
+            <FormField
+              label="Authorized date"
+              mandatory={false}
+              tooltipText="Date the authorization was granted."
+            >
+              <Input
+                labelName=""
+                type="date"
+                id="fedramp_authorization_authorized_at"
+                name="fedramp_authorization_authorized_at"
+                value={fedramp.authorized_at}
+                onChange={(e) => updateFedramp({ authorized_at: e.target.value })}
+              />
+            </FormField>
+          </div>
+        </>
+      )}
 
       {/* Which compliance certifications do you hold? (attach evidence for each) */}
       {documentUpload != null && setDocumentUpload != null && (

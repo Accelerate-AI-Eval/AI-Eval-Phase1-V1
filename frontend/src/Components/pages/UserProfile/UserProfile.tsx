@@ -239,7 +239,7 @@ const UserProfile = ({ onClose, onOpenSettings }: UserProfileProps) => {
             </div>
           </li>
           <li className="account_menu_item account_menu_item--static account_menu_item--user">
-            <User size={24} aria-hidden />
+            <User size={18} aria-hidden />
             <span className="account_menu_user_block">
               <span className="account_menu_user_name_row">
                 <span className="account_menu_label" title={displayName}>

@@ -245,10 +245,10 @@
   cursor: no-drop;
 }
 
-/* Dark theme — signup fields */
-html[data-theme="dark"] .signup-shell-body .signin-input,
-html[data-theme="dark"] .signup_form .signin-input,
-html[data-theme="dark"] .signup_form input:not([type="checkbox"]):not([type="radio"]),
+/* Dark theme — signup fields (skip wrap children; the wrap draws the only border) */
+html[data-theme="dark"] .signup-shell-body :not(.signin-input-wrap) > .signin-input,
+html[data-theme="dark"] .signup_form :not(.signin-input-wrap) > .signin-input,
+html[data-theme="dark"] .signup_form :not(.signin-input-wrap) > input:not([type="checkbox"]):not([type="radio"]),
 html[data-theme="dark"] .signup_form select {
   background-color: var(--auth-signin-input-bg, #221f2e) !important;
   border: 1px solid var(--auth-signin-input-border, #4a455c) !important;
@@ -257,9 +257,9 @@ html[data-theme="dark"] .signup_form select {
 }
 
 /* Password wrap already has the border — keep the inner field borderless */
-html[data-theme="dark"] .signup-shell-body .signin-input-wrap .signin-input,
-html[data-theme="dark"] .signup_form .signin-input-wrap .signin-input,
-html[data-theme="dark"] .signup_form .signin-input-wrap input {
+html[data-theme="dark"] .signup-shell-body .signin-input-wrap > .signin-input,
+html[data-theme="dark"] .signup_form .signin-input-wrap > .signin-input,
+html[data-theme="dark"] .signup_form .signin-input-wrap > input:not([type="checkbox"]):not([type="radio"]) {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;

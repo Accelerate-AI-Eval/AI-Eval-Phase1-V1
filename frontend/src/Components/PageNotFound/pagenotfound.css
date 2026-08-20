@@ -16,7 +16,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f6f8fb;
+  background-color: var(--bg-colour-main, #f6f8fb);
+  color: var(--text-primary, #1a1f36);
   text-align: center;
   width: 100%;
   min-height: 100vh;

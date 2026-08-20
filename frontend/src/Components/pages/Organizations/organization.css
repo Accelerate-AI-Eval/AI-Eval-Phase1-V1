@@ -308,7 +308,7 @@
   line-height: 1.4;
   vertical-align: middle;
   border-radius: 4px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--input-border, #e2e8f0);
   min-height: 2em;
   min-width: 3.25em;
   appearance: none;
@@ -628,7 +628,7 @@
   color: var(--org-section-title-color, #334155);
   margin: 0 0 0.75rem 0;
   padding-bottom: 0.35rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
 }
 
 .organizationOnboardingCompletion {

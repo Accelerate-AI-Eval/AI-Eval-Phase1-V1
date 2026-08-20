@@ -24,6 +24,10 @@ export interface RiskMappingRow {
   risk_type_detected: string | null;
   primary_risk: string | null;
   secondary_risks: string | null;
+  /** Copied from AI Risk Intellect when the API key is set. */
+  likelihood?: number | null;
+  impact?: number | null;
+  severity?: number | null;
 }
 
 export interface MitigationRow {
@@ -57,7 +61,29 @@ export interface Top5RisksWithMitigations {
    * AI Risk Intellect (matched to local top risks) and used in type 2/3 scores.
    */
   intentScore?: RiIntentScore;
+  /**
+   * Likelihood / impact / severity (1–5 / 1–5 / 1–25) from Risk Intellect.
+   * Used by VTS product-risk (L × I). Fallback is hardcoded 3/3 when RI has no scores.
+   */
+  liSeverityScore?: RiLiSeverityScore;
 }
+
+/** Per-risk L/I/S arrays from Risk Intellect for VTS formula input. */
+export interface RiLiSeverityScore {
+  likelihoodScores: number[];
+  impactScores: number[];
+  severityScores: number[];
+  likelihood: number;
+  impact: number;
+  severity: number;
+  source: "risk_intellect" | "default";
+  riskCount: number;
+  label: string;
+}
+
+const DEFAULT_LIKELIHOOD_SCORES = [3, 3, 3];
+const DEFAULT_IMPACT_SCORES = [3, 3, 3];
+const DEFAULT_SEVERITY_SCORES = [9, 9, 9];
 
 function toStr(v: unknown): string {
   if (v == null) return "";
@@ -123,6 +149,68 @@ export function computeIntentScore(
   };
 }
 
+function averageOr(scores: number[], fallback: number): number {
+  if (scores.length === 0) return fallback;
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+
+type LiSeverityFields = {
+  likelihood?: number | null;
+  impact?: number | null;
+  severity?: number | null;
+};
+
+/**
+ * Average 1–5 likelihood/impact (and 1–25 severity) from Risk Intellect rows.
+ * Falls back to the previous hardcoded VTS stubs ([3,3,3] / L×I=9) when RI has no scores.
+ */
+export function computeLiSeverityScore(
+  rows: LiSeverityFields[],
+  source: RiLiSeverityScore["source"],
+): RiLiSeverityScore {
+  const likelihoodScores: number[] = [];
+  const impactScores: number[] = [];
+  const severityScores: number[] = [];
+  for (const row of rows) {
+    if (row.likelihood != null && Number.isFinite(row.likelihood)) {
+      likelihoodScores.push(row.likelihood);
+    }
+    if (row.impact != null && Number.isFinite(row.impact)) {
+      impactScores.push(row.impact);
+    }
+    const derived =
+      row.severity != null && Number.isFinite(row.severity)
+        ? row.severity
+        : row.likelihood != null && row.impact != null
+          ? row.likelihood * row.impact
+          : null;
+    if (derived != null) severityScores.push(derived);
+  }
+  const hasRiScores = likelihoodScores.length > 0 || impactScores.length > 0;
+  const L = likelihoodScores.length > 0 ? likelihoodScores : [...DEFAULT_LIKELIHOOD_SCORES];
+  const I = impactScores.length > 0 ? impactScores : [...DEFAULT_IMPACT_SCORES];
+  const S =
+    severityScores.length > 0 ? severityScores : [...DEFAULT_SEVERITY_SCORES];
+  const likelihood = averageOr(L, 3);
+  const impact = averageOr(I, 3);
+  const severity = averageOr(S, 9);
+  const resolvedSource: RiLiSeverityScore["source"] = hasRiScores
+    ? "risk_intellect"
+    : "default";
+  const labelSource = source === "risk_intellect" && hasRiScores ? "risk_intellect" : resolvedSource;
+  return {
+    likelihoodScores: L,
+    impactScores: I,
+    severityScores: S,
+    likelihood,
+    impact,
+    severity,
+    source: labelSource,
+    riskCount: Math.max(L.length, I.length, S.length),
+    label: `L=${likelihood.toFixed(2)} I=${impact.toFixed(2)} S=${severity.toFixed(2)} (${labelSource})`,
+  };
+}
+
 /**
  * Injects RI-derived intent fields into an assessment payload for type 2/3 scoring.
  */
@@ -145,6 +233,42 @@ export function applyIntentScoreToPayload(
 }
 
 /**
+ * Injects RI likelihood / impact / severity arrays used by VTS product-risk (L × I).
+ */
+export function applyLiSeverityScoreToPayload(
+  payload: Record<string, unknown>,
+  li: RiLiSeverityScore | undefined,
+): Record<string, unknown> {
+  if (!li || li.source !== "risk_intellect") return payload;
+  return {
+    ...payload,
+    likelihoodScores: li.likelihoodScores,
+    impactScores: li.impactScores,
+    severityScores: li.severityScores,
+    likelihood_score_source: li.source,
+    impact_score_source: li.source,
+    severity_score_source: li.source,
+    likelihood_score_value: li.likelihood,
+    impact_score_value: li.impact,
+    severity_score_value: li.severity,
+  };
+}
+
+/**
+ * Apply all Risk Intellect enrichments (intent + L/I/S) onto a scoring payload.
+ */
+export function applyRiEnrichmentToPayload(
+  payload: Record<string, unknown>,
+  top5: Top5RisksWithMitigations | null | undefined,
+): Record<string, unknown> {
+  if (!top5) return payload;
+  return applyLiSeverityScoreToPayload(
+    applyIntentScoreToPayload(payload, top5.intentScore),
+    top5.liSeverityScore,
+  );
+}
+
+/**
  * Extract assessment context for matching risk_mappings table on domain, timing, intent, primary_risk, secondary_risks.
  */
 function extractContext(payload: Record<string, unknown>): {
@@ -154,9 +278,14 @@ function extractContext(payload: Record<string, unknown>): {
   primary_risk: string;
   secondary_risks: string;
 } {
+  const cp =
+    payload.companyProfile && typeof payload.companyProfile === "object" && !Array.isArray(payload.companyProfile)
+      ? (payload.companyProfile as Record<string, unknown>)
+      : {};
   const domain =
     toStr(payload.customer_sector ?? payload.customerSector) ||
     toStr(payload.industry_sector ?? payload.industrySector ?? payload.industry) ||
+    toStr(payload.sector ?? cp.sector) ||
     toStr(payload.risk_domain_scores ?? payload.riskDomainScores).slice(0, 200);
   const intent =
     toStr(payload.expected_outcomes ?? payload.expectedOutcomes) ||
@@ -188,22 +317,33 @@ function extractMappingIds(payload: Record<string, unknown>): number[] {
 
 /**
  * After local top-5 risks are selected, call AI Risk Intellect (when API key is set)
- * to resolve Intentional/Unintentional intent for those risks and compute the intent score
- * used by type 2 (SRS) and type 3 (IRS) formulas.
+ * to resolve Intentional/Unintentional intent and likelihood / impact / severity
+ * for those risks. Intent is used by type 2/3; L/I/S is used by VTS product risk.
  */
 async function enrichIntentFromRiskIntellect(
   top5: Top5RisksWithMitigations,
   sector: string,
 ): Promise<Top5RisksWithMitigations> {
+  const defaultLi = computeLiSeverityScore([], "default");
   const localFallback = (): Top5RisksWithMitigations => ({
     ...top5,
     intentScore: computeIntentScore(
       top5.top5Risks.map((r) => r.intent),
       top5.top5Risks.some((r) => classifyIntentToken(r.intent)) ? "local_db" : "default",
     ),
+    liSeverityScore: defaultLi,
   });
 
   if (!isRiskIntellectConfigured()) {
+    console.log(
+      "[type-01 VTS] likelihood/impact STATIC fallback [3,3,3] — AI Risk API key or AI_RISK_INTELLECT_BASE_URL not set",
+      {
+        formula: "L = avg([3,3,3]) = 3, I = avg([3,3,3]) = 3",
+        source: "default",
+        likelihoodScores: DEFAULT_LIKELIHOOD_SCORES,
+        impactScores: DEFAULT_IMPACT_SCORES,
+      },
+    );
     return localFallback();
   }
 
@@ -213,6 +353,9 @@ async function enrichIntentFromRiskIntellect(
       sector: sector || undefined,
     });
     if (!riResult || riResult.risks.length === 0) {
+      console.log(
+        "[type-01 VTS] likelihood/impact STATIC fallback [3,3,3] — AI Risk Intellect returned no risks",
+      );
       return localFallback();
     }
 
@@ -223,13 +366,21 @@ async function enrichIntentFromRiskIntellect(
     }
 
     let matchedWithRiIntent = 0;
+    let matchedWithRiScores = 0;
     for (const row of top5.top5Risks) {
       const rid = (row.risk_id ?? "").trim();
       if (!rid) continue;
       const match = byCatalogId.get(rid);
-      if (match?.intent) {
+      if (!match) continue;
+      if (match.intent) {
         row.intent = match.intent;
         matchedWithRiIntent += 1;
+      }
+      if (match.likelihood != null || match.impact != null || match.severity != null) {
+        row.likelihood = match.likelihood;
+        row.impact = match.impact;
+        row.severity = match.severity;
+        matchedWithRiScores += 1;
       }
     }
 
@@ -249,9 +400,45 @@ async function enrichIntentFromRiskIntellect(
           ? "local_db"
           : "default";
 
+    const matchedScoreRows = top5.top5Risks.filter(
+      (r) => r.likelihood != null || r.impact != null || r.severity != null,
+    );
+    const scoreRows: LiSeverityFields[] =
+      matchedWithRiScores > 0 ? matchedScoreRows : riResult.risks;
+    const liSeverityScore = computeLiSeverityScore(
+      scoreRows,
+      matchedWithRiScores > 0 ||
+        riResult.risks.some((r) => r.likelihood != null || r.impact != null)
+        ? "risk_intellect"
+        : "default",
+    );
+
+    console.log("[type-01 VTS] likelihood/impact from AI Risk Intellect", {
+      formula: "L = avg(likelihoodScores 1–5), I = avg(impactScores 1–5), S = avg(severity or L×I)",
+      riConfigured: true,
+      matchedWithRiScores,
+      perRisk: top5.top5Risks.map((r) => ({
+        risk_id: r.risk_id,
+        likelihood: r.likelihood ?? null,
+        impact: r.impact ?? null,
+        severity: r.severity ?? null,
+      })),
+      likelihoodScores: liSeverityScore.likelihoodScores,
+      impactScores: liSeverityScore.impactScores,
+      severityScores: liSeverityScore.severityScores,
+      calculation: {
+        L: `${liSeverityScore.likelihoodScores.join(" + ")} / ${liSeverityScore.likelihoodScores.length} = ${liSeverityScore.likelihood}`,
+        I: `${liSeverityScore.impactScores.join(" + ")} / ${liSeverityScore.impactScores.length} = ${liSeverityScore.impact}`,
+        S: `${liSeverityScore.severity.toFixed(4)}`,
+      },
+      source: liSeverityScore.source,
+      label: liSeverityScore.label,
+    });
+
     return {
       ...top5,
       intentScore: computeIntentScore(intentsForScore, source),
+      liSeverityScore,
     };
   } catch (err) {
     console.error("enrichIntentFromRiskIntellect failed; using local/default intent:", err);
@@ -271,9 +458,22 @@ export function formatTop5RisksForPrompt(top5: Top5RisksWithMitigations | null):
         `[intentional=${top5.intentScore.intentionalCount}, unintentional=${top5.intentScore.unintentionalCount}]`,
     );
   }
-  for (const r of top5.top5Risks) {
+  if (top5.liSeverityScore) {
     lines.push(
-      `Risk [${r.risk_id}]: ${r.risk_title ?? "N/A"} | Domain: ${r.domains ?? "N/A"} | Intent: ${r.intent ?? "N/A"} | Timing: ${r.timing ?? "N/A"} | Primary risk: ${r.primary_risk ?? "N/A"}`,
+      `Likelihood/impact/severity (${top5.liSeverityScore.source}): ${top5.liSeverityScore.label}`,
+    );
+  }
+  for (const r of top5.top5Risks) {
+    const liBits = [
+      r.likelihood != null ? `Likelihood: ${r.likelihood}` : null,
+      r.impact != null ? `Impact: ${r.impact}` : null,
+      r.severity != null ? `Severity: ${r.severity}` : null,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+    lines.push(
+      `Risk [${r.risk_id}]: ${r.risk_title ?? "N/A"} | Domain: ${r.domains ?? "N/A"} | Intent: ${r.intent ?? "N/A"} | Timing: ${r.timing ?? "N/A"} | Primary risk: ${r.primary_risk ?? "N/A"}` +
+        (liBits ? ` | ${liBits}` : ""),
     );
     if (r.description) {
       lines.push(`  Description: ${r.description.slice(0, 300)}${r.description.length > 300 ? "..." : ""}`);
@@ -297,8 +497,9 @@ export function formatTop5RisksForPrompt(top5: Top5RisksWithMitigations | null):
 
 /**
  * 1. Fetch top risks from the AI-Q local risk_mappings DB (primary).
- * 2. Extra: when AI Risk Intellect API key is set, calculate intent from RI for those risks.
- * 3. Intent score is returned for type 2/3 score generation (SRS / IRS).
+ * 2. Extra: when AI Risk Intellect API key is set, calculate intent and
+ *    likelihood / impact / severity from RI for those risks.
+ * 3. Intent score is used for type 2/3 (SRS / IRS); L/I/S is used for type 1 VTS.
  */
 export async function getTop5RisksWithMitigations(
   payload: Record<string, unknown>,

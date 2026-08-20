@@ -43,6 +43,15 @@ interface PolicyScore {
   ai_ethics_points: number;
   value: number;
 }
+interface DataProtectionScore {
+  encryption_points: number;
+  tls_points: number;
+  data_subject_rights_points: number;
+  value: number;
+}
+interface SupplyChainScore { named_count?: number; detailed_count?: number; value: number }
+interface AdversarialDisclosureScore { vdp_points: number; bug_bounty_points: number; value: number }
+interface DpaScore { dpa_status?: string | null; value: number }
 interface OpsCtrlScore { rollback_points: number; oversight_points: number; monitoring_points: number; version_control_points: number; value: number }
 interface MatScore     { company_age_years: number; value: number }
 interface SlaScore     { uptime_points: number; response_time_points: number; resolution_time_points: number; value: number }
@@ -56,6 +65,10 @@ interface GrDetail {
   policy_score: PolicyScore;
   operational_controls_score: OpsCtrlScore;
   vendor_maturity_adjustment: MatScore;
+  data_protection_score?: DataProtectionScore;
+  supply_chain_score?: SupplyChainScore;
+  adversarial_disclosure_score?: AdversarialDisclosureScore;
+  dpa_score?: DpaScore;
   governance_score: number;
 }
 interface OrDetail {
@@ -314,6 +327,95 @@ export function buildFactorExplanations(
       : "Develop an AI ethics policy covering fairness, transparency, and accountability.",
     false,
   ));
+
+  const dp = GR.data_protection_score;
+  if (dp) {
+    const encRaw = strGet(input, "encryptionAtRest");
+    explanations.push(mkFactor("Governance", "Encryption at Rest", 10, dp.encryption_points,
+      encRaw !== "Not specified" ? encRaw : "Not disclosed",
+      dp.encryption_points >= 10 ? "Strong encryption at rest with customer-managed keys — maximum points."
+        : dp.encryption_points >= 8 ? "AES-256 at rest. Customer-managed keys score higher."
+        : dp.encryption_points > 0 ? "Encryption at rest is present but not at the strongest level."
+        : "No encryption-at-rest control disclosed.",
+      dp.encryption_points >= 10 ? "No action needed."
+        : dp.encryption_points > 0 ? "Move to AES-256 with customer-managed keys and attach evidence."
+        : "Disclose encryption at rest (AES-256 or customer-managed keys) and attach evidence.",
+      false,
+    ));
+    explanations.push(mkFactor("Governance", "TLS in Transit", 8, dp.tls_points,
+      strGet(input, "tlsInTransit"),
+      dp.tls_points >= 8 ? "TLS 1.3 in transit — maximum points."
+        : dp.tls_points > 0 ? "TLS is enforced; TLS 1.3 scores highest."
+        : "No TLS-in-transit version disclosed.",
+      dp.tls_points >= 8 ? "No action needed."
+        : "Enforce TLS 1.3 (or 1.2+) in transit.",
+      false,
+    ));
+    explanations.push(mkFactor("Governance", "Data Subject Rights", 6, dp.data_subject_rights_points,
+      dp.data_subject_rights_points > 0 ? `${dp.data_subject_rights_points}/6 rights coverage` : "Not specified",
+      dp.data_subject_rights_points >= 6 ? "Full data-subject rights as processor — maximum points."
+        : dp.data_subject_rights_points > 0 ? "Some data-subject rights disclosed. Processor role scores higher than controller-only."
+        : "No data-subject rights disclosed.",
+      dp.data_subject_rights_points >= 6 ? "No action needed."
+        : "Document the rights you support and whether you act as processor, controller, or both.",
+      false,
+    ));
+  }
+
+  const sc = GR.supply_chain_score;
+  if (sc) {
+    explanations.push(mkFactor("Governance", "Sub-processors", 8, sc.value,
+      sc.named_count ? `${sc.named_count} named sub-processor${sc.named_count === 1 ? "" : "s"}` : "Not specified",
+      sc.value >= 8 ? "Named sub-processors with purpose and region — maximum points."
+        : sc.value > 0 ? "Some sub-processors listed. Adding purpose and region for each scores higher."
+        : "No sub-processors listed.",
+      sc.value >= 8 ? "No action needed."
+        : "Publish a sub-processor list with name, purpose, and region.",
+      false,
+    ));
+  }
+
+  const adv = GR.adversarial_disclosure_score;
+  if (adv) {
+    explanations.push(mkFactor("Governance", "Vulnerability Disclosure Policy", 6, adv.vdp_points,
+      adv.vdp_points === 6 ? "Published VDP with URL"
+        : adv.vdp_points === 4 ? "Published VDP"
+        : adv.vdp_points === 3 ? "VDP on request"
+        : "None",
+      adv.vdp_points >= 6 ? "Published vulnerability disclosure policy with URL — maximum points."
+        : adv.vdp_points > 0 ? "A VDP exists. Publishing a URL scores higher."
+        : "No vulnerability disclosure policy published.",
+      adv.vdp_points >= 6 ? "No action needed."
+        : "Publish a VDP with a public URL and acknowledgement SLA.",
+      false,
+    ));
+    explanations.push(mkFactor("Governance", "Bug Bounty", 4, adv.bug_bounty_points,
+      adv.bug_bounty_points === 4 ? "Public bug bounty with URL"
+        : adv.bug_bounty_points === 3 ? "Public bug bounty"
+        : adv.bug_bounty_points === 2 ? "Private bug bounty"
+        : "None",
+      adv.bug_bounty_points >= 4 ? "Public bug bounty with URL — maximum points."
+        : adv.bug_bounty_points > 0 ? "A bug bounty exists. A public program with URL scores higher."
+        : "No bug bounty program disclosed.",
+      adv.bug_bounty_points >= 4 ? "No action needed."
+        : "Run a public bug bounty and publish the program URL.",
+      false,
+    ));
+  }
+
+  const dpa = GR.dpa_score;
+  if (dpa) {
+    const dpaLabels: Record<number, string> = { 4: "Publicly available", 2: "On request", 0: "None" };
+    explanations.push(mkFactor("Governance", "DPA Available", 4, dpa.value,
+      dpaLabels[dpa.value] ?? strGet(input, "dpaAvailable"),
+      dpa.value >= 4 ? "DPA is publicly available — maximum points."
+        : dpa.value === 2 ? "DPA available on request."
+        : "No DPA disclosed.",
+      dpa.value >= 4 ? "No action needed."
+        : "Make a Data Processing Agreement publicly available.",
+      false,
+    ));
+  }
 
   // ── Governance: Assessment Quality ────────────────────────────────────────
 
@@ -590,7 +692,10 @@ export function buildFactorExplanations(
 
   // ── Product: Evidence Quality (vendor-safe) ───────────────────────────────
 
-  const penTest = input.penetrationTestReportAvailable === true;
+  const penCadence = String(input.independentPenTestFrequency ?? "").trim().toLowerCase();
+  const penTest =
+    ["continuous", "quarterly", "annually", "ad_hoc"].includes(penCadence) ||
+    input.penetrationTestReportAvailable === true;
   const soc2T2Current = input.soc2Type2Current === true;
   const complianceDocs = input.complianceDocumentationComplete === true;
   const evidencePts = (penTest ? 8 : 0) + (soc2T2Current ? 10 : 0) + (complianceDocs ? 7 : 0);

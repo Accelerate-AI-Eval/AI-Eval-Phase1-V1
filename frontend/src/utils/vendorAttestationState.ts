@@ -42,6 +42,16 @@ export function mapApiCompanyProfile(api: Record<string, unknown>): AttestationC
     yearFounded: api.yearFounded != null ? Number(api.yearFounded) : "",
     headquartersLocation: (api.headquartersLocation as string) ?? "",
     operatingRegions: Array.isArray(api.operatingRegions) ? (api.operatingRegions as string[]) : [],
+    fundingStatus: (api.fundingStatus as string) ?? "",
+    financialPosition: (api.financialPosition as string) ?? "",
+    enterpriseCustomers:
+      api.enterpriseCustomers != null && api.enterpriseCustomers !== ""
+        ? String(api.enterpriseCustomers)
+        : "",
+    customerRetentionRate:
+      api.customerRetentionRate != null && api.customerRetentionRate !== ""
+        ? String(api.customerRetentionRate)
+        : "",
   };
 }
 
@@ -56,6 +66,10 @@ const emptyCompanyProfile: AttestationCompanyProfile = {
   yearFounded: "",
   headquartersLocation: "",
   operatingRegions: [],
+  fundingStatus: "",
+  financialPosition: "",
+  enterpriseCustomers: "",
+  customerRetentionRate: "",
 };
 
 export function buildFormStateFromApi(result: {
@@ -66,10 +80,18 @@ export function buildFormStateFromApi(result: {
     result.companyProfile && Object.keys(result.companyProfile).length > 0
       ? mapApiCompanyProfile(result.companyProfile)
       : emptyCompanyProfile;
-  const attestation =
+  const companyApi = result.companyProfile ?? {};
+  const attestation: VendorSelfAttestationPayload =
     result.attestation && Object.keys(result.attestation).length > 0
-      ? (result.attestation as VendorSelfAttestationPayload)
+      ? { ...(result.attestation as VendorSelfAttestationPayload) }
       : {};
+  if (!attestation.trust_centre_url && companyApi.trustCentreUrl)
+    attestation.trust_centre_url = String(companyApi.trustCentreUrl);
+  if (!attestation.security_incidents?.length && Array.isArray(companyApi.securityIncidents)) {
+    attestation.security_incidents = companyApi.securityIncidents as VendorSelfAttestationPayload["security_incidents"];
+    if (!attestation.has_public_security_incident && attestation.security_incidents?.length)
+      attestation.has_public_security_incident = "yes";
+  }
   const docUpload = result.attestation?.document_uploads;
   let documentUpload: DocumentUploadState = defaultDocumentUpload;
   if (docUpload && typeof docUpload === "object") {

@@ -72,6 +72,11 @@ body:has(.layout_onBoarrding) {
   --overlay-scrim: rgba(15, 23, 42, 0.45);
   --focus-ring: rgba(34, 91, 255, 0.18);
   --nav-active: #225bff;
+  --adm-chip-bg: #dbeafe;
+  --org-detail-card-bg: #f8fafc;
+  --org-detail-card-border: #e2e8f0;
+  --org-detail-title-color: #0f172a;
+  --org-section-title-color: #334155;
   --table-header-bg: #edf2ff;
   --table-row-bg: #f3f0ee;
   --table-row-alt: whitesmoke;
@@ -127,6 +132,11 @@ html[data-theme="dark"] {
   --overlay-scrim: rgba(12, 10, 22, 0.64);
   --focus-ring: rgba(91, 140, 255, 0.28);
   --nav-active: #8aafff;
+  --adm-chip-bg: rgba(138, 175, 255, 0.16);
+  --org-detail-card-bg: var(--surface-elevated);
+  --org-detail-card-border: var(--border-subtle);
+  --org-detail-title-color: var(--text-primary);
+  --org-section-title-color: var(--text-secondary);
   --table-header-bg: #3f3d5a;
   --table-row-bg: #252231;
   --table-row-alt: #2d2a3a;
@@ -140,6 +150,22 @@ html[data-theme="dark"] {
   --btn-3d-shadow-color: #606266;
   --btn-3d-shadow-danger: #606266;
   color-scheme: dark;
+}
+
+select:disabled,
+input:disabled:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+textarea:disabled,
+.input_readonly,
+select.input_readonly {
+  background-color: var(--surface-muted, #e9edf2) !important;
+  color: var(--text-secondary, #3c4257) !important;
+  cursor: not-allowed;
+  opacity: 0.92;
+}
+
+.assessment_details_no_reports {
+  color: var(--text-muted, #64748b);
+  font-size: 0.9375rem;
 }
 
 input {
@@ -551,8 +577,8 @@ input[type="search"],
 }
 
 .modal_close_btn:hover {
-  background: #edf2ff;
-  color: #334155;
+  background: var(--icon-chip-bg, #edf2ff);
+  color: var(--text-secondary, #334155);
 }
 
 .modal_close_btn:disabled {
@@ -571,7 +597,6 @@ input[type="search"],
 .assessments_ledger_table,
 .governance_table_wrap,
 .vendor_portal_table_wrap,
-.vendor_portal_table_section,
 .report_table_wrap,
 .report_framework_table_shell,
 .org_attestations_table_wrap,

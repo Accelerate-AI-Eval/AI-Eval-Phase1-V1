@@ -2,7 +2,7 @@ import "dotenv/config";
 import {
   getTop5RisksWithMitigations,
   formatTop5RisksForPrompt,
-  applyIntentScoreToPayload,
+  applyRiEnrichmentToPayload,
 } from "../../services/getTop5RisksFromAssessmentContext.js";
 import { invokePythonLlmWithVector } from "../../services/pythonAssessmentLlmClient.js";
 import { scoreCotsBuyerWithPython } from "../../services/pythonScoringClient.js";
@@ -820,7 +820,7 @@ export async function generateBuyerVendorRiskReport(
   try {
     const top5 = await getTop5RisksWithMitigations(buyerPayload);
     dbRisksBlock = formatTop5RisksForPrompt(top5);
-    scoringBuyerPayload = applyIntentScoreToPayload(buyerPayload, top5.intentScore);
+    scoringBuyerPayload = applyRiEnrichmentToPayload(buyerPayload, top5);
   } catch (e) {
     console.error("getTop5RisksWithMitigations (buyer vendor risk report):", e);
   }

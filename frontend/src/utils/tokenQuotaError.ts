@@ -1,7 +1,7 @@
 export const TOKEN_QUOTA_EXCEEDED_CODE = "TOKEN_QUOTA_EXCEEDED";
 
 export const TOKEN_QUOTA_CONTACT_ADMIN_MESSAGE =
-  "Contact a platform admin.";
+  "Contact platform admin";
 
 type ApiErrorPayload = {
   code?: unknown;
@@ -16,7 +16,7 @@ export function isTokenQuotaExceededMessage(
   message: string | null | undefined,
 ): boolean {
   if (!message) return false;
-  return /token quota is exhausted|no tokens have been allocated/i.test(
+  return /token quota is exhausted|no tokens have been allocated|contact platform admin/i.test(
     message,
   );
 }

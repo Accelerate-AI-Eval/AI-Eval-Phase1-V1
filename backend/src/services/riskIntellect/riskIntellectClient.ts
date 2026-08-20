@@ -7,6 +7,10 @@ import { getAiRiskApiKeyConfig } from "../admin/aiRiskApiKeyConfig.service.js";
  * Auth: the single platform AI Risk API key stored in AI-Q (Controls → AI Risk API Key).
  * Base URL: AI_RISK_INTELLECT_BASE_URL | RI_BASE_URL (server env).
  *
+ * Export fields used by scoring:
+ * - intent → type 2/3 intent multiplier
+ * - likelihood, impact, severity → type 1 VTS product risk (L × I)
+ *
  * Returns null on any failure so callers fall back to the static risk_mappings DB.
  */
 
@@ -20,6 +24,12 @@ export type RiRiskExportDto = {
   primaryRisk: string;
   /** Intentional / Unintentional — used for type 2/3 intent score after local risk match */
   intent: string | null;
+  /** Likelihood 1–5 from Risk Intellect (VTS product risk). */
+  likelihood: number | null;
+  /** Impact 1–5 from Risk Intellect (VTS product risk). */
+  impact: number | null;
+  /** Severity 1–25 (often L×I) from Risk Intellect. */
+  severity: number | null;
   sector: string | null;
   industry: string | null;
   sourceUrl: string;
@@ -76,6 +86,25 @@ export function buildExportUrl(baseUrl: string, params: RiExportParams): string 
   return url.toString();
 }
 
+function firstPresent(r: Record<string, unknown>, keys: string[]): unknown {
+  for (const key of keys) {
+    if (key in r && r[key] != null && r[key] !== "") return r[key];
+  }
+  return undefined;
+}
+
+/** Clamp a Risk Intellect numeric score into [min, max]. Returns null if missing/invalid. */
+export function parseRiBoundedScore(
+  raw: unknown,
+  min: number,
+  max: number,
+): number | null {
+  if (raw == null || raw === "") return null;
+  const n = typeof raw === "string" ? Number(raw.trim()) : Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.min(max, Math.max(min, n));
+}
+
 function normalizeRiRisk(raw: unknown): RiRiskExportDto | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const r = raw as Record<string, unknown>;
@@ -83,6 +112,42 @@ function normalizeRiRisk(raw: unknown): RiRiskExportDto | null {
   const catalogMatchIdRaw = r["catalogMatchId"] ?? r["catalog_match_id"];
   const catalogMatchTitleRaw = r["catalogMatchTitle"] ?? r["catalog_match_title"];
   const quality = Number(r["qualityScore"] ?? r["quality_score"] ?? 0);
+  const likelihood = parseRiBoundedScore(
+    firstPresent(r, [
+      "likelihood",
+      "likelihoodScore",
+      "likelihood_score",
+      "likelihoodRating",
+      "likelihood_rating",
+    ]),
+    1,
+    5,
+  );
+  const impact = parseRiBoundedScore(
+    firstPresent(r, [
+      "impact",
+      "impactScore",
+      "impact_score",
+      "impactRating",
+      "impact_rating",
+    ]),
+    1,
+    5,
+  );
+  const severityRaw = parseRiBoundedScore(
+    firstPresent(r, [
+      "severity",
+      "severityScore",
+      "severity_score",
+      "severityRating",
+      "severity_rating",
+    ]),
+    1,
+    25,
+  );
+  const severity =
+    severityRaw ??
+    (likelihood != null && impact != null ? likelihood * impact : null);
   return {
     id: String(r["id"] ?? ""),
     riskTitle: String(r["riskTitle"] ?? r["risk_title"] ?? ""),
@@ -95,6 +160,9 @@ function normalizeRiRisk(raw: unknown): RiRiskExportDto | null {
       intentRaw == null || String(intentRaw).trim() === ""
         ? null
         : String(intentRaw).trim(),
+    likelihood,
+    impact,
+    severity,
     sector: r["sector"] == null ? null : String(r["sector"]),
     industry: r["industry"] == null ? null : String(r["industry"]),
     sourceUrl: String(r["sourceUrl"] ?? r["source_url"] ?? ""),
@@ -244,6 +312,17 @@ export async function fetchRisksFromRI(
     count: normalized.risks.length,
     hasSector: !!params.sector,
     durationMs: Date.now() - startMs,
+  });
+  console.log("[type-01 VTS] AI Risk Intellect export (L/I per risk)", {
+    count: normalized.risks.length,
+    sector: params.sector ?? null,
+    scores: normalized.risks.map((r) => ({
+      catalogMatchId: r.catalogMatchId,
+      riskTitle: r.riskTitle,
+      likelihood: r.likelihood,
+      impact: r.impact,
+      severity: r.severity,
+    })),
   });
   return normalized;
 }

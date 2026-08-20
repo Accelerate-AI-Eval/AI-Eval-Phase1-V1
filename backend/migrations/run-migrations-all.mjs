@@ -48,6 +48,13 @@ const sqlFiles = [
   "20260813_llm_usage_event_feature.sql",
   "20260813_backfill_usage_event_feature.sql",
   "20260813_org_status_archived.sql",
+  "20260818_add_hipaa_baa_to_vendor_self_attestations.sql",
+  "20260818_add_vendor_onboarding_business_fields.sql",
+  "20260818_add_vendor_attestation_business_fields.sql",
+  "20260818_add_fedramp_authorization.sql",
+  "20260818_add_attestation_extended_fields.sql",
+  "20260818_add_attestation_privacy_security_fields.sql",
+  "20260820_attestation_privacy_security_checks.sql",
 ];
 
 const pool = new pg.Pool({ connectionString });

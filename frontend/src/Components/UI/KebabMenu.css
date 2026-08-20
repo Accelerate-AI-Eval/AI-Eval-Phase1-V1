@@ -28,6 +28,19 @@
   outline-offset: 2px;
 }
 
+html[data-theme="dark"] .kebab_menu_btn {
+  background: rgba(138, 175, 255, 0.14);
+  border: 1px solid rgba(138, 175, 255, 0.28);
+  border-radius: 0;
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"] .kebab_menu_btn:hover {
+  background: rgba(138, 175, 255, 0.22);
+  border-color: rgba(138, 175, 255, 0.4);
+  color: #b4cbff;
+}
+
 .kebab_menu_dropdown {
   position: absolute;
   top: 100%;

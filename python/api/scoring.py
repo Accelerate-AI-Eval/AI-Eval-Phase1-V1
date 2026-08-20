@@ -10,7 +10,12 @@ import traceback
 
 from fastapi import APIRouter
 
-from exceptions.custom_exceptions import RiskCalculationException, raise_http_exception
+from exceptions.custom_exceptions import (
+    RiskCalculationException,
+    TokenQuotaExceededError,
+    raise_http_exception,
+    raise_token_quota_http,
+)
 from config import settings
 from schemas.scoring_schema import ScoreRequest, ScoreResponse
 from services.llm_trust_score_service import generate_llm_trust_report
@@ -143,7 +148,7 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
         sections: list = []
         raw: str | None = None
         scoring_source = "formula"
-        scoring_version = "vts-1.0"
+        scoring_version = "vts-1.1"
         llm_error: str | None = None
         # size constraint handled in assessment_llm_service (LLM_PROMPT_CHUNK_THRESHOLD)
         vector_meta: dict = {"used": False, "chunks": []} 
@@ -181,6 +186,8 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
             raw = str(llm.get("raw") or "") or None
             scoring_source = "llm+vector" if vector_meta.get("used") else "llm"
             scoring_version = "vts-llm-vector-1.0" if vector_meta.get("used") else "vts-llm-1.0"
+        except TokenQuotaExceededError:
+            raise
         except concurrent.futures.TimeoutError:
             llm_error = f"LLM trust score timed out after {_LLM_TIMEOUT_SEC}s"
             logger.warning("%s; using formula VTS fallback", llm_error)
@@ -194,11 +201,11 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
         # LLM still supplies narrative summary/sections when available.
         final_score = formula_vts
         scoring_source = "formula"
-        scoring_version = "vts-1.0"
+        scoring_version = "vts-1.1"
         if llm_score is not None and llm_score > 0:
             # LLM narrative only — do not override formula VTS.
             scoring_source = "formula+llm-narrative"
-            scoring_version = "vts-formula-1.0"
+            scoring_version = "vts-formula-1.1"
 
         interpretation = interpret_trust_score(final_score)
 
@@ -272,6 +279,8 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
             raw=raw,
             rationale=rationale,
         )
+    except TokenQuotaExceededError as exc:
+        raise_token_quota_http(exc)
     except RiskCalculationException as exc:
         raise_http_exception(exc.message, status_code=400)
     except Exception as exc:

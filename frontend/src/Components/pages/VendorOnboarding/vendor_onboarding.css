@@ -102,6 +102,105 @@
   justify-content: space-between;
 }
 
+.vendor_step_section_title {
+  margin: 1.5rem 0 0;
+  padding-bottom: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--nav-active, var(--main-dark-color, #225bff));
+  border-bottom: 1px solid var(--app-border-color, var(--border-subtle, #e2dcd6));
+}
+
+.vendor_incident_list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.vendor_incident_card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0.65rem 0.75rem 0.7rem;
+  border: 1px solid var(--app-border-color, var(--border-subtle, #e2dcd6));
+  background: color-mix(in srgb, var(--app-bg-color, #f8f4ed) 55%, var(--surface-color, #f5f7fa));
+}
+
+.vendor_incident_card .form_fields_vendor {
+  margin-top: 0.5rem;
+}
+
+.vendor_incident_card textarea.textarea_field {
+  min-height: 3.25rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.vendor_incident_card_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.vendor_incident_card_title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary, #3c4257);
+}
+
+.vendor_incident_remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--vendor-error-color, #b91c1c);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.vendor_incident_resolved {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary, #3c4257);
+}
+
+.vendor_incident_resolved input {
+  width: auto;
+}
+
+.vendor_incident_add {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.vendor_incident_add_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--app-border-color, var(--border-subtle, #e2dcd6));
+  background: var(--surface-muted, #e9edf2);
+  color: var(--text-primary, #1a1f36);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vendor_incident_add_btn span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .form_fields_vendor {
   display: flex;
   flex-direction: column;

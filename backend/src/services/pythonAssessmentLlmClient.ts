@@ -7,7 +7,10 @@
 import { resolveActorSnapshot } from "./observability/llmUsage.service.js";
 import { getActiveBedrockModelId } from "../utils/bedrockModelId.js";
 import { getRequestActor } from "../utils/requestActorContext.js";
-import { assertFeatureTokenQuota } from "./admin/featureTokenQuota.service.js";
+import {
+  assertFeatureTokenQuota,
+  throwIfTokenQuotaHttpError,
+} from "./admin/featureTokenQuota.service.js";
 import { maybeNotifyTokenQuotaExhausted } from "./admin/tokenQuotaAlert.service.js";
 import type { OrgControlFeature } from "./admin/orgControlFeatures.js";
 
@@ -89,6 +92,7 @@ export async function invokePythonLlmWithVector(options: {
   }
 
   if (!response.ok) {
+    throwIfTokenQuotaHttpError(response.status, body, feature);
     const detail =
       body && typeof body === "object" && body !== null && "detail" in body
         ? String((body as { detail: unknown }).detail)

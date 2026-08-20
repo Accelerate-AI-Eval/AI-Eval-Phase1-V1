@@ -22,6 +22,10 @@ import {
   type FactorExplanation,
   type VtsFormulaResult,
 } from "../../services/vtsFactorExplanations.js";
+import {
+  applyRiEnrichmentToPayload,
+  getTop5RisksWithMitigations,
+} from "../../services/getTop5RisksFromAssessmentContext.js";
 
 // const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
 // // const MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
@@ -123,6 +127,9 @@ Then continue with the detailed sections below.
 - **Training Data Documentation:** [level of training data documentation]
 - **Bias Detection:** [red team, third-party audits, monitoring, statistical tools]
 - **Penetration Testing:** [frequency and type]
+- **Independent Penetration Test Frequency:** [continuous / quarterly / annually / ad hoc / none]
+- **Vulnerability Disclosure Policy:** [status, URL, acknowledgement SLA]
+- **Bug Bounty:** [status, URL, scope]
 
 ## 5. AI Governance (Ethics, oversight, and governance)
 - **AI Ethics Policy:** [usage policies, safety guidelines]
@@ -142,7 +149,10 @@ Then continue with the detailed sections below.
 - **Data Retention:** [default and optional zero retention]
 - **Data Location / Residency:** [US, EU, customer choice, etc.]
 - **Data Deletion:** [on request, automated]
-- **Sub-processors:** [infrastructure, payments, auth if known]
+- **Encryption at Rest:** [algorithm or Not disclosed]
+- **TLS in Transit:** [TLS 1.2 / 1.2+ / 1.3 / Other]
+- **Data Subject Rights:** [rights supported and controller / processor / both]
+- **Sub-processors:** [name, purpose, region, source URL if known]
 
 ## 8. Compliance & Certifications
 - **Certifications:** [SOC 2, ISO, FedRAMP, HIPAA, GDPR, etc.]
@@ -150,6 +160,7 @@ Then continue with the detailed sections below.
 - **Regulatory Frameworks:** [NIST, GDPR, CCPA, EU AI Act readiness]
 - **HIPAA Compliance:** [BAA eligibility]
 - **GDPR Compliance:** [DPA availability]
+- **DPA Available:** [publicly available / on request / none]
 - **EU AI Act Readiness:** [engagement, preparation]
 - **Audit Frequency / Last Audit Date / Audit Findings:** [if stated]
 
@@ -162,6 +173,7 @@ Then continue with the detailed sections below.
 - **Critical Vendors:** [infrastructure, payments]
 - **Vendor Assessment:** [frequency of risk assessments]
 - **Vendor SLAs:** [key SLAs from critical vendors]
+- **Sub-processors:** [name, purpose, region, source URL]
 
 ## 11. Evidence & Trust
 Use only vendor attestation facts for this section. Do NOT include score calculation data, VTS formula details, category scores, risk units, factor explanations, rationale, or scoring rubrics.
@@ -644,7 +656,32 @@ export async function generateVendorAttestationReport(
     );
   }
 
-  const formula = await scoreVendorAttestationWithPython(formulaPayload, vendorData);
+  // Likelihood / impact / severity come from AI Risk Intellect when the Controls API key is set.
+  // Best-effort: scoring still runs with formula defaults if RI is unconfigured or unreachable.
+  let scoringPayload: Record<string, unknown> = formulaPayload;
+  try {
+    const top5 = await getTop5RisksWithMitigations(formulaPayload);
+    scoringPayload = applyRiEnrichmentToPayload(formulaPayload, top5);
+    const L = scoringPayload.likelihoodScores;
+    const I = scoringPayload.impactScores;
+    console.log("[type-01 VTS] scoring payload after RI enrichment", {
+      likelihood_score_source: scoringPayload.likelihood_score_source ?? "default (not injected — RI miss or static)",
+      impact_score_source: scoringPayload.impact_score_source ?? "default (not injected — RI miss or static)",
+      likelihoodScores: L,
+      impactScores: I,
+      likelihood_score_value: scoringPayload.likelihood_score_value,
+      impact_score_value: scoringPayload.impact_score_value,
+      severity_score_value: scoringPayload.severity_score_value,
+      riLabel: top5.liSeverityScore?.label ?? null,
+    });
+  } catch (err) {
+    console.error(
+      "getTop5RisksWithMitigations failed during VTS; scoring with formula default L/I:",
+      err,
+    );
+  }
+
+  const formula = await scoreVendorAttestationWithPython(scoringPayload, vendorData);
   console.log("vts", formula.vendor_trust_score);
   if (formula.rationale?.trim()) {
     console.log(formula.rationale);
@@ -673,7 +710,7 @@ export async function generateVendorAttestationReport(
 
   let factorExplanations: FactorExplanation[] | undefined;
   try {
-    const formulaInput = buildFormulaInputFromPayload(formulaPayload);
+    const formulaInput = buildFormulaInputFromPayload(scoringPayload);
     const detail = formula.detail ?? {};
     const vtsForFactors: VtsFormulaResult = {
       vendor_trust_score: formulaVts,
@@ -707,6 +744,7 @@ export async function generateVendorAttestationReport(
 
   // Evidence & Trust must stay attestation-only — never LLM/score-calculation narrative.
   sections = applyEvidenceTrustFromAttestation(sections, formulaPayload);
+  sections = overlayAttestationPrivacySecurityFields(sections, formulaPayload);
 
   return {
     trustScore: {
@@ -796,9 +834,20 @@ function buildSummaryFromAssessmentData(payload: Record<string, unknown>): strin
   return `${vendorName} demonstrates a ${posture} overall trust posture as an AI vendor with reasonable security controls, data practices, and AI governance frameworks in place. Key strengths include ${strengthsText}. Areas for improvement include ${improvementsText}.`;
 }
 
+function numericScoreList(raw: unknown, fallback: number[], max = 5): number[] {
+  if (!Array.isArray(raw)) return [...fallback];
+  const out: number[] = [];
+  for (const item of raw) {
+    const n = Number(item);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    out.push(Math.min(max, Math.max(1, n)));
+  }
+  return out.length > 0 ? out : [...fallback];
+}
+
 function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseInput {
-  // NODE LOCAL FORMULA MAPPING DISABLED for VTS — Python `build_formula_input_from_payload` owns this.
-  // Kept for reference / possible non-VTS helpers; not called by generateVendorAttestationReport.
+  // Python `build_formula_input_from_payload` owns VTS formula mapping.
+  // This Node copy is used only for factor-explanation labels after Python scoring.
   const cp =
     payload.companyProfile && typeof payload.companyProfile === "object"
       ? (payload.companyProfile as Record<string, unknown>)
@@ -861,8 +910,9 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
     ),
   );
   return {
-    likelihoodScores: [3, 3, 3],
-    impactScores: [3, 3, 3],
+    likelihoodScores: numericScoreList(payload.likelihoodScores ?? get("likelihoodScores"), [3, 3, 3], 5),
+    impactScores: numericScoreList(payload.impactScores ?? get("impactScores"), [3, 3, 3], 5),
+    severityScores: numericScoreList(payload.severityScores ?? get("severityScores"), [9, 9, 9], 25),
     decisionAutonomyLevel,
     decisionStakeLevel,
     devStage,
@@ -874,8 +924,14 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
     geographicRegions,
     dataVolumeScale: "moderate",
     aiRiskAppetite: "moderate",
-    intentionalRiskCount: 1,
-    unintentionalRiskCount: 2,
+    intentionalRiskCount: toNum(
+      payload.intentionalRiskCount ?? get("intentionalRiskCount"),
+      1,
+    ),
+    unintentionalRiskCount: toNum(
+      payload.unintentionalRiskCount ?? get("unintentionalRiskCount"),
+      2,
+    ),
     applicableDomains: [
       { domain: "Privacy & Security", riskCount: 1 },
       { domain: "AI System Safety", riskCount: 1 },
@@ -897,7 +953,27 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
     })(),
     assessmentMethod: "internal_audit",
     complianceDocumentationComplete: true,
-    penetrationTestReportAvailable: !!asStr(get("adversarial_security_testing")),
+    encryptionAtRest: asStr(get("encryption_at_rest")),
+    encryptionAtRestEvidenceId: asStr(get("encryption_at_rest_evidence_id")),
+    tlsInTransit: asStr(get("tls_in_transit")),
+    dataSubjectRights: Array.isArray(get("data_subject_rights")) ? get("data_subject_rights") : [],
+    controllerOrProcessor: asStr(get("controller_or_processor")),
+    subProcessors: Array.isArray(get("sub_processors")) ? get("sub_processors") : [],
+    vulnerabilityDisclosurePolicy:
+      get("vulnerability_disclosure_policy") &&
+      typeof get("vulnerability_disclosure_policy") === "object" &&
+      !Array.isArray(get("vulnerability_disclosure_policy"))
+        ? get("vulnerability_disclosure_policy")
+        : {},
+    bugBounty:
+      get("bug_bounty") && typeof get("bug_bounty") === "object" && !Array.isArray(get("bug_bounty"))
+        ? get("bug_bounty")
+        : {},
+    independentPenTestFrequency: asStr(get("independent_pen_test_frequency")),
+    dpaAvailable: asStr(get("dpa_available")),
+    penetrationTestReportAvailable:
+      !!asStr(get("adversarial_security_testing")) ||
+      !["", "none"].includes(asStr(get("independent_pen_test_frequency")).toLowerCase()),
     soc2Type2Current:
       /\bsoc\s*2\b|soc2/i.test(certificationsSearchBlob) &&
       /type\s*2|type\s*ii|type2/i.test(certificationsSearchBlob),
@@ -945,6 +1021,47 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
   };
 }
 
+function formatObjectFields(value: unknown, keys: string[]): string {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return "Not specified";
+  const row = value as Record<string, unknown>;
+  const parts = keys
+    .map((key) => {
+      const raw = row[key];
+      if (raw == null || String(raw).trim() === "") return "";
+      return String(raw).trim();
+    })
+    .filter(Boolean);
+  return parts.length ? parts.join(" · ") : "Not specified";
+}
+
+function formatSubProcessorsForReport(value: unknown): string {
+  if (!Array.isArray(value)) return "Not specified";
+  const rows = value
+    .map((item) => {
+      if (item == null || typeof item !== "object" || Array.isArray(item)) return "";
+      const row = item as Record<string, unknown>;
+      const name = String(row.name ?? "").trim();
+      if (!name) return "";
+      return [name, row.purpose, row.region, row.source_url ?? row.sourceUrl]
+        .map((part) => (part == null ? "" : String(part).trim()))
+        .filter(Boolean)
+        .join(" — ");
+    })
+    .filter(Boolean);
+  return rows.length ? rows.join("; ") : "Not specified";
+}
+
+function formatDataSubjectRightsForReport(rights: unknown, role: unknown): string {
+  const rightsText = Array.isArray(rights)
+    ? rights.map((item) => String(item).trim()).filter(Boolean).join(", ")
+    : "";
+  const roleText = role == null ? "" : String(role).trim();
+  if (!rightsText && !roleText) return "Not specified";
+  if (!rightsText) return roleText;
+  if (!roleText) return rightsText;
+  return `${rightsText} · ${roleText}`;
+}
+
 function applyEvidenceTrustFromAttestation(
   sections: ReportSection[],
   payload: Record<string, unknown>,
@@ -953,6 +1070,45 @@ function applyEvidenceTrustFromAttestation(
   if (!evidence) return sections;
   const next = sections.filter((s) => s.id !== 11);
   next.push(evidence);
+  next.sort((a, b) => a.id - b.id);
+  return next;
+}
+
+/** Overlay attested privacy/security facts so LLM sections stay aligned with form answers. */
+function overlayAttestationPrivacySecurityFields(
+  sections: ReportSection[],
+  payload: Record<string, unknown>,
+): ReportSection[] {
+  const built = buildSectionsFromPayload(payload);
+  const overlay: Array<{ id: number; title: string; keys: string[] }> = [
+    { id: 6, title: "Data Practices", keys: ["Encryption at Rest", "TLS in Transit", "Data Subject Rights"] },
+    { id: 7, title: "Compliance & Certifications", keys: ["DPA Available"] },
+    { id: 9, title: "Vendor Management", keys: ["Sub-processors"] },
+    {
+      id: 10,
+      title: "AI Safety & Testing",
+      keys: [
+        "Vulnerability Disclosure Policy",
+        "Bug Bounty",
+        "Independent Penetration Test Frequency",
+      ],
+    },
+  ];
+  const next = [...sections];
+  for (const spec of overlay) {
+    const source = built.find((item) => item.id === spec.id);
+    if (!source) continue;
+    const patch: Record<string, string> = {};
+    for (const key of spec.keys) {
+      if (source.items[key] != null) patch[key] = source.items[key];
+    }
+    const existing = next.find((section) => section.id === spec.id);
+    if (existing) {
+      existing.items = { ...existing.items, ...patch };
+    } else {
+      next.push({ id: spec.id, title: spec.title, items: patch });
+    }
+  }
   next.sort((a, b) => a.id - b.id);
   return next;
 }
@@ -1137,6 +1293,12 @@ function buildSectionsFromPayload(payload: Record<string, unknown>): ReportSecti
         ),
         "Bias Detection": json(get("bias_testing_approach") ?? get("bias_ai")),
         "Penetration Testing": text(get("adversarial_security_testing") ?? get("security_testing")),
+        "Independent Penetration Test Frequency": text(get("independent_pen_test_frequency")),
+        "Vulnerability Disclosure Policy": formatObjectFields(
+          get("vulnerability_disclosure_policy"),
+          ["status", "url", "ack_sla_hours"],
+        ),
+        "Bug Bounty": formatObjectFields(get("bug_bounty"), ["status", "url", "scope"]),
       },
     },
     {
@@ -1180,6 +1342,19 @@ function buildSectionsFromPayload(payload: Record<string, unknown>): ReportSecti
         "PII Handling": text(get("pii_handling") ?? get("pii_information")),
         "Data Retention": text(get("data_retention_policy")),
         "Data Residency": json(get("data_residency_options")),
+        "Encryption at Rest": (() => {
+          const enc = get("encryption_at_rest");
+          const base =
+            enc == null || String(enc).trim() === "" ? "Not disclosed" : String(enc).trim();
+          const evidence = get("encryption_at_rest_evidence_id");
+          const evidenceText = evidence == null ? "" : String(evidence).trim();
+          return evidenceText ? `${base} · Evidence: ${evidenceText}` : base;
+        })(),
+        "TLS in Transit": text(get("tls_in_transit")),
+        "Data Subject Rights": formatDataSubjectRightsForReport(
+          get("data_subject_rights"),
+          get("controller_or_processor"),
+        ),
       },
     },
     {
@@ -1191,6 +1366,8 @@ function buildSectionsFromPayload(payload: Record<string, unknown>): ReportSecti
           get("assessment_completion_level") ?? get("assessment_feedback"),
         ),
         "Audit Frequency": text(get("audit_frequency")),
+        "HIPAA Business Associate Agreement": text(get("hipaa_baa")),
+        "DPA Available": text(get("dpa_available")),
       },
     },
     {
@@ -1208,6 +1385,7 @@ function buildSectionsFromPayload(payload: Record<string, unknown>): ReportSecti
       items: {
         "Critical Vendors": text(get("critical_vendors")),
         "Vendor Assessment": text(get("vendor_assessment_frequency")),
+        "Sub-processors": formatSubProcessorsForReport(get("sub_processors")),
       },
     },
     {
@@ -1642,7 +1820,7 @@ function resolveCategoryCoverageFromAttestation(payload: Record<string, unknown>
       negative: [/^none$/i, /^no$/i],
     },
     "Compliance & Regulatory Adherence": {
-      fields: ["security_certifications", "security_compliance_certificates", "regulatorycompliance_cert_material", "assessment_completion_level"],
+      fields: ["security_certifications", "security_compliance_certificates", "regulatorycompliance_cert_material", "assessment_completion_level", "hipaa_baa"],
       hints: ["soc", "iso", "hipaa", "fedramp", "compliance"],
       negative: [/^none$/i, /^no$/i],
     },
@@ -1779,6 +1957,12 @@ function calculateConfidenceFactor(p: LooseInput) {
     self_reported_unverified: 1.10,
     no_formal_assessment: 1.15,
   };
+  const cadenceMap: Record<string, number> = {
+    continuous: 0.94,
+    quarterly: 0.96,
+    annually: 0.97,
+    ad_hoc: 0.99,
+  };
 
   const base = methodMap[p.assessmentMethod];
   if (base === undefined) throw new Error(`Unknown assessmentMethod: ${p.assessmentMethod}`);
@@ -1787,12 +1971,22 @@ function calculateConfidenceFactor(p: LooseInput) {
   let factor = base;
 
   if (p.complianceDocumentationComplete === true) { factor *= 0.98; evidenceAdj.push({ reason: 'compliance documentation complete', multiplier: 0.98 }); }
-  if (p.penetrationTestReportAvailable === true)  { factor *= 0.97; evidenceAdj.push({ reason: 'penetration test report available', multiplier: 0.97 }); }
+  const cadence = String(p.independentPenTestFrequency ?? p.independent_pen_test_frequency ?? "").trim().toLowerCase();
+  if (cadenceMap[cadence] != null) {
+    factor *= cadenceMap[cadence];
+    evidenceAdj.push({ reason: `independent pen-test cadence: ${cadence}`, multiplier: cadenceMap[cadence] });
+  } else if (cadence === "none") {
+    evidenceAdj.push({ reason: "independent pen-test cadence: none", multiplier: 1.0 });
+  } else if (p.penetrationTestReportAvailable === true) {
+    factor *= 0.97;
+    evidenceAdj.push({ reason: 'penetration test report available', multiplier: 0.97 });
+  }
   if (p.soc2Type2Current === true)                { factor *= 0.95; evidenceAdj.push({ reason: 'SOC2 Type 2 current', multiplier: 0.95 }); }
 
   return {
     method_base: base,
     evidence_adjustments: evidenceAdj,
+    pen_test_cadence: cadence || undefined,
     value: parseFloat(factor.toFixed(4)),
   };
 }

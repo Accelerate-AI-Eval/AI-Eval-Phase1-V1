@@ -4,7 +4,7 @@ import { invokeBedrockAnthropicText } from "../../utils/invokeBedrockWithUsage.j
 import {
   getTop5RisksWithMitigations,
   formatTop5RisksForPrompt,
-  applyIntentScoreToPayload,
+  applyRiEnrichmentToPayload,
   type Top5RisksWithMitigations,
 } from "../../services/getTop5RisksFromAssessmentContext.js";
 import type { FrameworkMappingTableRow } from "../../services/frameworkMappingFromCompliance.js";
@@ -1777,7 +1777,7 @@ export async function generateVendorCotsReport(
         top5 = null;
       }
     }
-    const scoringPayload = applyIntentScoreToPayload(payload, top5?.intentScore);
+    const scoringPayload = applyRiEnrichmentToPayload(payload, top5);
     const context = buildAssessmentContext(
       scoringPayload,
       top5,

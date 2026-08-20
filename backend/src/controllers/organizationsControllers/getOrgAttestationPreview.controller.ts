@@ -35,6 +35,8 @@ function mapAttestationRow(attestRow: Record<string, unknown>): Record<string, u
     decision_autonomy: attestRow.ai_autonomy_level ?? undefined,
     security_certifications: attestRow.security_compliance_certificates ?? undefined,
     assessment_completion_level: attestRow.assessment_feedback ?? undefined,
+    audit_frequency: attestRow.audit_frequency ?? undefined,
+    hipaa_baa: attestRow.hipaa_baa ?? undefined,
     pii_handling: attestRow.pii_information ?? undefined,
     data_residency_options: attestRow.data_residency_options ?? undefined,
     data_retention_policy: attestRow.data_retention_policy ?? undefined,

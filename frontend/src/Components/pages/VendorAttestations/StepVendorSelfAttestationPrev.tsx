@@ -7,7 +7,13 @@ import { Eye, ShieldCheck, CircleArrowUp } from "lucide-react";
 import type { VendorSelfAttestationFormState } from "../../../types/vendorSelfAttestation";
 import { VENDOR_SELF_ATTESTATION } from "../../../constants/vendorAttestionData";
 import { ATTESTATION_SECTION_FIELDS } from "../../../constants/vendorAttestationFields";
+import {
+  BUG_BOUNTY_STATUS_OPTIONS,
+  VDP_STATUS_OPTIONS,
+  getAttestationFieldOptions,
+} from "../../../constants/vendorAttestationOptions";
 import { formatPreviewValueAsString } from "../../../utils/formatPreviewValue";
+import { formatFedrampAuthorization } from "../../../utils/fedrampAuthorization";
 import { formatDateDDMMMYYYY } from "../../../utils/formatDate.js";
 import { personalizeAttestationFieldLabel } from "../../../utils/attestationFieldLabel";
 import "../VendorOnboarding/StepVendorOnboardingPreview.css";
@@ -17,7 +23,7 @@ import "./vendor_attestation_preview.css";
 const STEP_DOCUMENT_UPLOAD = 1;
 const STEP_AI_TECHNICAL = 3;
 const STEP_COMPLIANCE_CERTIFICATIONS = 4;
-const STEP_EVIDENCE = 9;
+const STEP_EVIDENCE = 10;
 
 export type ComplianceDocumentExpiryMeta = {
   category?: string;
@@ -137,8 +143,58 @@ function VendorAttestationPreviewDocumentRowActions({
 }
 
 /** User-friendly preview: multi-select/industry/dependent dropdown as readable text, never raw array or JSON. */
-function formatValue(val: unknown): string {
+function formatValue(val: unknown, fieldKey?: string): string {
+  if (fieldKey && typeof val === "string") {
+    const match = getAttestationFieldOptions(fieldKey)?.find((option) => option.value === val)
+    if (match) return match.label
+  }
   return formatPreviewValueAsString(val);
+}
+
+function optionLabel(options: { label: string; value: string }[], value?: string | null): string {
+  if (!value) return "N/A";
+  return options.find((option) => option.value === value)?.label ?? value;
+}
+
+function formatVdp(value: VendorSelfAttestationFormState["attestation"]["vulnerability_disclosure_policy"]): string {
+  if (!value?.status) return "N/A";
+  const parts = [optionLabel(VDP_STATUS_OPTIONS, value.status)];
+  if (value.url) parts.push(value.url);
+  if (value.ack_sla_hours) parts.push(`Ack SLA: ${value.ack_sla_hours}h`);
+  return parts.join(" · ");
+}
+
+function formatBugBounty(value: VendorSelfAttestationFormState["attestation"]["bug_bounty"]): string {
+  if (!value?.status) return "N/A";
+  const parts = [optionLabel(BUG_BOUNTY_STATUS_OPTIONS, value.status)];
+  if (value.url) parts.push(value.url);
+  if (value.scope) parts.push(`Scope: ${value.scope}`);
+  return parts.join(" · ");
+}
+
+function formatDataSubjectRights(
+  rights?: string[] | null,
+  role?: string | null,
+): string {
+  const rightsText = (rights ?? [])
+    .map((right) => formatValue(right, "data_subject_rights"))
+    .filter((text) => text && text !== "N/A")
+    .join(", ");
+  const roleText = formatValue(role, "controller_or_processor");
+  if (!rightsText && roleText === "N/A") return "N/A";
+  if (!rightsText) return roleText;
+  if (roleText === "N/A") return rightsText;
+  return `${rightsText} · ${roleText}`;
+}
+
+function formatSubProcessors(value: VendorSelfAttestationFormState["attestation"]["sub_processors"]): string {
+  const rows = (value ?? []).filter((item) => item?.name?.trim());
+  if (!rows.length) return "N/A";
+  return rows
+    .map((item) =>
+      [item.name, item.purpose, item.region, item.source_url].filter(Boolean).join(" — "),
+    )
+    .join("; ");
 }
 
 function StepVendorSelfAttestationPrev({
@@ -198,6 +254,15 @@ function StepVendorSelfAttestationPrev({
     { label: "Year Founded", value: formatValue(companyProfile.yearFounded) },
     { label: "Headquarters", value: formatValue(companyProfile.headquartersLocation) },
     { label: "Operating Regions", value: formatValue(companyProfile.operatingRegions) },
+    { label: "Funding Status", value: formatValue(companyProfile.fundingStatus) },
+    { label: "Financial Position", value: formatValue(companyProfile.financialPosition) },
+    { label: "Enterprise Customers", value: formatValue(companyProfile.enterpriseCustomers) },
+    {
+      label: "Annual Customer Retention Rate",
+      value: companyProfile.customerRetentionRate
+        ? `${companyProfile.customerRetentionRate}%`
+        : formatValue(companyProfile.customerRetentionRate),
+    },
   ];
 
   /** Compliance certifications evidence — one heading, then list: "1. SOC2 Type 2 document uploaded  verified view update" */
@@ -396,10 +461,36 @@ function StepVendorSelfAttestationPrev({
                   return (
                     <div key={mapping.key} className="vendor_preview_row">
                       <dt className="vendor_preview_label">{rowLabel}</dt>
-                      <dd className="vendor_preview_value">{formatValue(val)}</dd>
+                      <dd className="vendor_preview_value">{formatValue(val, mapping.key)}</dd>
                     </div>
                   );
                 })}
+                {sectionKey === "ai_technical_capabilities" && (
+                  <div key="versions_models" className="vendor_preview_row">
+                    <dt className="vendor_preview_label">Do you version models, and how?</dt>
+                    <dd className="vendor_preview_value">
+                      {attestation.versions_models === "yes"
+                        ? `Yes · ${formatValue(attestation.model_versioning_method, "model_versioning_method")}`
+                        : attestation.versions_models === "no"
+                          ? "No"
+                          : "N/A"}
+                    </dd>
+                  </div>
+                )}
+                {sectionKey === "deployment_architecture" && (
+                  <div key="is_multi_tenant" className="vendor_preview_row">
+                    <dt className="vendor_preview_label">
+                      Is the product multi-tenant? What isolation model?
+                    </dt>
+                    <dd className="vendor_preview_value">
+                      {attestation.is_multi_tenant === "yes"
+                        ? `Yes · ${formatValue(attestation.tenant_isolation_model, "tenant_isolation_model")}`
+                        : attestation.is_multi_tenant === "no"
+                          ? "No"
+                          : "N/A"}
+                    </dd>
+                  </div>
+                )}
                 {sectionKey === "ai_technical_capabilities" &&
                   attestation.documented_ai_governance_policy === "Yes" &&
                   (() => {
@@ -424,6 +515,64 @@ function StepVendorSelfAttestationPrev({
                       </div>
                     );
                   })()}
+                {sectionKey === "data_handling_privacy" && (
+                  <>
+                    <div key="data_subject_rights" className="vendor_preview_row">
+                      <dt className="vendor_preview_label">
+                        Which data subject rights do you support, and in what role?
+                      </dt>
+                      <dd className="vendor_preview_value">
+                        {formatDataSubjectRights(
+                          attestation.data_subject_rights,
+                          attestation.controller_or_processor,
+                        )}
+                      </dd>
+                    </div>
+                    <div key="encryption_at_rest" className="vendor_preview_row">
+                      <dt className="vendor_preview_label">What encryption do you apply at rest?</dt>
+                      <dd className="vendor_preview_value">
+                        {formatValue(attestation.encryption_at_rest, "encryption_at_rest")}
+                        {attestation.encryption_at_rest_evidence_id
+                          ? ` · Evidence: ${attestation.encryption_at_rest_evidence_id}`
+                          : ""}
+                      </dd>
+                    </div>
+                  </>
+                )}
+                {sectionKey === "ai_safety_testing" && (
+                  <>
+                    <div key="vdp" className="vendor_preview_row">
+                      <dt className="vendor_preview_label">Do you publish a VDP?</dt>
+                      <dd className="vendor_preview_value">
+                        {formatVdp(attestation.vulnerability_disclosure_policy)}
+                      </dd>
+                    </div>
+                    <div key="bug_bounty" className="vendor_preview_row">
+                      <dt className="vendor_preview_label">Do you run a bug bounty?</dt>
+                      <dd className="vendor_preview_value">
+                        {formatBugBounty(attestation.bug_bounty)}
+                      </dd>
+                    </div>
+                  </>
+                )}
+                {sectionKey === "vendor_management" && (
+                  <div key="sub_processors" className="vendor_preview_row">
+                    <dt className="vendor_preview_label">List your sub-processors</dt>
+                    <dd className="vendor_preview_value">
+                      {formatSubProcessors(attestation.sub_processors)}
+                    </dd>
+                  </div>
+                )}
+                {isComplianceCertifications && (
+                  <div key="fedramp_authorization" className="vendor_preview_row">
+                    <dt className="vendor_preview_label">
+                      Do you hold a FedRAMP authorization? Level and boundary
+                    </dt>
+                    <dd className="vendor_preview_value">
+                      {formatFedrampAuthorization(attestation.fedramp_authorization)}
+                    </dd>
+                  </div>
+                )}
                 {isComplianceCertifications && regulatoryRows}
               </dl>
             </section>

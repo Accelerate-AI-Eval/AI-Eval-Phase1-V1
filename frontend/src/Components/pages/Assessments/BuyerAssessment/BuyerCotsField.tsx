@@ -53,7 +53,7 @@ const BuyerCotsField = ({
               type="text"
               value={displayText}
               readOnly
-              style={{ backgroundColor: "#f5f5f5", cursor: "not-allowed", color: "#333" }}
+              className="input_readonly"
               aria-label={label}
             />
           </FormField>
@@ -71,12 +71,7 @@ const BuyerCotsField = ({
               value={strValue || ""}
               disabled
               readOnly
-              className="select_input"
-              style={{
-                backgroundColor: "#f5f5f5",
-                cursor: "not-allowed",
-                color: "#333",
-              }}
+              className="select_input input_readonly"
               aria-label={label}
             >
               <option value="">{placeholder || defaultOption}</option>
@@ -101,7 +96,7 @@ const BuyerCotsField = ({
             type="text"
             value={typeof safeValue === "string" ? safeValue : (Array.isArray(safeValue) ? safeValue.join(", ") : JSON.stringify(safeValue))}
             readOnly
-            style={{ backgroundColor: "#f5f5f5", cursor: "not-allowed" }}
+            className="input_readonly"
             aria-label={label}
           />
         </FormField>
