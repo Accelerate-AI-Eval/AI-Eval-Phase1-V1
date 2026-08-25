@@ -84,6 +84,21 @@ def record_llm_usage(
     uname = (user_name or "").strip() or actor.get("user_name")
     feat = (feature or "").strip() or actor.get("feature")
 
+    parts = [
+        "[llmUsage] tokens consumed",
+        f"input={inp}",
+        f"output={out}",
+        f"total={total}",
+    ]
+    if feat:
+        parts.append(f"feature={feat}")
+    if uname:
+        parts.append(f"user={uname}")
+    if org_name:
+        parts.append(f"org={org_name}")
+    parts.append(f"model={mid}")
+    print(" ".join(parts), flush=True)
+
     try:
         conn = psycopg2.connect(
             host=(settings.DATABASE_HOST or "127.0.0.1").strip(),

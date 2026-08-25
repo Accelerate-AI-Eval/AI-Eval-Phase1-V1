@@ -16,7 +16,10 @@ export const TOKEN_QUOTA_EXCEEDED_CODE = "TOKEN_QUOTA_EXCEEDED";
 export const MIN_REMAINING_OUTPUT_TOKENS = 128;
 
 const QUOTA_MESSAGE_RE =
-  /token quota is exhausted|no tokens have been allocated|contact platform admin/i;
+  /token quota is exhausted|token allocation is exhausted|no tokens have been allocated|contact platform admin|ask your platform admin/i;
+
+const QUOTA_ADMIN_GUIDANCE =
+  "Ask your platform admin to allocate more tokens.";
 
 export class TokenQuotaExceededError extends Error {
   readonly status = 403;
@@ -72,9 +75,9 @@ export function sendIfTokenQuotaExceeded(res: Response, error: unknown): boolean
   res.status(403).json({
     success: false,
     code: TOKEN_QUOTA_EXCEEDED_CODE,
-    message: /contact platform admin/i.test(message)
+    message: /ask your platform admin|contact platform admin/i.test(message)
       ? message
-      : `${message.replace(/\.*$/, "")}. Contact platform admin`,
+      : `${message.replace(/\.*$/, "")}. ${QUOTA_ADMIN_GUIDANCE}`,
   });
   return true;
 }
@@ -184,18 +187,18 @@ function quotaExceededMessage(
 ): string {
   const label = ORG_CONTROL_FEATURE_LABELS[feature];
   if (balance.allocated <= 0) {
-    return `No tokens have been allocated for ${label}. Contact platform admin`;
+    return `No tokens have been allocated for ${label}. Ask your platform admin to allocate tokens for this feature.`;
   }
   if (balance.inputExceeded && balance.outputExceeded) {
-    return `Your ${label} input and output token quotas are exhausted. Contact platform admin`;
+    return `Your ${label} input and output token allocations are exhausted. ${QUOTA_ADMIN_GUIDANCE}`;
   }
   if (balance.inputExceeded) {
-    return `Your ${label} input token quota is exhausted. Contact platform admin`;
+    return `Your ${label} input token allocation is exhausted. ${QUOTA_ADMIN_GUIDANCE}`;
   }
   if (balance.outputExceeded) {
-    return `Your ${label} output token quota is exhausted. Contact platform admin`;
+    return `Your ${label} output token allocation is exhausted. ${QUOTA_ADMIN_GUIDANCE}`;
   }
-  return `Your ${label} token quota is exhausted. Contact platform admin`;
+  return `Your ${label} token allocation is exhausted. ${QUOTA_ADMIN_GUIDANCE}`;
 }
 
 export function throwTokenQuotaExceeded(
@@ -305,7 +308,9 @@ function parseTokenQuotaHttpBody(
     if (!isTokenQuotaExceededMessage(message)) return null;
   }
   return {
-    message: message || "Your token quota is exhausted. Contact platform admin",
+    message:
+      message ||
+      "Your token allocation for this feature is exhausted. Ask your platform admin to allocate more tokens.",
     feature: normalizeOrgControlFeature(payload?.feature),
     allocated: asNonNegInt(payload?.allocated),
     consumed: asNonNegInt(payload?.consumed),

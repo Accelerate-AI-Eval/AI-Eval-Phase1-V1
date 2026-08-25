@@ -195,6 +195,21 @@ export async function recordLlmUsage(delta: LlmUsageDelta): Promise<void> {
     outputTokens,
   );
   const actor = await resolveActorSnapshot(delta.actorUserId);
+  const feature = delta.feature ?? null;
+  console.log(
+    [
+      "[llmUsage] tokens consumed",
+      `input=${inputTokens}`,
+      `output=${outputTokens}`,
+      `total=${totalTokens}`,
+      feature ? `feature=${feature}` : null,
+      actor.userName ? `user=${actor.userName}` : null,
+      actor.organizationName ? `org=${actor.organizationName}` : null,
+      `model=${modelId}`,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
 
   try {
     const [usageRow] = await db
@@ -223,7 +238,6 @@ export async function recordLlmUsage(delta: LlmUsageDelta): Promise<void> {
       .returning({ id: llmModelUsage.id });
 
     const usageId = usageRow?.id ?? null;
-    const feature = delta.feature ?? null;
     await db.insert(llmModelUsageEvents).values({
       usageId: usageId ?? undefined,
       modelId,

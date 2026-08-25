@@ -16,6 +16,7 @@ export function buildVendorDataFromPayload(body: Record<string, unknown>): strin
   const asStr = (v: unknown) => (v != null && String(v).trim() !== "" ? String(v).trim() : "");
 
   lines.push("Company / Vendor");
+  lines.push("Vendor name: " + asStr(cp.vendorName ?? get("vendorName") ?? get("vendor_name")));
   lines.push("Vendor type: " + asStr(cp.vendorType ?? get("vendorType")));
   lines.push("Company description: " + asStr(cp.companyDescription ?? get("companyDescription")));
   lines.push("Employees: " + asStr(cp.employeeCount ?? get("employeeCount") ?? get("no_of_employees")));

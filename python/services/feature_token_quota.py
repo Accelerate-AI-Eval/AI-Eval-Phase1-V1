@@ -58,14 +58,29 @@ def _quota_message(
 ) -> str:
     label = _FEATURE_LABELS.get(feature, feature.replace("_", " ").title() or "this feature")
     if allocated <= 0:
-        return f"No tokens have been allocated for {label}. Contact platform admin"
+        return (
+            f"No tokens have been allocated for {label}. "
+            "Ask your platform admin to allocate tokens for this feature."
+        )
     if input_exceeded and output_exceeded:
-        return f"Your {label} input and output token quotas are exhausted. Contact platform admin"
+        return (
+            f"Your {label} input and output token allocations are exhausted. "
+            "Ask your platform admin to allocate more tokens."
+        )
     if input_exceeded:
-        return f"Your {label} input token quota is exhausted. Contact platform admin"
+        return (
+            f"Your {label} input token allocation is exhausted. "
+            "Ask your platform admin to allocate more tokens."
+        )
     if output_exceeded:
-        return f"Your {label} output token quota is exhausted. Contact platform admin"
-    return f"Your {label} token quota is exhausted. Contact platform admin"
+        return (
+            f"Your {label} output token allocation is exhausted. "
+            "Ask your platform admin to allocate more tokens."
+        )
+    return (
+        f"Your {label} token allocation is exhausted. "
+        "Ask your platform admin to allocate more tokens."
+    )
 
 
 def get_feature_token_balance(
