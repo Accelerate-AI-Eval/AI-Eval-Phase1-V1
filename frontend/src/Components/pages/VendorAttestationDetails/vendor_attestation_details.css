@@ -1,0 +1,1587 @@
+/* Attestation page layout */
+.attestation_page .attestation_page_title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+}
+
+/* Section cards (Directory Requirements + Trust Profile) */
+.attestation_section {
+  background: #fcfcfc;
+  border: 1px solid var(--border-subtle, #e2e6ec);
+  border-radius: 0;
+  padding: 1.35rem 1.4rem 1.2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-soft);
+}
+.attestation_details_header_icon{
+  display: flex;
+}
+.attestation_section_header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.attestation_section_header span{
+  background-color: #dbeafe;
+  color: var(--nav-active, #225bff);
+  padding: 0.45rem;
+  display: flex;
+  align-content: center;
+  align-items: center;
+  border-radius: 0;
+}
+
+.attestation_section_header_with_status {
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.attestation_section_title_row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.attestation_section_icon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.attestation_section_icon_warning {
+  color: #ea580c;
+}
+
+.attestation_section_icon_primary {
+  color: #2563eb;
+}
+
+.attestation_section_title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0 0 0 0;
+}
+
+.attestation_section_subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0.1rem 0 0 0;
+}
+
+/* Directory Listing Requirements — heading + dashboard PA cards */
+.attestation_directory_requirements {
+  margin: 1rem 0 1.5rem;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.attestation_directory_requirements .attestation_section_title {
+  margin: 0 0 1rem;
+}
+
+.attestation_directory_requirements .dash_feature_grid--pa_hero {
+  margin: 0;
+  max-width: none;
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .attestation_directory_requirements .dash_feature_grid--pa_hero {
+    max-width: none;
+    margin: 0;
+  }
+}
+
+.attestation_directory_requirements .dash_feature_card--pa .dash_feature_card__desc {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+}
+
+/* Trust Profile - coverage list */
+.attestation_covers_heading {
+  font-size: 0.9375rem;
+  color: var(--text-secondary, #374151);
+  margin: 0 0 0.75rem 0;
+}
+
+.attestation_covers_grid {
+  margin-bottom: 1.5rem;
+}
+
+.attestation_covers_heading {
+  font-size: 0.9375rem;
+  color: var(--text-secondary, #374151);
+  margin: 1.2rem 0 1.2rem 0;
+}
+
+/* Legacy column lists — keep item alignment if still referenced */
+.attestation_covers_list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.attestation_covers_list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+  padding: 0;
+}
+
+.attestation_check {
+  flex-shrink: 0;
+}
+.header_icon_svg{
+  color: var(--nav-active, #225bff);
+}
+
+/* YOUR ATTESTATIONS */
+.attestation_your_heading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05rem;
+  color: #6b7280;
+  margin: 0 0 0.75rem 0;
+  text-transform: uppercase;
+}
+
+/* Latest attestation card */
+.attestation_latest_card {
+  background: #fcfcfc;
+  border: 1px solid var(--border-subtle, #e2e6ec);
+  border-radius: 0;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.attestation_latest_card_inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.attestation_latest_card_icon {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.attestation_latest_card_content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.attestation_latest_card_title {
+  font-weight: 600;
+  color: #111827;
+}
+
+.attestation_latest_card_date {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.attestation_actions_row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.attestation_btn_primary,
+.attestation_btn_secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 8px 16px;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.attestation_btn_primary {
+  background: var(--nav-active, #225bff);
+  color: white;
+  border-color: var(--nav-active, #225bff);
+}
+
+.attestation_btn_primary:hover {
+  opacity: 0.9;
+}
+
+.attestation_btn_secondary {
+  background: var(--surface-color);
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.attestation_btn_secondary:hover {
+  background: var(--surface-muted);
+}
+
+.attestation_no_data {
+  padding: 1.5rem;
+  text-align: center;
+  background: #fcfcfc;
+  border: 1px dashed #e5e7eb;
+  border-radius: 5px;
+}
+
+.attestation_no_data p {
+  margin: 0 0 1rem 0;
+  color: #6b7280;
+}
+
+.vendor_attestation_cards_extra {
+  margin-top: 1rem;
+}
+
+.vendor_attestation_status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vendor_attestation_details_page {
+  padding: 0;
+}
+
+/* New attestation page layout: Directory Listing at top, Trust Profile below */
+.attestation_page .attestation_page_title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+}
+
+.attestation_section {
+  background: #fcfcfc;
+  border: 1px solid var(--border-subtle, #e2e6ec);
+  border-radius: 0;
+  /* padding: 1.5rem; */
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-soft);
+}
+
+/* Trust Profile: dashboard-style soft pill pattern */
+.attestation_section.attestation_trust_profile {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: var(--surface-color, #ffffff);
+  background-image: linear-gradient(
+    180deg,
+    rgba(34, 91, 255, 0.035) 0%,
+    rgba(248, 244, 237, 0.28) 42%,
+    var(--surface-color, #ffffff) 100%
+  );
+  border: 1px solid var(--app-border-color, #e2dcd6);
+  box-shadow: var(--shadow-soft, 0 1px 3px rgba(0, 0, 0, 0.05));
+}
+
+.attestation_trust_profile_bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 55% at 0% 0%, rgba(34, 91, 255, 0.045) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(34, 91, 255, 0.03) 0%, transparent 58%);
+}
+
+.attestation_trust_pill {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.attestation_trust_pill--1 {
+  width: 58%;
+  height: 5.5rem;
+  top: 8%;
+  left: -10%;
+  background: rgba(34, 91, 255, 0.055);
+  transform: rotate(-12deg);
+}
+
+.attestation_trust_pill--2 {
+  width: 50%;
+  height: 4.5rem;
+  top: 42%;
+  right: -12%;
+  background: rgba(34, 91, 255, 0.045);
+  transform: rotate(9deg);
+}
+
+.attestation_trust_pill--3 {
+  width: 44%;
+  height: 4rem;
+  bottom: 8%;
+  left: 18%;
+  background: rgba(34, 91, 255, 0.04);
+  transform: rotate(-6deg);
+}
+
+.attestation_section.attestation_trust_profile > *:not(.attestation_trust_profile_bg) {
+  position: relative;
+  z-index: 1;
+}
+
+.attestation_section_header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.attestation_section_header_with_status {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.attestation_section_title_row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.attestation_section_icon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.attestation_section_icon_primary {
+  color: #2563eb;
+}
+
+.attestation_section_icon_warning {
+  color: #ea580c;
+}
+
+
+.attestation_section_subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0.1rem 0 0 0;
+}
+
+/* Trust Profile card (same UI as Assessments page) – checklist wraps when many items */
+.attestation_page .ai_assessments_section .ai_assessments_checklist {
+  flex-wrap: wrap;
+}
+
+/* Trust Profile: coverage list */
+.attestation_covers_heading {
+  font-size: 0.9375rem;
+  color: var(--text-secondary, #374151);
+  margin: 1.2rem 0 1.2rem 0;
+}
+
+.attestation_covers_grid.premium_check_grid {
+  margin-bottom: 1.5rem;
+}
+
+.attestation_covers_list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.attestation_covers_list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.attestation_your_heading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05rem;
+  color: #6b7280;
+  margin: 0 0 0.75rem 0;
+  text-transform: uppercase;
+}
+
+/* Latest attestation card */
+.attestation_latest_card {
+  background: #fcfcfc;
+  border: 1px solid var(--border-subtle, #e2e6ec);
+  border-radius: 0;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.attestation_latest_card_inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.attestation_latest_card_icon {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.attestation_latest_card_content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.attestation_latest_card_title {
+  font-weight: 600;
+  color: #111827;
+  font-size: 1rem;
+}
+
+.attestation_latest_card_date {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.attestation_actions_row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.attestation_btn_primary,
+.attestation_btn_secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  font-family: inherit;
+}
+
+.attestation_btn_primary {
+  background-color: var(--nav-active, #225bff);
+  color: white;
+  border-color: var(--nav-active, #225bff);
+}
+
+.attestation_btn_primary:hover {
+  opacity: 0.9;
+}
+
+.attestation_btn_secondary {
+  background: var(--surface-color);
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.attestation_btn_secondary:hover {
+  background-color: var(--surface-muted);
+}
+
+.attestation_no_data {
+  padding: 1.5rem;
+  text-align: center;
+  background: #fcfcfc;
+  border: 1px dashed #e5e7eb;
+  border-radius: 5px;
+}
+
+.attestation_no_data p {
+  margin: 0 0 1rem 0;
+  color: #6b7280;
+  font-size: 0.9375rem;
+}
+
+.vendor_attestation_cards_extra {
+  margin-top: 1rem;
+}
+
+.vendor_attestation_status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vendor_attestation_heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0 20px 0;
+}
+
+.vendor_attestation_heading h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--main-dark-color, #2463eb);
+}
+
+.vendor_attestation_cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.vendor_attestation_card {
+  /* background-color: var(--card-onboarding-bg-color, #f5f7fa);
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); */
+  /* background: var(--surface-elevated); */
+  /* background: var(--surface-muted); */
+  background: #fcfcfc;
+  border: 1px solid var(--border-subtle, #e2e6ec);
+  /* border: ; */
+  border-radius: 0;
+  padding: 1.15rem 1.2rem;
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.vendor_attestation_card:hover {
+  border-color: color-mix(in srgb, var(--nav-active, #225bff) 22%, var(--border-subtle, #e2e6ec));
+  box-shadow: var(--shadow-elevated);
+  transform: translateY(-1px);
+}
+
+/* Card: header (title + completed at top right), center (completed by), footer (submitted date + view/edit) */
+.vendor_attestation_card_header {
+  display: flex;
+  /* justify-content: space-between; */
+  /* align-items: flex-start; */
+  justify-content: end;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.vendor_attestation_card_title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.vendor_attestation_card_completed_at {
+  font-size: 0.8125rem;
+  color: var(--grey-color, #4b5563);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.vendor_attestation_card_center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--grey-color, #4b5563);
+  margin-bottom: 0.75rem;
+}
+
+.vendor_attestation_card_center .vendor_attestation_card_meta_label {
+  font-weight: 500;
+}
+
+.vendor_attestation_card_footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.vendor_attestation_card_submitted {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--grey-color, #4b5563);
+}
+
+.vendor_attestation_date_icon {
+  flex-shrink: 0;
+  color: var(--grey-color, #4b5563);
+}
+
+.vendor_attestation_card_meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--grey-color, #4b5563);
+}
+
+.vendor_attestation_card_meta_row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vendor_attestation_card_meta_label {
+  font-weight: 500;
+  /* min-width: 6rem; */
+}
+
+.vendor_attestation_status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.vendor_attestation_status_icon {
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.vendor_attestation_status_draft {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.vendor_attestation_status_draft .vendor_attestation_status_icon {
+  color: #92400e;
+}
+
+.vendor_attestation_status_completed {
+  background-color: var(--active-status-background, #dcfce7);
+  color: #166534;
+}
+
+.vendor_attestation_status_completed .vendor_attestation_status_icon {
+  color: #166534;
+}
+
+.vendor_attestation_status_rejected {
+  background-color: var(--inactive-status-background, #ffccd5);
+  color: #991b1b;
+}
+
+.vendor_attestation_status_rejected .vendor_attestation_status_icon {
+  color: #991b1b;
+}
+
+.vendor_attestation_card_actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.vendor_attestation_card_btn {
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  background-color: transparent;
+  color: inherit;
+  font-family: inherit;
+}
+
+.vendor_attestation_completed_details{
+  display: flex;
+  gap: 0.5rem;
+}
+.the_name{
+  text-transform: capitalize;
+}
+
+.vendor_attestation_card_btn_primary {
+  background-color: var(--main-auth-button-color, #2463eb);
+  color: white;
+  border-color: var(--main-auth-button-color, #2463eb);
+}
+
+.vendor_attestation_card_btn_primary:hover {
+  opacity: 0.9;
+}
+
+.vendor_attestation_card_btn_secondary {
+  background-color: var(--main-auth-button-color, #2463eb);
+  color: white;
+  border-color: var(--main-auth-button-color, #2463eb);
+}
+
+.vendor_attestation_card_btn_secondary:hover {
+  /* background-color: #f3f4f6; */
+   opacity: 0.9;
+
+}
+
+.vendor_attestation_loading,
+.vendor_attestation_error {
+  padding: 2rem;
+  text-align: center;
+  color: var(--grey-color, #4b5563);
+}
+
+.vendor_attestation_error {
+  color: #dc2626;
+}
+
+.screenHeading {
+  display: flex;
+  align-content: center;
+  align-items: center;
+  gap: 7px;
+}
+
+.screenHeading span {
+  display: flex;
+}
+
+/* Preview modal (read-only attestation) – above top nav (z-index: 10001) */
+.vendor_attestation_preview_modal_overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10002;
+  backdrop-filter: blur(2px);
+}
+
+.vendor_attestation_preview_modal {
+  background-color: var(--surface-color);
+  border-radius: 5px;
+  width: 90%;
+  max-width: 56rem;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgb(148, 163, 184);
+}
+
+.vendor_attestation_preview_modal_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.vendor_attestation_preview_modal_header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.vendor_attestation_preview_modal_body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* YOUR ATTESTATIONS – row layout (same as vendor dashboard) */
+.attestation_list_rows .vendor_overview_attestation_row {
+  display: flex;
+  align-items: start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: var(--surface-elevated);
+
+  border: 1px solid #e5e7eb;
+ 
+  /* background: var(--surface-color);
+  border: 1px solid #e5e7eb; */
+  border-radius: 5px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.attestation_list_rows .vendor_overview_attestation_row:hover{
+  background-color: var(--surface-color);
+}
+.attestation_list_rows .vendor_overview_attestation_row:last-child {
+  margin-bottom: 0;
+}
+.attestation_list_rows .vendor_overview_attestation_icon {
+  color: #7c3aed;
+  flex-shrink: 0;
+}
+.attestation_list_rows .vendor_overview_attestation_icon_check {
+  color: #16a34a;
+}
+.attestation_list_rows .vendor_overview_attestation_icon_draft {
+  color: #b45309;
+}
+.attestation_list_rows .vendor_overview_attestation_icon_rejected {
+  color: #dc2626;
+}
+.attestation_list_rows .vendor_overview_attestation_icon_expired {
+  color: #dc2626;
+}
+.attestation_list_rows .vendor_overview_attestation_content {
+  flex: 1;
+  min-width: 0;
+}
+.attestation_list_rows .vendor_overview_attestation_name {
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+}
+.attestation_list_rows .vendor_overview_attestation_status_label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #16a34a;
+  margin: 0 0 0.25rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02rem;
+}
+.attestation_list_rows .vendor_overview_attestation_status_label_draft {
+  color: #b45309;
+}
+.attestation_list_rows .vendor_overview_attestation_status_label_rejected {
+  color: #dc2626;
+}
+.attestation_list_rows .vendor_overview_attestation_status_label_expired {
+  color: #dc2626;
+}
+.attestation_list_rows .vendor_overview_attestation_date {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0;
+  margin-top: 10px;
+}
+.attestation_list_rows .vendor_overview_attestation_date_row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+  margin: 0;
+  margin-top: 10px;
+}
+.attestation_list_rows .vendor_overview_attestation_date_row .vendor_overview_attestation_date {
+  margin: 0;
+}
+.attestation_list_rows .vendor_overview_attestation_date.vendor_overview_attestation_date_expiry {
+  color: #dc2626;
+}
+.attestation_list_rows .vendor_overview_attestation_actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  align-self: center;
+}
+.attestation_list_rows .vendor_overview_btn_view,
+.attestation_list_rows .vendor_overview_btn_update {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 5.5rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--main-auth-button-color, #2463eb);
+  color: white;
+  border: 1px solid var(--main-auth-button-color, #2463eb);
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+.attestation_list_rows .vendor_overview_btn_view:hover,
+.attestation_list_rows .vendor_overview_btn_update:hover {
+  color: var(--main-auth-button-color);
+  background-color: var(--surface-color);
+  border: 1px solid var(--main-auth-button-color);
+}
+.attestation_list_rows .vendor_overview_btn_primary {
+  background: var(--main-auth-button-color, #2463eb);
+  color: white;
+  border-color: var(--main-auth-button-color, #2463eb);
+}
+.attestation_list_rows .vendor_overview_btn_primary:hover {
+ color: var(--main-auth-button-color);
+  background-color: var(--surface-color);
+  border: 1px solid var(--main-auth-button-color);}
+
+/* Title row + toolbar (tabs left, search right) – layout from assessments.css */
+.attestation_list_header_row .your_assessments_title {
+  margin: 0;
+}
+/* Aligned with Assessments ledger: Current / Archived (left) + search (right) */
+.attestation_ledger_toolbar.assessments_ledger_toolbar {
+  width: 100%;
+}
+
+.attestation_page_tabs_inline.page_tabs {
+  margin: 0;
+  border: none;
+  gap: 0.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.attestation_page_tabs_inline .page_tab {
+  margin-bottom: 0;
+  border-bottom: 2px solid transparent;
+}
+/* Active tab – same as assessment (page_tab_active from page_tabs.css) */
+.attestation_page_tabs_inline .page_tab_active {
+  color: var(--main-auth-button-color, #2563eb);
+  border-bottom: 2px solid var(--main-auth-button-color, #2563eb);
+  border-bottom-color: var(--main-auth-button-color, #2563eb);
+  /* background: var(--surface-color); */
+  box-shadow: 0 1px 0 0 var(--app-bg-color, #f8f4ed);
+  border-radius: 0 !important;
+}
+
+/* Match assessment UI: stacked header + toolbar (Trust Profile card uses .attestation_section; YOUR ATTESTATIONS block uses .ai_assessments_section on attestation page) */
+.attestation_page .ai_assessments_section {
+  padding: 0;
+}
+
+.attestation_section .assessment_list_header_stack,
+.attestation_page .ai_assessments_section .assessment_list_header_stack {
+  margin-bottom: 1rem;
+}
+.attestation_section .assessment_list_header_stack .your_assessments_title,
+.attestation_page .ai_assessments_section .assessment_list_header_stack .your_assessments_title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+.attestation_section .assessment_tabs_search_toolbar .assessment_search_wrap,
+.attestation_page .ai_assessments_section .assessment_tabs_search_toolbar .assessment_search_wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: auto;
+  max-width: 100%;
+}
+.attestation_section .assessment_search_icon,
+.attestation_page .ai_assessments_section .assessment_search_icon {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+.attestation_section .assessment_search_input,
+.attestation_page .ai_assessments_section .assessment_search_input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: var(--ui-border-radius, 8px);
+  font-size: 0.875rem;
+  color: #111827;
+}
+.attestation_section .assessment_search_input::placeholder,
+.attestation_page .ai_assessments_section .assessment_search_input::placeholder {
+  color: #9ca3af;
+}
+.attestation_section .assessment_search_input:focus,
+.attestation_page .ai_assessments_section .assessment_search_input:focus {
+  outline: none;
+  border-color: var(--main-auth-button-color, #1e3a8a);
+  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.2);
+}
+.attestation_section .assessment_search_no_results,
+.attestation_page .ai_assessments_section .assessment_search_no_results {
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0;
+}
+.attestation_search_wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+}
+.attestation_search_icon {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+.attestation_search_input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: var(--ui-border-radius, 8px);
+  font-size: 0.875rem;
+  color: #111827;
+}
+.attestation_search_input::placeholder {
+  color: #9ca3af;
+}
+.attestation_search_input:focus {
+  outline: none;
+  border-color: var(--main-auth-button-color, #2463eb);
+  box-shadow: 0 0 0 2px rgba(36, 99, 235, 0.2);
+}
+.attestation_search_no_results {
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0;
+}
+.attestation_list_rows .vendor_overview_attestation_by {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0 0 0.15rem 0;
+}
+
+/* Attestation cards — mini dashboard: hero → quick actions → quick glance */
+.attestation_list_rows .vendor_directory_card.general_rpr_card.attestation_soft_card,
+.attestation_list_rows .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--completed,
+.attestation_list_rows .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--draft,
+.attestation_list_rows .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--expired,
+.attestation_list_rows .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--rejected,
+.attestation_list_rows .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--archived,
+.assessment_list_rows .vendor_directory_card.general_rpr_card.attestation_soft_card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 12.5rem;
+  height: 100%;
+  padding: 0;
+  border-radius: 0 !important;
+  background: var(--surface-color, #ffffff);
+  border: 1px solid var(--app-border-color, #e2dcd6);
+  box-shadow: var(--shadow-soft, 0 1px 3px rgba(0, 0, 0, 0.05));
+  overflow: hidden;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--nav-active, #225bff) 18%,
+    var(--border-subtle, #e2e6ec)
+  );
+  box-shadow: var(--shadow-elevated, 0 4px 14px rgba(15, 23, 42, 0.08));
+}
+
+.attestation_list_rows .attestation_soft_card--draft {
+  border-bottom: 3px solid #f59e0b;
+}
+
+.attestation_list_rows .attestation_soft_card--completed {
+  border-bottom: 3px solid #10b981;
+}
+
+.attestation_list_rows .attestation_soft_card--expired,
+.attestation_list_rows .attestation_soft_card--rejected {
+  border-bottom: 3px solid #ef4444;
+}
+
+/* 1) Hero — product name + assessment-style icon actions */
+.attestation_soft_card__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0.55rem;
+  padding: 0.85rem 1.15rem 1.15rem;
+  text-align: center;
+  background-color: transparent;
+  background-image: linear-gradient(
+    180deg,
+    rgba(34, 91, 255, 0.04) 0%,
+    transparent 72%
+  );
+  border-bottom: 1px solid var(--border-subtle, #e2e6ec);
+}
+
+.attestation_soft_card__hero_top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 1.75rem;
+}
+
+.attestation_soft_card__hero_spacer {
+  width: 1.75rem;
+  flex-shrink: 0;
+}
+
+.attestation_soft_card__expiry {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-align: center;
+  color: #c4786a;
+}
+
+.attestation_soft_card__hero_top .pill.pill_status,
+.attestation_soft_card__hero_top .assessments_vd_badge {
+  flex-shrink: 0;
+}
+
+.attestation_soft_card__icon_actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.attestation_list_rows .attestation_soft_card .general_rpr_card_download_btn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0 !important;
+  background: #e8efff;
+  border: 1px solid rgba(34, 91, 255, 0.14);
+  color: var(--nav-active, #225bff);
+}
+
+.attestation_list_rows .attestation_soft_card .general_rpr_card_download_btn:hover {
+  background: #dbe7ff;
+  border-color: rgba(34, 91, 255, 0.28);
+  color: #1a4de0;
+}
+
+.attestation_soft_card__title {
+  margin: 0;
+  max-width: 100%;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.025rem;
+  line-height: 1.3;
+  color: #0f172a;
+  text-align: center;
+}
+
+.attestation_list_rows .attestation_soft_card .pill.pill_status,
+.attestation_list_rows .attestation_soft_card .assessments_vd_badge {
+  margin: 0;
+}
+
+/* Meta row — label over small value */
+.attestation_soft_card__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  margin: auto 0 0;
+  padding: 0.9rem 1.15rem 1.05rem;
+  border: none;
+  background: transparent;
+  align-items: start;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.attestation_soft_card__meta_item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.attestation_soft_card__meta_item:last-child {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.attestation_soft_card__meta_item:last-child .attestation_soft_card__meta_label {
+  justify-content: flex-end;
+}
+
+.attestation_soft_card__meta_label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #94a3b8;
+}
+
+.attestation_list_rows .attestation_soft_card .attestation_card_meta_icon {
+  flex-shrink: 0;
+  color: var(--nav-active, #225bff);
+}
+
+.attestation_soft_card__meta_value {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .attestation_soft_card__meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+html[data-theme="dark"]
+  .attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card {
+  background: var(--surface-color, #2c2926);
+  border-color: var(--border-subtle, #413c38);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .attestation_soft_card__hero {
+  background-color: transparent;
+  background-image: linear-gradient(
+    180deg,
+    rgba(91, 140, 255, 0.1) 0%,
+    transparent 72%
+  );
+  border-bottom-color: var(--border-subtle, #413c38);
+}
+
+html[data-theme="dark"] .attestation_soft_card__title {
+  color: var(--text-primary, #e6e2dc);
+}
+
+html[data-theme="dark"] .attestation_soft_card__meta {
+  background: transparent;
+}
+
+html[data-theme="dark"] .attestation_soft_card__meta_value {
+  color: var(--text-muted, #9c958c);
+}
+
+html[data-theme="dark"] .attestation_soft_card__expiry {
+  color: #d4a59a;
+}
+
+html[data-theme="dark"]
+  .attestation_list_rows
+  .attestation_soft_card
+  .general_rpr_card_download_btn {
+  background: rgba(138, 175, 255, 0.14);
+  border-color: rgba(138, 175, 255, 0.28);
+  color: var(--nav-active, #8aafff);
+}
+
+html[data-theme="dark"]
+  .attestation_list_rows
+  .attestation_soft_card
+  .general_rpr_card_download_btn:hover {
+  background: rgba(138, 175, 255, 0.22);
+  border-color: rgba(138, 175, 255, 0.4);
+  color: #b4cbff;
+}
+
+/* ========== Dark theme — Trust Profile Attestation ========== */
+html[data-theme="dark"] .attestation_page .attestation_page_title,
+html[data-theme="dark"] .attestation_section_title,
+html[data-theme="dark"] .attestation_requirement_heading,
+html[data-theme="dark"] .attestation_latest_card_title,
+html[data-theme="dark"] .your_assessments_title {
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"] .attestation_section_subtitle,
+html[data-theme="dark"] .attestation_covers_heading,
+html[data-theme="dark"] .attestation_your_heading,
+html[data-theme="dark"] .attestation_requirement_item p,
+html[data-theme="dark"] .attestation_requirement_card p,
+html[data-theme="dark"] .attestation_latest_card_date,
+html[data-theme="dark"] .attestation_covers_list,
+html[data-theme="dark"] .attestation_covers_list li {
+  color: #c8c4d6 !important;
+}
+
+html[data-theme="dark"] .attestation_section,
+html[data-theme="dark"] .attestation_latest_card {
+  background: var(--surface-elevated, #2d2a3a) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+  box-shadow: none !important;
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"] .attestation_section.attestation_trust_profile {
+  background-color: var(--surface-elevated, #2d2a3a) !important;
+  background-image: linear-gradient(
+    180deg,
+    rgba(91, 140, 255, 0.1) 0%,
+    rgba(28, 26, 39, 0.4) 45%,
+    var(--surface-elevated, #2d2a3a) 100%
+  ) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .attestation_trust_profile_bg {
+  background:
+    radial-gradient(ellipse 70% 55% at 0% 0%, rgba(91, 140, 255, 0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(91, 140, 255, 0.05) 0%, transparent 58%);
+}
+
+html[data-theme="dark"] .attestation_trust_pill--1,
+html[data-theme="dark"] .attestation_trust_pill--2,
+html[data-theme="dark"] .attestation_trust_pill--3 {
+  background: rgba(138, 175, 255, 0.07);
+}
+
+html[data-theme="dark"] .attestation_section_header span {
+  background: rgba(138, 175, 255, 0.16) !important;
+  color: #8aafff !important;
+}
+
+html[data-theme="dark"] .attestation_section_icon_primary,
+html[data-theme="dark"] .attestation_section_icon_primary svg,
+html[data-theme="dark"] .header_icon_svg {
+  color: #8aafff !important;
+  stroke: currentColor !important;
+}
+
+html[data-theme="dark"] .attestation_section_icon_warning {
+  color: #fdba74 !important;
+}
+
+/* Coverage checklist — force readable lead + rest text */
+html[data-theme="dark"] .attestation_covers_grid .premium_check_item,
+html[data-theme="dark"] .attestation_section .premium_check_item,
+html[data-theme="dark"] .premium_check_item {
+  color: #c8c4d6 !important;
+}
+
+html[data-theme="dark"] .attestation_covers_grid .premium_check_lead,
+html[data-theme="dark"] .attestation_section .premium_check_lead,
+html[data-theme="dark"] .premium_check_lead {
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"] .attestation_covers_grid .premium_check_rest,
+html[data-theme="dark"] .attestation_section .premium_check_rest,
+html[data-theme="dark"] .premium_check_rest {
+  color: #c8c4d6 !important;
+}
+
+html[data-theme="dark"] .attestation_covers_grid .premium_check_icon,
+html[data-theme="dark"] .attestation_section .premium_check_icon,
+html[data-theme="dark"] .premium_check_icon {
+  background: rgba(138, 175, 255, 0.18) !important;
+  color: #8aafff !important;
+  border: none !important;
+}
+
+html[data-theme="dark"] .premium_check_icon svg {
+  color: #8aafff !important;
+  stroke: currentColor !important;
+}
+
+html[data-theme="dark"] .attestation_actions_row {
+  border-top-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"]
+  .attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card {
+  background: var(--surface-elevated, #2d2a3a) !important;
+  border-color: var(--border-subtle, #403c52) !important;
+  box-shadow: none !important;
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"]
+  .attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--draft {
+  border-bottom-color: #f59e0b !important;
+}
+
+html[data-theme="dark"]
+  .attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--completed {
+  border-bottom-color: #10b981 !important;
+}
+
+html[data-theme="dark"]
+  .attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--expired,
+html[data-theme="dark"]
+  .attestation_list_rows
+  .vendor_directory_card.general_rpr_card.attestation_soft_card.attestation_soft_card--rejected {
+  border-bottom-color: #ef4444 !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__hero {
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    180deg,
+    rgba(91, 140, 255, 0.1) 0%,
+    transparent 72%
+  ) !important;
+  border-bottom-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__title {
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__actions {
+  background: rgba(138, 175, 255, 0.04) !important;
+  border-bottom-color: var(--border-subtle, #403c52) !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__action {
+  background: var(--surface-muted, #221f2e) !important;
+  border-color: rgba(138, 175, 255, 0.14) !important;
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__action:hover {
+  background: var(--surface-hover, #353145) !important;
+  border-color: rgba(138, 175, 255, 0.22) !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__action_label {
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__action_icon,
+html[data-theme="dark"] .attestation_soft_card__action_icon svg {
+  color: #8aafff !important;
+  stroke: currentColor !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__glance {
+  background: var(--surface-elevated, #2d2a3a) !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__glance_label,
+html[data-theme="dark"] .attestation_soft_card__meta_label {
+  color: #9a95ab !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__meta_item {
+  background: transparent !important;
+  border: none !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card__meta_value {
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"] .attestation_list_rows .vendor_overview_attestation_name,
+html[data-theme="dark"] .attestation_list_rows .vendor_overview_attestation_by,
+html[data-theme="dark"] .attestation_list_rows .vendor_overview_attestation_date {
+  color: #c8c4d6 !important;
+}
+
+html[data-theme="dark"] .attestation_list_rows .vendor_overview_attestation_name {
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"] .attestation_section .assessment_search_input,
+html[data-theme="dark"] .attestation_section .assessment_search_no_results {
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"] .attestation_section .assessment_search_icon {
+  color: #9a95ab !important;
+}
+
+html[data-theme="dark"] .attestation_section .assessment_search_input::placeholder {
+  color: #9a95ab !important;
+}
+
+/* Dark mode: Current / Archived tabs + status chips */
+html[data-theme="dark"] .attestation_page_tabs_inline .page_tab {
+  color: #c8c4d6 !important;
+}
+
+html[data-theme="dark"] .attestation_page_tabs_inline .page_tab:hover:not(.page_tab_active) {
+  color: #ebe9f3 !important;
+}
+
+html[data-theme="dark"] .attestation_page_tabs_inline .page_tab_active {
+  color: #8aafff !important;
+  border-bottom-color: #8aafff !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card .pill.pill_status_active {
+  background: rgba(16, 185, 129, 0.28) !important;
+  border: 1px solid rgba(52, 211, 153, 0.55) !important;
+  color: #6ee7b7 !important;
+  -webkit-text-fill-color: #6ee7b7 !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card .pill.pill_status_inactive {
+  background: rgba(248, 113, 113, 0.26) !important;
+  border: 1px solid rgba(248, 113, 113, 0.55) !important;
+  color: #fca5a5 !important;
+  -webkit-text-fill-color: #fca5a5 !important;
+}
+
+html[data-theme="dark"] .attestation_soft_card .assessments_vd_badge--archived {
+  background: rgba(148, 163, 184, 0.22) !important;
+  border: 1px solid rgba(148, 163, 184, 0.5) !important;
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0 !important;
+}

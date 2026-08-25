@@ -1,0 +1,392 @@
+.acrd_container {
+  width: 100%;
+}
+
+.card {
+  /* width: 650px; */
+  /* max-width: 900px; */
+  /* min-height: 500px; */
+  /* max-height: 900px; */
+  /* background-color: var(--bg-colour-main); */
+  /* padding: 1rem; */
+}
+
+.card_section {
+  display: flex;
+  /* justify-content: space-between; */
+  align-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.card_vendor {
+  display: flex;
+  flex-direction: column;
+  border-bottom-left-radius: var(--ui-border-radius, 0);
+  border-bottom-right-radius: var(--ui-border-radius, 0);
+  background: transparent;
+}
+
+/* Multi-step form header: single source of truth for page header alignment */
+.header_for_vendor {
+  display: flex;
+  justify-content: flex-start;
+  flex-direction: column;
+  margin: 0.35rem 0 0;
+  border-bottom: 1px solid var(--app-border-color, var(--border-subtle, #e2dcd6));
+  padding: 0 0 0.9rem;
+  gap: 0.2rem;
+}
+
+.header_for_vendor .sub_title_card {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  margin-top: 0.15rem;
+  color: var(--text-muted, #64748b);
+}
+
+/* Reuse same alignment on any page header (Dashboard, Vendor Directory, Assessments, User Management) */
+.page_header_align {
+  margin: 0.9rem 0 1.5rem 0;
+}
+
+.page_header_row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page_header_title_block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.page_header_title_block h1,
+.page_header_title_block .page_header_title {
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin: 0;
+  color: var(--text-primary, #1a1f36);
+}
+
+.page_header_title_block .sub_title_card,
+.page_header_title_block .page_header_subtitle,
+.page_header_subtitle,
+.org_settings_subtitle,
+.sub_title.page_header_subtitle,
+.ai_assessments_heading .sub_title,
+.page_header_title_block .sub_title {
+  color: var(--text-muted, var(--light-gray-color, #64748b));
+  font-size: 0.65rem;
+  font-weight: 400;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.35;
+}
+
+.icon_size_header {
+  background-color: transparent;
+  padding: 0;
+  display: flex;
+  align-content: center;
+  align-items: center;
+  border-radius: 0;
+}
+
+/* Page header icons — same blue as sidenav active */
+.icon_size_header svg,
+.header_title_vendor .icon_size_header svg,
+.icon_size_header .header_icon_svg {
+  width: 32px !important;
+  height: 32px !important;
+  color: var(--nav-active, #225bff);
+  stroke: currentColor;
+}
+
+.header_icon_svg {
+  color: var(--nav-active, #225bff);
+  stroke: currentColor;
+}
+
+/* .icon_size_header {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon_size_header svg,
+.header_title_vendor .icon_size_header svg {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 18px;
+  min-height: 18px;
+  flex-shrink: 0;
+  display: block;
+  vertical-align: middle;
+  color: inherit;
+  stroke: currentColor;
+} */
+
+.header_title_vendor {
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: var(--text-primary, #1a1f36);
+  align-content: center;
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  line-height: 1.3;
+}
+.headers_icons {
+  display: flex;
+}
+/* .sub_title_card {
+  color: var(--light-gray-color, #64748b);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0.25rem 0 0 0;
+} */
+.confirm_onboarding {
+  padding: 1rem;
+  width: 100px;
+  height: 100px;
+  background-color: #dcfce7;
+
+  color: green;
+  border-radius: 50%;
+}
+
+.onboarding_setup_card {
+  /* background-color: aliceblue; */
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.onboarding_setup_card p {
+  text-align: center;
+  color: var(--text-secondary, #4b5563);
+  line-height: 1.5rem;
+}
+.onboarding_setup_card h2 {
+  font: 2.5rem;
+}
+
+.onboarding_setup_card a {
+  font-weight: 500;
+  padding: 0.5rem;
+  border: 1px solid var(--main-auth-button-color);
+  text-decoration: none;
+  color: white;
+  background: var(--main-auth-button-color);
+  display: flex;
+  align-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card_confirmation_link_btn {
+  font-weight: 500;
+  padding: 0.5rem;
+  border: 1px solid var(--main-auth-button-color);
+  text-decoration: none;
+  color: white;
+  background: var(--main-auth-button-color);
+  display: inline-flex;
+  align-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: inherit;
+  border-radius: var(--ui-border-radius, 8px);
+}
+
+.card_confirmation_link_btn:hover {
+  opacity: 0.9;
+}
+
+.signup_success_note {
+  background-color: #dcfce7;
+
+  color: green;
+  border-radius: 50%;
+}
+
+.signup_confirmation_wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
+}
+
+.signup_confirmation_card {
+  width: 100%;
+  max-width: 920px;
+  background: transparent;
+  border-radius: var(--ui-border-radius, 0);
+  box-shadow: none;
+  border: none;
+  padding: 1rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.signup_confirmation_card {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.signup_confirmation_wrapper .signup_confirmation_card {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.signup_confirmation_card .confirm_onboarding {
+  flex-shrink: 0;
+}
+
+.signup_confirmation_card h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary, #111827);
+}
+
+.signup_confirmation_card p {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-secondary, #4b5563);
+}
+
+.text_signup {
+  font-size: 0.9375rem;
+  color: var(--text-secondary, #4b5563);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.signup_confirmation_card .text_signup {
+  display: flex;
+  flex-direction: column;
+}
+
+.signup_confirmation_card .onboarding_email_sent_text {
+  margin-top: 0.25rem;
+  max-width: 32rem;
+}
+
+.sucess_text {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.signin_btn a {
+  font-weight: 500;
+  padding: 0.3rem;
+  border: 1px solid var(--main-auth-button-color);
+  text-decoration: none;
+  color: white;
+  background: var(--main-auth-button-color);
+  display: flex;
+  align-content: center;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.small_text {
+  /* margin: 8px 0px 0px; */
+  font-size: 13px;
+  color: rgb(100, 116, 139);
+}
+.sub_title_card {
+  color: var(--text-muted, var(--light-gray-color, #64748b));
+  font-size: 0.65rem;
+  font-weight: 400;
+  margin: 0rem 0 0 0rem;
+}
+
+.card_list ul {
+  margin: 1rem;
+}
+.card_list ul li {
+  list-style-type: none;
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  font-size: 0.95rem;
+}
+
+.card_list ul li span {
+  font-weight: normal;
+}
+
+.title_card {
+  font-size: 1.1rem;
+  color: var(--text-primary, #1a1f36);
+  font-weight: 600;
+  /* margin: 0.5rem; */
+  padding: 0.4rem 0;
+}
+
+.card_para {
+  color: var(--text-secondary, #4b5563);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  text-align: justify;
+  margin: 1rem;
+}
+
+.card_continue_btn {
+  width: 100%;
+  margin: 1rem 0 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--ui-border-radius, 8px);
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--main-auth-button-color);
+  padding: 10px;
+  background-color: var(--main-auth-button-color);
+  color: white;
+}
+.card_continue_btn span {
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card_onboarding {
+  display: flex;
+  gap: 5rem;
+  margin: 1rem 0;
+}
+
+/* CSS FOR CARDCONFIRMATION FOR SIGNUP */
