@@ -52,6 +52,7 @@ export async function invokePythonLlmWithVector(options: {
   maxTokens?: number;
   temperature?: number;
   modelId?: string;
+  includeFormulaContext?: boolean;
 }): Promise<PythonLlmWithVectorResult> {
   const feature = featureForAssessmentType(options.assessmentType);
   await assertFeatureTokenQuota(feature);
@@ -71,6 +72,7 @@ export async function invokePythonLlmWithVector(options: {
         max_tokens: options.maxTokens ?? 8192,
         temperature: options.temperature ?? 0.3,
         model_id: modelId,
+        include_formula_context: options.includeFormulaContext ?? false,
         actor_user_id: actor.userId,
         actor_user_name: actor.userName,
         actor_organization_id: actor.organizationId,

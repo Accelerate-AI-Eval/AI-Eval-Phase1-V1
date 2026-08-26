@@ -9,8 +9,12 @@ Node builds the assessment prompt; Python retrieves formula chunks, prepends the
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 import traceback
+from contextvars import copy_context
+from functools import partial
 from typing import Any, Literal
 
 from fastapi import APIRouter
@@ -54,6 +58,9 @@ class LlmWithVectorRequest(BaseModel):
     actor_organization_id: int | None = None
     actor_organization_name: str | None = None
     usage_feature: str | None = None
+    # Type 2/3 numeric scores come from Python formulas. Skip pgvector+Titan so
+    # report generation is one Bedrock call instead of embed×3 + map-reduce.
+    include_formula_context: bool | None = None
 
 
 class LlmWithVectorResponse(BaseModel):
@@ -82,34 +89,51 @@ async def llm_with_vector(body: LlmWithVectorRequest) -> LlmWithVectorResponse:
             feature=body.usage_feature,
         )
 
-        query_text = (body.query_text or prompt[:2000]).strip()
-        retrieved = retrieve_formula_context(body.assessment_type, query_text)
-        formula_context = format_formula_context_for_prompt(
-            str(retrieved.get("context_text") or ""),
-            body.assessment_type,
-        )
-        vector_meta = {
-            "used": bool(retrieved.get("used")),
-            "chunks": list(retrieved.get("chunks") or []),
-            "error": retrieved.get("error"),
+        include_formula = body.include_formula_context
+        if include_formula is None:
+            include_formula = body.assessment_type == "vendor_self_attestation"
+
+        started = time.perf_counter()
+        vector_meta: dict[str, Any] = {
+            "used": False,
+            "chunks": [],
             "assessment_type": body.assessment_type,
         }
+        formula_context = ""
+        if include_formula:
+            query_text = (body.query_text or prompt[:2000]).strip()
+            retrieved = retrieve_formula_context(body.assessment_type, query_text)
+            formula_context = format_formula_context_for_prompt(
+                str(retrieved.get("context_text") or ""),
+                body.assessment_type,
+            )
+            vector_meta = {
+                "used": bool(retrieved.get("used")),
+                "chunks": list(retrieved.get("chunks") or []),
+                "error": retrieved.get("error"),
+                "assessment_type": body.assessment_type,
+            }
 
-        text = invoke_assessment_llm(
+        bound = partial(
+            invoke_assessment_llm,
             prompt,
             formula_context=formula_context,
             max_tokens=body.max_tokens,
             temperature=float(body.temperature if body.temperature is not None else 0.3),
             model_id=body.model_id,
         )
+        text = await asyncio.to_thread(copy_context().run, bound)
         if not (text or "").strip():
             raise_http_exception("LLM returned empty response", status_code=500)
 
         source = "llm+vector" if vector_meta.get("used") else "llm"
         n_chunks = len(vector_meta.get("chunks") or [])
+        elapsed = time.perf_counter() - started
         print(
             f"[assessment llm-with-vector] type={body.assessment_type} "
-            f"source={source} vector_chunks={n_chunks} text_len={len(text)}"
+            f"source={source} vector_chunks={n_chunks} text_len={len(text)} "
+            f"elapsed={elapsed:.1f}s",
+            flush=True,
         )
         if vector_meta.get("used"):
             for ch in (vector_meta.get("chunks") or [])[:4]:
@@ -125,6 +149,11 @@ async def llm_with_vector(body: LlmWithVectorRequest) -> LlmWithVectorResponse:
             vector=vector_meta,
         )
     except TokenQuotaExceededError as exc:
+        print(
+            f"[LLM] quota 403 feature={exc.feature} allocated={exc.allocated} "
+            f"consumed={exc.consumed} {exc.message}",
+            flush=True,
+        )
         raise_token_quota_http(exc)
     except Exception as exc:
         # FastAPI/Starlette HTTPException already has status_code

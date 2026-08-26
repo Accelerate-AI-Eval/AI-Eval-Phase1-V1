@@ -1,15 +1,24 @@
 """Shared Bedrock invoke for assessment LLM flows (with optional vector formula context).
 
-Large prompts are map-reduced via the same chunker used for document extraction.
-Applies to every Bedrock model (not Opus-specific).
+Huge prompts can be map-reduced. Typical assessment reports fit in one invoke —
+do not reuse the 700-word extraction chunker (that created 6–20 Bedrock calls).
 """
 
 from __future__ import annotations
 
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextvars import copy_context
+
 from config import get_bedrock_model_id, settings
 from services.bedrock_client import create_bedrock_runtime_client
-from services.feature_token_quota import prepare_feature_token_invoke, raise_quota
+from services.feature_token_quota import (
+    MIN_REMAINING_OUTPUT_TOKENS,
+    current_feature_token_balance,
+    prepare_feature_token_invoke,
+    raise_quota,
+)
 from services.llm_usage import record_llm_usage, usage_from_anthropic_result
 from services.llm_usage_actor import get_usage_actor
 from utils.chunker import chunk_document, count_words
@@ -87,8 +96,10 @@ def _invoke_bedrock_once(
     }
     print(
         f"[LLM] assessment invoke using model: {model_id} "
-        f"words={count_words(text)} max_tokens={allowed_max}"
+        f"words={count_words(text)} max_tokens={allowed_max}",
+        flush=True,
     )
+    started = time.perf_counter()
     client = create_bedrock_runtime_client()
     response = client.invoke_model(
         modelId=model_id,
@@ -97,7 +108,13 @@ def _invoke_bedrock_once(
         body=json.dumps(body),
     )
     result = json.loads(response["body"].read())
+    elapsed = time.perf_counter() - started
     inp, out, total = usage_from_anthropic_result(result)
+    print(
+        f"[LLM] invoke finished in {elapsed:.1f}s "
+        f"stop={result.get('stop_reason') or ''} out_tokens={out}",
+        flush=True,
+    )
     if inp or out or total:
         actor = get_usage_actor()
         record_llm_usage(
@@ -128,8 +145,30 @@ def _invoke_bedrock_once(
 def _should_chunk(total_words: int) -> bool:
     if not bool(getattr(settings, "LLM_CHUNK_ENABLED", True)):
         return False
-    threshold = int(getattr(settings, "LLM_PROMPT_CHUNK_THRESHOLD", 2400) or 2400)
+    threshold = int(getattr(settings, "LLM_PROMPT_CHUNK_THRESHOLD", 24000) or 24000)
     return total_words > max(200, threshold)
+
+
+def _llm_chunk_size() -> int:
+    return max(2000, int(getattr(settings, "LLM_CHUNK_SIZE", 8000) or 8000))
+
+
+def _llm_chunk_overlap() -> int:
+    return max(0, int(getattr(settings, "LLM_CHUNK_OVERLAP", 80) or 80))
+
+
+def _max_map_chunks() -> int:
+    return max(2, int(getattr(settings, "LLM_CHUNK_MAX_CHUNKS", 3) or 3))
+
+
+def _map_max_tokens(requested: int) -> int:
+    mapped = int(getattr(settings, "LLM_CHUNK_MAP_MAX_TOKENS", 2048) or 2048)
+    return max(256, min(int(requested), mapped))
+
+
+def _chunk_workers(chunk_count: int) -> int:
+    configured = int(getattr(settings, "LLM_CHUNK_MAX_WORKERS", 3) or 3)
+    return max(1, min(chunk_count, configured))
 
 
 def invoke_bedrock_with_chunking(
@@ -141,9 +180,9 @@ def invoke_bedrock_with_chunking(
     model_id: str | None = None,
 ) -> str:
     """
-    Invoke Bedrock for any model. When prefix+payload is large, chunk the payload
-    by word count (RecursiveCharacterTextSplitter + word length), invoke per chunk,
-    then merge.
+    Invoke Bedrock for any model. When prefix+payload is huge, chunk the payload
+    with LLM_CHUNK_SIZE (not the 700-word extraction splitter), invoke map
+    chunks in parallel, then merge. Prefer a single invoke whenever possible.
     """
     prefix = (stable_prefix or "").strip()
     data = (payload or "").strip()
@@ -154,8 +193,13 @@ def invoke_bedrock_with_chunking(
     temp = float(temperature)
     resolved_model = (model_id or "").strip() or get_bedrock_model_id()
     combined = f"{prefix}\n\n{data}".strip() if prefix and data else (prefix or data)
+    combined_words = count_words(combined)
 
-    if not data or not _should_chunk(count_words(combined)):
+    if not data or not _should_chunk(combined_words):
+        print(
+            f"[LLM] single invoke model={resolved_model} words={combined_words}",
+            flush=True,
+        )
         return _invoke_bedrock_once(
             combined,
             max_tokens=tokens,
@@ -163,8 +207,18 @@ def invoke_bedrock_with_chunking(
             model_id=resolved_model,
         )
 
-    chunks = chunk_document(data)
-    if len(chunks) <= 1:
+    chunks = chunk_document(
+        data,
+        chunk_size=_llm_chunk_size(),
+        overlap=_llm_chunk_overlap(),
+    )
+    max_chunks = _max_map_chunks()
+    if len(chunks) <= 1 or len(chunks) > max_chunks:
+        print(
+            f"[LLM] skip map-reduce ({len(chunks)} splits, cap={max_chunks}); "
+            f"single invoke words={combined_words}",
+            flush=True,
+        )
         return _invoke_bedrock_once(
             combined,
             max_tokens=tokens,
@@ -173,25 +227,65 @@ def invoke_bedrock_with_chunking(
         )
 
     total = len(chunks)
+    map_tokens = _map_max_tokens(tokens)
+    workers = _chunk_workers(total)
+    balance = current_feature_token_balance()
+    if balance is not None:
+        if balance["exhausted"]:
+            raise_quota(str(get_usage_actor().get("feature") or "assessment"), balance)
+        remaining_out = balance.get("remaining_output")
+        # Parallel maps each request map_tokens; merge needs another call.
+        parallel_need = map_tokens * total + MIN_REMAINING_OUTPUT_TOKENS
+        if remaining_out is not None and int(remaining_out) < parallel_need:
+            print(
+                f"[LLM] remaining output {remaining_out} too small for "
+                f"{total}x{map_tokens} parallel maps; single invoke",
+                flush=True,
+            )
+            return _invoke_bedrock_once(
+                combined,
+                max_tokens=tokens,
+                temperature=temp,
+                model_id=resolved_model,
+                allow_cap=True,
+            )
     print(
         f"[LLM] chunking enabled model={resolved_model} "
-        f"payload_words={count_words(data)} chunks={total}"
+        f"payload_words={count_words(data)} chunks={total} "
+        f"workers={workers} map_max_tokens={map_tokens}"
     )
-    partials: list[str] = []
-    for index, chunk in enumerate(chunks, start=1):
+
+    def _map_chunk(index: int, chunk: str) -> tuple[int, str]:
         part_header = _CHUNK_PARTIAL_INSTRUCTION.format(part=index, total=total)
         parts = [p for p in (prefix, part_header, chunk) if p]
         part_text = "\n\n".join(parts)
-        # First chunk may use remaining tokens; later chunks stop if quota is short.
         partial = _invoke_bedrock_once(
             part_text,
-            max_tokens=tokens,
+            max_tokens=map_tokens,
             temperature=temp,
             model_id=resolved_model,
-            allow_cap=(index == 1),
+            allow_cap=True,
         )
-        if (partial or "").strip():
-            partials.append(f"### Chunk {index}/{total} findings\n{partial.strip()}")
+        return index, (partial or "").strip()
+
+    found: dict[int, str] = {}
+    # One Context cannot be entered by two threads. Copy per task so the usage
+    # actor still reaches Bedrock quota / usage logging in each worker.
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [
+            pool.submit(copy_context().run, _map_chunk, index, chunk)
+            for index, chunk in enumerate(chunks, start=1)
+        ]
+        for fut in as_completed(futures):
+            index, partial = fut.result()
+            if partial:
+                found[index] = partial
+
+    partials = [
+        f"### Chunk {index}/{total} findings\n{found[index]}"
+        for index in range(1, total + 1)
+        if index in found
+    ]
 
     if not partials:
         return ""
@@ -205,7 +299,7 @@ def invoke_bedrock_with_chunking(
         max_tokens=tokens,
         temperature=temp,
         model_id=resolved_model,
-        allow_cap=False,
+        allow_cap=True,
     )
 
 

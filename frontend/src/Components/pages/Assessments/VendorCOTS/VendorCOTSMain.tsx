@@ -551,7 +551,7 @@ const VendorCOTSMain = () => {
           variant="assessment"
           tagline="Generating your analysis report"
           headline="Building a plan that can explain itself"
-          description="The assessment is saved. Scoring fit, mapping risks, and composing the report — this usually takes 1–3 minutes. Keep this page open."
+          description="The assessment is saved. Scoring fit, mapping risks, and composing the report — this usually takes about a minute. Keep this page open."
           footerNote="waiting for the full report"
           ariaLabel="Submitting assessment and generating report"
         />

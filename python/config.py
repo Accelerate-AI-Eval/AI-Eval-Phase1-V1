@@ -24,10 +24,21 @@ class Settings(BaseSettings):
     # boto3 default read_timeout is 60s; large assessment invokes often need longer
     BEDROCK_READ_TIMEOUT: int = 300
     BEDROCK_CONNECT_TIMEOUT: int = 10
-    # Map-reduce chunking for large prompts — applies to every Bedrock model
+    # Map-reduce only for huge prompts. Claude context is ~200k tokens; splitting a
+    # typical report (~3–8k words) into 700-word embedding chunks caused 6–20
+    # Bedrock calls + merge and pushed generation past the 360s UI poll.
     LLM_CHUNK_ENABLED: bool = True
     # If (prefix + payload) exceeds this many words, split payload and merge
-    LLM_PROMPT_CHUNK_THRESHOLD: int = 2400
+    LLM_PROMPT_CHUNK_THRESHOLD: int = 24000
+    # Word size for assessment LLM splits (NOT extraction MAX_CHUNK_SIZE=700)
+    LLM_CHUNK_SIZE: int = 8000
+    LLM_CHUNK_OVERLAP: int = 80
+    # If splitting would exceed this many map calls, do one invoke instead
+    LLM_CHUNK_MAX_CHUNKS: int = 3
+    # Parallel map-chunk Bedrock calls (then one merge). 1 = sequential.
+    LLM_CHUNK_MAX_WORKERS: int = 3
+    # Partials do not need a full report; keeps each map call shorter.
+    LLM_CHUNK_MAP_MAX_TOKENS: int = 2048
     # How many pgvector formula/scoring chunks to inject into VTS LLM prompt
     VTS_VECTOR_TOP_K: int = 6
 

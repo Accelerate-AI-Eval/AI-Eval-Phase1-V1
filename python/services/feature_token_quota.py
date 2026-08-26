@@ -166,6 +166,21 @@ def get_feature_token_balance(
     }
 
 
+def current_feature_token_balance() -> dict[str, Any] | None:
+    """Quota row for the request actor, or None when quota is not enforced."""
+    actor = get_usage_actor()
+    user_id = actor.get("user_id")
+    feature = (actor.get("feature") or "").strip()
+    organization_id = actor.get("organization_id")
+    if user_id is None or not feature or organization_id is None:
+        return None
+    return get_feature_token_balance(
+        user_id=int(user_id),
+        organization_id=int(organization_id),
+        feature=feature,
+    )
+
+
 def raise_quota(feature: str, balance: dict[str, Any]) -> None:
     raise TokenQuotaExceededError(
         _quota_message(

@@ -784,6 +784,7 @@ async function invokeModel(prompt: string): Promise<string> {
       queryText: prompt.slice(0, 2000),
       maxTokens: 8192,
       temperature: 0.35,
+      includeFormulaContext: false,
     });
     console.log(
       "[cots_buyer] LLM+vector source=",

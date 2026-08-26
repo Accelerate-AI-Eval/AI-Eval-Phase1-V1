@@ -69,12 +69,15 @@ def retrieve_formula_context(
         embedder = EmbeddingService()
 
         default_queries = FORMULA_QUERIES.get(atype, FORMULA_QUERIES["vendor_self_attestation"])
+        # One Titan embed first; extra queries only if the first search is thin.
         queries = [_build_context_query(atype, query_text), *default_queries[:2]]
         seen: set[str] = set()
         merged: list[dict[str, Any]] = []
 
         per_query = max(3, top_k)
-        for q in queries:
+        for i, q in enumerate(queries):
+            if i > 0 and len(merged) >= top_k:
+                break
             q_emb = embedder.embed_query(q)
             hits = store.similarity_search(q_emb, k=per_query)
             for hit in hits:

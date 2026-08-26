@@ -119,6 +119,7 @@ async function createCustomerRiskReport(
   payloadCots: Record<string, unknown>,
   reviewedByUser: string,
 ): Promise<void> {
+  const reportStarted = Date.now();
   const vendorAttestationId = payloadCots.vendor_attestation_id != null ? String(payloadCots.vendor_attestation_id).trim() : null;
   let productName = "";
   let attestationFrameworkSource: Record<string, unknown> | null = null;
@@ -418,6 +419,9 @@ async function createCustomerRiskReport(
     llm_model_id: llmMeta.modelId,
     llm_model_label: llmMeta.modelLabel,
   });
+  console.log(
+    `[cots_vendor] report saved assessment=${assessmentId} elapsed=${Date.now() - reportStarted}ms`,
+  );
 }
 
 /**
