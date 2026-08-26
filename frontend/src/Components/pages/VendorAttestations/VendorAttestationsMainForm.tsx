@@ -17,7 +17,7 @@ import Modal from "../../UI/Modal";
 import LoadingMessage from "../../UI/LoadingMessage";
 import SubmitProgressOverlay from "../../UI/SubmitProgressOverlay";
 import { toast } from "react-toastify";
-import { apiErrorMessage, isTokenQuotaExceeded } from "../../../utils/tokenQuotaError";
+import { apiErrorMessage, isTokenQuotaExceeded, isTokenQuotaExceededMessage } from "../../../utils/tokenQuotaError";
 import MultiStepTabs from "../../UI/MultiStepTabs";
 import StepVendorSelfAttestationPrev, {
   type ComplianceDocumentExpiryMeta,
@@ -1215,6 +1215,22 @@ const VendorAttestationsMainForm = () => {
     let currentAttestationId = attestationId;
     const pending = pendingFilesRef.current;
 
+    const applySavedAttestationId = (savedId: string) => {
+      currentAttestationId = savedId;
+      setAttestationId(savedId);
+      setFetchError(null);
+      if (window.history.replaceState) {
+        const params = new URLSearchParams(window.location.search);
+        params.delete("new");
+        params.set("edit", savedId);
+        const url =
+          window.location.pathname +
+          `?${params.toString()}` +
+          (window.location.hash || "");
+        window.history.replaceState(null, "", url);
+      }
+    };
+
     const doPost = async (
       attId: string | null,
       docUpload: DocumentUploadState,
@@ -1249,6 +1265,7 @@ const VendorAttestationsMainForm = () => {
         message?: string;
         detail?: string;
         code?: string;
+        status?: string;
         attestation?: { id?: string; status?: string };
       } = {};
       try {
@@ -1257,8 +1274,17 @@ const VendorAttestationsMainForm = () => {
         setSubmitError("Invalid response from server");
         return { ok: false };
       }
+      const savedId = result.attestation?.id
+        ? String(result.attestation.id)
+        : undefined;
+      if (savedId) applySavedAttestationId(savedId);
       if (!response.ok) {
-        if (isTokenQuotaExceeded(result)) {
+        const quotaMessage =
+          typeof result.message === "string" ? result.message : "";
+        if (
+          isTokenQuotaExceeded(result) ||
+          isTokenQuotaExceededMessage(quotaMessage)
+        ) {
           setSubmitError(apiErrorMessage(result, "Submit failed"));
         } else if (response.status === 403) {
           setSubmitError(
@@ -1276,9 +1302,6 @@ const VendorAttestationsMainForm = () => {
         }
         return { ok: false };
       }
-      const savedId = result.success && result.attestation?.id
-        ? String(result.attestation.id)
-        : undefined;
       return { ok: true, savedId };
     };
 
@@ -1290,19 +1313,7 @@ const VendorAttestationsMainForm = () => {
           return false;
         }
         if (first.savedId) {
-          currentAttestationId = first.savedId;
-          setAttestationId(first.savedId);
-          if (isDraft) setFetchError(null);
-          if (window.history.replaceState) {
-            const params = new URLSearchParams(window.location.search);
-            params.delete("new");
-            params.set("edit", first.savedId);
-            const url =
-              window.location.pathname +
-              `?${params.toString()}` +
-              (window.location.hash || "");
-            window.history.replaceState(null, "", url);
-          }
+          applySavedAttestationId(first.savedId);
         }
       }
 
@@ -1377,18 +1388,7 @@ const VendorAttestationsMainForm = () => {
         return false;
       }
       if (single.savedId && !currentAttestationId) {
-        setAttestationId(single.savedId);
-        if (isDraft) setFetchError(null);
-        if (window.history.replaceState) {
-          const params = new URLSearchParams(window.location.search);
-          params.delete("new");
-          params.set("edit", single.savedId);
-          const url =
-            window.location.pathname +
-            `?${params.toString()}` +
-            (window.location.hash || "");
-          window.history.replaceState(null, "", url);
-        }
+        applySavedAttestationId(single.savedId);
       }
       return true;
     } catch {
@@ -1408,7 +1408,8 @@ const VendorAttestationsMainForm = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Full submit only: is_draft: false → backend sets status COMPLETED and generates product profile report
+    // Full submit: is_draft false → backend generates the product profile, then sets COMPLETED.
+    // If tokens run out mid-generation, the attestation stays a draft.
     const ok = await saveDraftOrSubmit(false);
     if (ok) {
       toast.success("Attestation submitted. Product profile report has been generated.");

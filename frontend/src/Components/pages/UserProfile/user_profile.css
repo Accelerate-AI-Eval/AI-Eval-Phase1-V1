@@ -1056,7 +1056,8 @@ html[data-theme="dark"] .user_popup_account_title {
     background-color 0.15s ease;
 }
 
-.settings_input:hover:not(:disabled):not(:read-only) {
+.settings_input:hover:not(:disabled):not(:read-only),
+select.settings_input:hover:not(:disabled) {
   border-color: #93b4f0;
 }
 
@@ -1070,8 +1071,11 @@ html[data-theme="dark"] .user_popup_account_title {
   cursor: pointer;
 }
 
-select.settings_input:not([disabled]) {
+/* <select> is :read-only in CSS; keep it looking and behaving as editable */
+select.settings_input:not([disabled]),
+select.settings_input.settings_input_cursor_pointer {
   background-color: var(--input-bg, var(--auth-signin-input-bg, #f2f6fc));
+  cursor: pointer;
 }
 
 .settings_input::placeholder {
@@ -1079,7 +1083,8 @@ select.settings_input:not([disabled]) {
 }
 
 .settings_input_readonly,
-.settings_input:read-only {
+input.settings_input:read-only,
+textarea.settings_input:read-only {
   background-color: var(--surface-muted, #e9edf2);
   color: var(--text-secondary, #3c4257);
   cursor: not-allowed;

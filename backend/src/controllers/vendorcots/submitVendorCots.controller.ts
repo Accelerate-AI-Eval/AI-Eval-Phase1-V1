@@ -16,6 +16,10 @@ import {
   assertFeatureTokenQuota,
   sendIfTokenQuotaExceeded,
 } from "../../services/admin/featureTokenQuota.service.js";
+import {
+  getRequestActor,
+  runWithRequestActor,
+} from "../../utils/requestActorContext.js";
 
 /** Persisted under fullReport.appendix: catalog rows used to generate the assessment. */
 function appendixCatalogRisksAndMitigations(
@@ -416,6 +420,38 @@ async function createCustomerRiskReport(
   });
 }
 
+/**
+ * LLM report generation often exceeds the gateway idle timeout (~60s).
+ * Save the assessment, send JSON to the browser, THEN generate the report.
+ * Do not await this from the HTTP handler.
+ */
+function queueCustomerRiskReport(
+  assessmentId: string,
+  orgIdStr: string,
+  payloadCots: Record<string, unknown>,
+  reviewedByUser: string,
+): void {
+  const actor = getRequestActor();
+  setImmediate(() => {
+    void runWithRequestActor(actor, async () => {
+      try {
+        await createCustomerRiskReport(
+          assessmentId,
+          orgIdStr,
+          payloadCots,
+          reviewedByUser,
+        );
+      } catch (err) {
+        console.error(
+          "Background vendor COTS report generation failed:",
+          assessmentId,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    });
+  });
+}
+
 const submitVendorCotsAssessment = async (req: Request, res: Response) => {
   try {
     const decoded = req.user as { id?: number } | undefined;
@@ -528,11 +564,13 @@ const submitVendorCotsAssessment = async (req: Request, res: Response) => {
             .set({ ...payloadCots, user_id: Number(userId), updated_at: new Date() })
             .where(eq(cotsVendorAssessments.assessment_id, assessmentId));
         });
-        await createCustomerRiskReport(assessmentId, orgIdStr, payloadCots, reviewedByUser);
-        return res.status(200).json({
+        res.status(200).json({
           message: "Vendor COTS assessment submitted successfully",
           assessmentId,
+          reportGenerating: true,
         });
+        queueCustomerRiskReport(assessmentId, orgIdStr, payloadCots, reviewedByUser);
+        return;
       }
     }
 
@@ -559,12 +597,13 @@ const submitVendorCotsAssessment = async (req: Request, res: Response) => {
       return [a];
     });
 
-    await createCustomerRiskReport(assessment.id, orgIdStr, payloadCots, reviewedByUser);
-
-    return res.status(201).json({
+    res.status(201).json({
       message: "Vendor COTS assessment submitted successfully",
       assessmentId: assessment.id,
+      reportGenerating: true,
     });
+    queueCustomerRiskReport(assessment.id, orgIdStr, payloadCots, reviewedByUser);
+    return;
   } catch (error) {
     if (sendIfTokenQuotaExceeded(res, error)) return;
     const message = error instanceof Error ? error.message : String(error);

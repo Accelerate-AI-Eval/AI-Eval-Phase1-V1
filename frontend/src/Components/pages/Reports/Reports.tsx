@@ -107,6 +107,7 @@ function Reports() {
   const [archivedCompletePageSize, setArchivedCompletePageSize] = useState(10);
   const [deleteReportId, setDeleteReportId] = useState<string | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [pendingAssessmentId, setPendingAssessmentId] = useState<string | null>(null);
 
   const systemRoleForAccess = (sessionStorage.getItem("systemRole") ?? "").toLowerCase().trim().replace(/_/g, " ");
   const userRoleForAccess = (sessionStorage.getItem("userRole") ?? "").toLowerCase().trim();
@@ -137,9 +138,22 @@ function Reports() {
 
   /** Open the correct tab when returning from a report detail (complete vs general). */
   useEffect(() => {
-    const tab = (location.state as { tab?: TabId } | null)?.tab;
+    const state = location.state as
+      | { tab?: TabId; pendingAssessmentId?: string }
+      | null;
+    const tab = state?.tab;
+    const pending = state?.pendingAssessmentId;
+    let shouldClear = false;
     if (tab === "assessment" || tab === "general" || tab === "archived") {
       setActiveTab(tab);
+      shouldClear = true;
+    }
+    if (typeof pending === "string" && pending.trim()) {
+      setPendingAssessmentId(pending.trim());
+      setActiveTab("assessment");
+      shouldClear = true;
+    }
+    if (shouldClear) {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, location.pathname, navigate]);
@@ -239,6 +253,85 @@ function Reports() {
       })
       .finally(() => finishLoading());
   }, [activeTab]);
+
+  useEffect(() => {
+    if (
+      pendingAssessmentId &&
+      reports.some((r) => String(r.assessmentId ?? "") === pendingAssessmentId)
+    ) {
+      setPendingAssessmentId(null);
+    }
+  }, [reports, pendingAssessmentId]);
+
+  /** Vendor COTS submit returns before LLM report insert; poll until it shows up. */
+  useEffect(() => {
+    if (!pendingAssessmentId || loading) return;
+    const token = sessionStorage.getItem("bearerToken");
+    if (!token) {
+      setPendingAssessmentId(null);
+      return;
+    }
+    let cancelled = false;
+    const startedAt = Date.now();
+    const maxMs = 180_000;
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const systemRole = (sessionStorage.getItem("systemRole") ?? "")
+          .toLowerCase()
+          .trim()
+          .replace(/_/g, " ");
+        const organizationId = (sessionStorage.getItem("organizationId") ?? "").trim();
+        const isSystemManagerOrViewer =
+          systemRole === "system manager" || systemRole === "system viewer";
+        const query =
+          isSystemManagerOrViewer && organizationId
+            ? `?organizationId=${encodeURIComponent(organizationId)}`
+            : "";
+        const res = await fetch(`${BASE_URL}/customerRiskReports${query}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const customerData = await res.json();
+        const customerList: CustomerRiskReportItem[] = Array.isArray(
+          customerData?.data?.reports,
+        )
+          ? customerData.data.reports.map((r: CustomerRiskReportItem) => ({
+              ...r,
+              source: "customer" as const,
+              overallRiskScore:
+                r.overallRiskScore != null && Number.isFinite(Number(r.overallRiskScore))
+                  ? Number(r.overallRiskScore)
+                  : null,
+            }))
+          : [];
+        const found = customerList.some(
+          (r) => String(r.assessmentId ?? "") === pendingAssessmentId,
+        );
+        if (found) {
+          setReports((prev) => {
+            const buyer = prev.filter((r) => r.source === "buyer_vendor_risk");
+            return [...customerList, ...buyer].sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            );
+          });
+          setPendingAssessmentId(null);
+          return;
+        }
+      } catch {
+        // keep polling until timeout
+      }
+      if (Date.now() - startedAt >= maxMs) {
+        setPendingAssessmentId(null);
+      }
+    };
+    void poll();
+    const interval = window.setInterval(poll, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [pendingAssessmentId, loading]);
 
   const handleSelectReport = (report: CustomerRiskReportItem) => {
     if (report.source === "buyer_vendor_risk" && report.assessmentId) {
@@ -383,6 +476,14 @@ function Reports() {
       </div>
 
       <div className="reports_list">
+        {activeTab === "assessment" &&
+          pendingAssessmentId &&
+          !loading &&
+          assessmentReports.length > 0 && (
+          <p className="reports_generating_note" role="status">
+            Your assessment report is still generating. This list will update when it is ready.
+          </p>
+        )}
         {activeTab === "assessment" && loading && (
           <LoadingMessage
             message="Loading reports…"
@@ -430,12 +531,18 @@ function Reports() {
           assessmentReports.length === 0 && (
             <div className="report_detail_empty">
               <h2 className="report_detail_empty_title">
-                {searchQuery.trim() ? "No reports match your search" : "No reports yet"}
+                {pendingAssessmentId
+                  ? "Generating your report"
+                  : searchQuery.trim()
+                    ? "No reports match your search"
+                    : "No reports yet"}
               </h2>
               <p className="report_detail_empty_text">
-                {searchQuery.trim()
-                  ? "Try a different search (org name, product name, published or archived)."
-                  : "There are no completed assessment reports to display. Reports will appear here once assessments are completed and published."}
+                {pendingAssessmentId
+                  ? "The assessment was submitted. Scoring and report text usually finish within a minute or two."
+                  : searchQuery.trim()
+                    ? "Try a different search (org name, product name, published or archived)."
+                    : "There are no completed assessment reports to display. Reports will appear here once assessments are completed and published."}
               </p>
             </div>
           )}

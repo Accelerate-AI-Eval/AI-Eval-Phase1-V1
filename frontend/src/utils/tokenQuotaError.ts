@@ -39,5 +39,13 @@ export function errorToUserMessage(error: unknown, fallback: string): string {
   if (isTokenQuotaExceededMessage(message)) {
     return message.trim() || TOKEN_QUOTA_FALLBACK_MESSAGE;
   }
+  // Gateway 504/502 HTML bodies are not JSON; Firefox/Chrome then throw JSON.parse.
+  if (
+    /JSON\.parse|unexpected character|unexpected token|is not valid JSON/i.test(
+      message,
+    )
+  ) {
+    return "Submit timed out. Check Assessments — it may already be saved. Refresh Reports in a minute if the report is not listed yet.";
+  }
   return message.trim() || fallback;
 }

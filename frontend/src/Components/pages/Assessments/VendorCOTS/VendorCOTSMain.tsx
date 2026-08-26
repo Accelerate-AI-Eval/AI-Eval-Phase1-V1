@@ -40,6 +40,39 @@ const BASE_URL =
 // After step 5 (Customer Risk Mitigation) go to preview; Auto-Generated step commented out
 const TOTAL_STEPS = 6;
 
+const REPORT_POLL_INTERVAL_MS = 4_000;
+const REPORT_POLL_TIMEOUT_MS = 360_000;
+
+async function waitForCustomerRiskReport(
+  token: string,
+  assessmentId: string,
+): Promise<string | null> {
+  const startedAt = Date.now();
+  const url = `${BASE_URL}/customerRiskReports?assessmentId=${encodeURIComponent(assessmentId)}`;
+  while (Date.now() - startedAt < REPORT_POLL_TIMEOUT_MS) {
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const text = await res.text();
+      let body: { data?: { reports?: Array<{ id?: string }> } } = {};
+      try {
+        body = text ? (JSON.parse(text) as typeof body) : {};
+      } catch {
+        body = {};
+      }
+      const reportId = body?.data?.reports?.[0]?.id;
+      if (reportId != null && String(reportId).trim() !== "") {
+        return String(reportId);
+      }
+    } catch {
+      // keep waiting; report insert happens after LLM/Python finishes
+    }
+    await new Promise((resolve) => setTimeout(resolve, REPORT_POLL_INTERVAL_MS));
+  }
+  return null;
+}
+
 /** Explicit icon elements for each step so icons always render in header_title_vendor */
 const VENDOR_COTS_STEP_ICONS: React.ReactNode[] = [
   <Search key="customer-discovery" size={18} />,
@@ -302,7 +335,20 @@ const VendorCOTSMain = () => {
         },
         body: JSON.stringify(payload),
       });
-      const result = await response.json();
+      const text = await response.text();
+      let result: { message?: string; code?: string; assessmentId?: string | number } = {};
+      try {
+        result = text ? JSON.parse(text) : {};
+      } catch {
+        if (response.status === 504 || response.status === 502 || response.status === 503) {
+          throw new Error(
+            "Submit timed out. Check Assessments — it may already be saved. Refresh Reports in a minute if the report is not listed yet.",
+          );
+        }
+        throw new Error(
+          `Failed to submit assessment (${response.status || "unexpected response"}).`,
+        );
+      }
       if (!response.ok) {
         if (response.status === 403 && result.code !== "TOKEN_QUOTA_EXCEEDED") {
           toast.info("This assessment is completed and cannot be modified.");
@@ -311,7 +357,33 @@ const VendorCOTSMain = () => {
         }
         throw new Error(apiErrorMessage(result, "Failed to submit assessment"));
       }
-      navigate("/reports", { replace: true });
+      const submittedId =
+        result.assessmentId != null
+          ? String(result.assessmentId)
+          : draftAssessmentId != null
+            ? String(draftAssessmentId)
+            : "";
+      if (!submittedId) {
+        toast.success("Assessment submitted. Open Reports to view it.");
+        navigate("/reports", { replace: true });
+        return;
+      }
+      const reportId = await waitForCustomerRiskReport(token, submittedId);
+      if (reportId) {
+        toast.success("Assessment submitted. Your report is ready.");
+        navigate(`/reports/${encodeURIComponent(reportId)}`, {
+          replace: true,
+          state: { reportTitle: "Analysis Report" },
+        });
+        return;
+      }
+      toast.info(
+        "Assessment saved. The report is still generating — it will appear under Reports shortly.",
+      );
+      navigate("/reports", {
+        replace: true,
+        state: { pendingAssessmentId: submittedId },
+      });
     } catch (err) {
       setSubmitError(
         errorToUserMessage(err, "Failed to submit assessment"),
@@ -474,7 +546,16 @@ const VendorCOTSMain = () => {
           </div>
         </div>
       </div>
-      {submitting && <SubmitProgressOverlay variant="assessment" />}
+      {submitting && (
+        <SubmitProgressOverlay
+          variant="assessment"
+          tagline="Generating your analysis report"
+          headline="Building a plan that can explain itself"
+          description="The assessment is saved. Scoring fit, mapping risks, and composing the report — this usually takes 1–3 minutes. Keep this page open."
+          footerNote="waiting for the full report"
+          ariaLabel="Submitting assessment and generating report"
+        />
+      )}
       <div className="form_card_centered">
       <CardContainerOnBoarding>
         <button

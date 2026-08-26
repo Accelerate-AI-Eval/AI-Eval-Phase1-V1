@@ -11,7 +11,9 @@ import { stampActiveLlmModel, getActiveLlmModelMeta } from "../../utils/activeLl
 import {
   assertFeatureTokenQuota,
   isTokenQuotaExceededError,
+  isTokenQuotaExceededMessage,
   sendIfTokenQuotaExceeded,
+  TOKEN_QUOTA_EXCEEDED_CODE,
 } from "../../services/admin/featureTokenQuota.service.js";
 import { persistVendorOnboardingBusinessFields } from "../../utils/normalizeVendorOnboardingBusinessFields.js";
 import { normalizeFedrampAuthorization } from "../../utils/normalizeFedrampAuthorization.js";
@@ -142,10 +144,81 @@ function deleteRemovedDocumentFiles(attestationId: string, removedNames: Set<str
 
 type ReportPayload = { trustScore: unknown; sections: unknown[] };
 
+function isQuotaFailure(error: unknown): boolean {
+  if (isTokenQuotaExceededError(error)) return true;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return isTokenQuotaExceededMessage(message);
+}
+
+/** Keep a submit that failed mid-generation as DRAFT so it can be retried. */
+async function keepAttestationAsDraft(attestationId: string): Promise<void> {
+  await db
+    .update(vendorSelfAttestations)
+    .set({
+      status: "DRAFT",
+      submitted_at: null,
+      updated_at: sql`now()`,
+    })
+    .where(eq(vendorSelfAttestations.id, attestationId));
+}
+
+async function markAttestationCompleted(attestationId: string): Promise<void> {
+  await db
+    .update(vendorSelfAttestations)
+    .set({
+      status: "COMPLETED",
+      submitted_at: sql`now()`,
+      updated_at: sql`now()`,
+    })
+    .where(eq(vendorSelfAttestations.id, attestationId));
+}
+
+function sendQuotaExceededKeepingDraft(
+  res: Response,
+  error: unknown,
+  attestationId: string | null,
+): boolean {
+  if (!isQuotaFailure(error)) return false;
+  const rawMessage = isTokenQuotaExceededError(error)
+    ? error.message
+    : error instanceof Error
+      ? error.message
+      : "";
+  const message =
+    rawMessage.trim() ||
+    "Your token allocation for this feature is exhausted. Ask your platform admin to allocate more tokens.";
+  const draftNote = attestationId
+    ? " The attestation was saved as a draft and was not marked completed."
+    : "";
+  res.status(403).json({
+    success: false,
+    code: TOKEN_QUOTA_EXCEEDED_CODE,
+    message: /attestation was saved as a draft/i.test(message) ? message : `${message.replace(/\.*$/, ".")}${draftNote}`,
+    status: "DRAFT",
+    ...(attestationId ? { attestation: { id: attestationId, status: "DRAFT" } } : {}),
+  });
+  return true;
+}
+
+function sendIncompleteProfileKeptAsDraft(
+  res: Response,
+  httpStatus: number,
+  attestation: Record<string, unknown> | null,
+): void {
+  res.status(httpStatus).json({
+    success: false,
+    message:
+      "Product profile could not be generated. The attestation was saved as a draft and was not marked completed.",
+    status: "DRAFT",
+    attestation,
+  });
+}
+
 /**
  * Generate product profile report from vendor data and insert into generated_profile_reports.
  * VTS comes from Python scoring service; this only persists trust_score + report.
  * Returns the report payload for the response, or null on error.
+ * Token-quota failures are rethrown so the attestation stays DRAFT.
  */
 async function generateAndStoreProfileReport(
   vendorData: string,
@@ -213,19 +286,53 @@ async function generateAndStoreProfileReport(
 
     return reportPayload as unknown as ReportPayload;
   } catch (err) {
-    if (isTokenQuotaExceededError(err)) throw err;
+    if (isQuotaFailure(err)) throw err;
     console.error("generateVendorAttestationReport after submit:", err);
     return null;
   }
 }
 
 /**
+ * After form data is persisted as DRAFT: generate the product profile, then mark COMPLETED.
+ * If tokens run out mid-generation, leave the row as DRAFT and rethrow.
+ */
+async function generateProfileAndCompleteIfSuccessful(
+  vendorData: string,
+  formulaPayload: Record<string, unknown>,
+  userId: number,
+  organizationIdStr: string | null,
+  attestationId: string,
+  documentUploads: Record<string, unknown> | null,
+): Promise<ReportPayload | null> {
+  await assertFeatureTokenQuota("attestation");
+  const reportPayload = await generateAndStoreProfileReport(
+    vendorData,
+    formulaPayload,
+    userId,
+    organizationIdStr,
+    attestationId,
+  );
+  if (!reportPayload) {
+    // No product profile was produced (including truncated/failed LLM work). Stay DRAFT.
+    return null;
+  }
+  if (documentUploads) {
+    void parseAndStoreComplianceDocumentExpiries(attestationId, documentUploads).catch((err) =>
+      console.error("Compliance document expiry parse:", err),
+    );
+  }
+  await markAttestationCompleted(attestationId);
+  return reportPayload;
+}
+
+/**
  * POST vendor self attestation: create new or update existing by id.
- * - newAttestation: true OR no attestationId → always INSERT a new row (status DRAFT or COMPLETED). Never reuse or modify existing.
+ * - newAttestation: true OR no attestationId → always INSERT a new row (status DRAFT until profile generation succeeds).
  * - attestationId provided (and not newAttestation) → UPDATE that row only if status is not COMPLETED (completed are immutable).
- * - New records: status "DRAFT" when is_draft true, "COMPLETED" when submit. Editing only by explicit attestationId.
+ * - Submit (`is_draft` false) stays DRAFT if tokens are exhausted mid-generation; COMPLETED only after a product profile is produced.
  */
 const submitVendorSelfAttestation = async (req: Request, res: Response): Promise<void> => {
+  let persistedAttestationId: string | null = null;
   try {
     // --- 1. Resolve user id from JWT (id/userId) or by email ---
     const payload = req.user as {
@@ -360,23 +467,21 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
     const security_incidents = Array.isArray(security_incidents_raw) ? security_incidents_raw : [];
     const extendedFields = parseAttestationExtendedFields(get);
 
-    // Saving a draft does NOT mark as completed. Only final Submit sets COMPLETED.
+    // Saving a draft does NOT mark as completed. Final Submit stays DRAFT until the
+    // product profile is generated; token exhaustion mid-generation must not complete it.
     const rawDraft = get("is_draft");
     const isDraft =
       rawDraft === true ||
       rawDraft === "true" ||
       String(rawDraft).toLowerCase() === "true" ||
       rawDraft === 1;
-    const status = isDraft ? "DRAFT" : "COMPLETED";
-    if (status === "COMPLETED") {
-      await assertFeatureTokenQuota("attestation");
-    }
+    const wantsComplete = !isDraft;
+    const status = "DRAFT";
 
     const values = {
       user_id: userId,
       organization_id: organizationIdStr,
       status,
-      ...(status === "COMPLETED" ? { submitted_at: new Date() } : {}),
       ...companyProfileValues,
       product_name,
       purchase_decisions_by,
@@ -540,22 +645,20 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
           generated_profile_report: vendorSelfAttestations.generated_profile_report,
         });
       const insertedId = inserted?.id as string | undefined;
+      if (insertedId) persistedAttestationId = insertedId;
       let reportPayload: ReportPayload | null = null;
-      if (status === "COMPLETED" && insertedId) {
+      let finalStatus: "DRAFT" | "COMPLETED" = "DRAFT";
+      if (wantsComplete && insertedId) {
         const vendorData = buildVendorDataFromPayload(b);
-        reportPayload = await generateAndStoreProfileReport(
+        reportPayload = await generateProfileAndCompleteIfSuccessful(
           vendorData,
           b as Record<string, unknown>,
           userId,
           organizationIdStr ?? null,
           insertedId,
+          document_uploads as Record<string, unknown> | null,
         );
-        if (document_uploads) {
-          void parseAndStoreComplianceDocumentExpiries(
-            insertedId,
-            document_uploads as Record<string, unknown>,
-          ).catch((err) => console.error("Compliance document expiry parse:", err));
-        }
+        if (reportPayload) finalStatus = "COMPLETED";
       }
       const [rowAfter] = insertedId
         ? await db
@@ -611,10 +714,21 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
         : [inserted];
       const att = rowAfter ? buildAttestationResponse(rowAfter as Record<string, unknown>) : (inserted ? buildAttestationResponse(inserted as Record<string, unknown>) : null);
       if (att && reportPayload) (att as Record<string, unknown>).generated_profile_report = reportPayload;
+      if (att) (att as Record<string, unknown>).status = finalStatus;
+      if (wantsComplete && finalStatus !== "COMPLETED") {
+        sendIncompleteProfileKeptAsDraft(
+          res,
+          500,
+          att as Record<string, unknown> | null,
+        );
+        return;
+      }
       res.status(201).json({
         success: true,
-        message: isDraft ? "Draft saved successfully" : "Vendor self attestation submitted successfully",
-        status,
+        message: isDraft || finalStatus !== "COMPLETED"
+          ? "Draft saved successfully"
+          : "Vendor self attestation submitted successfully",
+        status: finalStatus,
         attestation: att,
       });
       return;
@@ -663,30 +777,27 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       for (const n of oldNames) if (!newNames.has(n)) removed.add(n);
       deleteRemovedDocumentFiles(attestationId, removed);
 
+      persistedAttestationId = attestationId;
       await db
         .update(vendorSelfAttestations)
         .set({
           ...values,
           updated_at: sql`now()`,
-          ...(status === "COMPLETED" ? { submitted_at: sql`now()` } : {}),
         })
         .where(updateWhere);
       let reportPayload: ReportPayload | null = null;
-      if (status === "COMPLETED") {
+      let finalStatus: "DRAFT" | "COMPLETED" = "DRAFT";
+      if (wantsComplete) {
         const vendorData = buildVendorDataFromPayload(b);
-        reportPayload = await generateAndStoreProfileReport(
+        reportPayload = await generateProfileAndCompleteIfSuccessful(
           vendorData,
           b as Record<string, unknown>,
           userId,
           organizationIdStr ?? null,
           attestationId,
+          document_uploads as Record<string, unknown> | null,
         );
-        if (document_uploads) {
-          void parseAndStoreComplianceDocumentExpiries(
-            attestationId,
-            document_uploads as Record<string, unknown>,
-          ).catch((err) => console.error("Compliance document expiry parse:", err));
-        }
+        if (reportPayload) finalStatus = "COMPLETED";
       }
       const [savedRow] = await db
         .select({
@@ -740,10 +851,21 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
         .limit(1);
       const att = savedRow ? buildAttestationResponse(savedRow as Record<string, unknown>) : null;
       if (att && reportPayload) (att as Record<string, unknown>).generated_profile_report = reportPayload;
+      if (att) (att as Record<string, unknown>).status = finalStatus;
+      if (wantsComplete && finalStatus !== "COMPLETED") {
+        sendIncompleteProfileKeptAsDraft(
+          res,
+          500,
+          att as Record<string, unknown> | null,
+        );
+        return;
+      }
       res.status(200).json({
         success: true,
-        message: isDraft ? "Draft saved successfully" : "Vendor self attestation submitted successfully",
-        status,
+        message: isDraft || finalStatus !== "COMPLETED"
+          ? "Draft saved successfully"
+          : "Vendor self attestation submitted successfully",
+        status: finalStatus,
         attestation: att,
       });
       return;
@@ -755,6 +877,14 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       message: "Either newAttestation or attestationId must be provided.",
     });
   } catch (error) {
+    if (isQuotaFailure(error) && persistedAttestationId) {
+      try {
+        await keepAttestationAsDraft(persistedAttestationId);
+      } catch (revertErr) {
+        console.error("Failed to keep attestation as draft after token quota:", revertErr);
+      }
+    }
+    if (sendQuotaExceededKeepingDraft(res, error, persistedAttestationId)) return;
     if (sendIfTokenQuotaExceeded(res, error)) return;
     console.error("submitVendorSelfAttestation error:", error);
     const detail = error instanceof Error ? error.message : String(error);

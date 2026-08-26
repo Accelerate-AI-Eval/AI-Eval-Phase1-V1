@@ -193,6 +193,13 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
             logger.warning("%s; using formula VTS fallback", llm_error)
         except Exception as exc:
             llm_error = str(exc) or type(exc).__name__
+            lowered = llm_error.lower()
+            if (
+                "token allocation is exhausted" in lowered
+                or "token quota is exhausted" in lowered
+                or "no tokens have been allocated" in lowered
+            ):
+                raise TokenQuotaExceededError(llm_error) from exc
             logger.warning("LLM trust score failed; using formula VTS fallback: %s", llm_error)
             logger.debug(traceback.format_exc())
 
