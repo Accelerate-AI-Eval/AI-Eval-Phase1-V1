@@ -4,6 +4,7 @@ import { riskTop5Mitigations } from "../schema/risks/riskTop5Mitigations.js";
 import {
   fetchRisksFromRI,
   isRiskIntellectConfigured,
+  sanitizeRiSectorParam,
   type RiRiskExportDto,
 } from "./riskIntellect/riskIntellectClient.js";
 
@@ -269,6 +270,52 @@ export function applyRiEnrichmentToPayload(
 }
 
 /**
+ * Risk Intellect `sector` query expects a short name (Healthcare, Technology).
+ * Type-01 VTS stores sector as `{ private_sector: [...], public_sector: [...] }`.
+ * JSON-stringifying that and sending it as `?sector={...}` returns zero risks.
+ */
+function firstPlainSector(raw: unknown): string | undefined {
+  if (raw == null) return undefined;
+  if (typeof raw === "string") return sanitizeRiSectorParam(raw);
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      const found = firstPlainSector(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    for (const key of ["private_sector", "public_sector", "non_profit_sector"]) {
+      const found = firstPlainSector(o[key]);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+function extractRiSector(payload: Record<string, unknown>): string | undefined {
+  const cp =
+    payload.companyProfile && typeof payload.companyProfile === "object" && !Array.isArray(payload.companyProfile)
+      ? (payload.companyProfile as Record<string, unknown>)
+      : {};
+  const candidates: unknown[] = [
+    payload.customer_sector,
+    payload.customerSector,
+    payload.industry_sector,
+    payload.industrySector,
+    payload.industry,
+    payload.sector,
+    cp.sector,
+  ];
+  for (const raw of candidates) {
+    const found = firstPlainSector(raw);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/**
  * Extract assessment context for matching risk_mappings table on domain, timing, intent, primary_risk, secondary_risks.
  */
 function extractContext(payload: Record<string, unknown>): {
@@ -348,13 +395,25 @@ async function enrichIntentFromRiskIntellect(
   }
 
   try {
-    const riResult = await fetchRisksFromRI({
+    const riSector = sanitizeRiSectorParam(sector);
+    let riResult = await fetchRisksFromRI({
       limit: 50,
-      sector: sector || undefined,
+      sector: riSector,
     });
+    if ((!riResult || riResult.risks.length === 0) && riSector) {
+      console.log(
+        "[type-01 VTS] RI export empty for sector filter; retrying without sector",
+        { sector: riSector },
+      );
+      riResult = await fetchRisksFromRI({ limit: 50 });
+    }
     if (!riResult || riResult.risks.length === 0) {
       console.log(
         "[type-01 VTS] likelihood/impact STATIC fallback [3,3,3] — AI Risk Intellect returned no risks",
+        {
+          requestedSector: riSector ?? null,
+          fetchReturned: riResult ? "empty-list" : "null (timeout/http/parse — see [RI] fetch failed)",
+        },
       );
       return localFallback();
     }
@@ -584,5 +643,5 @@ export async function getTop5RisksWithMitigations(
     source: "local_db",
   };
 
-  return enrichIntentFromRiskIntellect(fromLocal, domain);
+  return enrichIntentFromRiskIntellect(fromLocal, extractRiSector(payload) ?? "");
 }

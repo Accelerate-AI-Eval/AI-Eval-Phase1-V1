@@ -46,6 +46,7 @@ export { llmModelUsageEvents } from "./observability/llmModelUsageEvents.js";
 export {
   orgFeatureTokenQuotas,
   orgUserTokenAllocations,
+  orgUserTokenAllocationHistory,
 } from "./controls/orgTokenQuotas.js";
 
 export { adminNotifications } from "./admin/adminNotifications.js";

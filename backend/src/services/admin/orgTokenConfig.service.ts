@@ -1,13 +1,13 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "../../database/db.js";
 import { createOrganization } from "../../schema/organizations/createOrganization.js";
 import { usersTable } from "../../schema/user_management/invite_user_schema.js";
 import {
   orgFeatureTokenQuotas,
+  orgUserTokenAllocationHistory,
   orgUserTokenAllocations,
 } from "../../schema/controls/orgTokenQuotas.js";
 import {
-  ORG_CONTROL_FEATURES,
   asNonNegInt,
   isOrgControlFeature,
   type OrgControlFeature,
@@ -19,11 +19,20 @@ export type OrgFeatureQuota = {
   outputTokenQuota: number;
 };
 
+export type OrgTokenAllocationHistoryItem = {
+  id: number;
+  feature: OrgControlFeature;
+  inputTokens: number;
+  outputTokens: number;
+  allocatedAt: string;
+};
+
 export type OrgTokenUserRow = {
   userId: number;
   userName: string;
   email: string;
   allocations: Record<OrgControlFeature, { inputTokens: number; outputTokens: number }>;
+  allocationHistory: OrgTokenAllocationHistoryItem[];
 };
 
 export type OrgTokenConfigPayload = {
@@ -37,6 +46,7 @@ export type OrgTokenConfigSaveInput = {
   feature: OrgControlFeature;
   inputTokenQuota: number;
   outputTokenQuota: number;
+  allocatedBy?: number | null;
   users: Array<{
     userId: number;
     inputTokens: number;
@@ -78,6 +88,17 @@ function displayUserName(row: {
   return (row.user_name ?? "").trim() || full || (row.email ?? "").trim() || "—";
 }
 
+function toIso(value: Date | string | null | undefined): string {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString();
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  return new Date().toISOString();
+}
+
 async function getOrganizationName(
   organizationId: number,
 ): Promise<{ id: number; organizationName: string } | null> {
@@ -98,7 +119,7 @@ export async function getOrganizationTokenConfig(
   const org = await getOrganizationName(organizationId);
   if (!org) return null;
 
-  const [orgUsers, quotaRows, allocationRows] = await Promise.all([
+  const [orgUsers, quotaRows, allocationRows, historyRows] = await Promise.all([
     db
       .select({
         id: usersTable.id,
@@ -117,6 +138,14 @@ export async function getOrganizationTokenConfig(
       .select()
       .from(orgUserTokenAllocations)
       .where(eq(orgUserTokenAllocations.organizationId, organizationId)),
+    db
+      .select()
+      .from(orgUserTokenAllocationHistory)
+      .where(eq(orgUserTokenAllocationHistory.organizationId, organizationId))
+      .orderBy(
+        desc(orgUserTokenAllocationHistory.allocatedAt),
+        desc(orgUserTokenAllocationHistory.id),
+      ),
   ]);
 
   const features = emptyFeatures();
@@ -134,6 +163,7 @@ export async function getOrganizationTokenConfig(
     userName: displayUserName(user),
     email: (user.email ?? "").trim(),
     allocations: emptyAllocations(),
+    allocationHistory: [],
   }));
   const byId = new Map(users.map((user) => [user.userId, user]));
 
@@ -145,6 +175,19 @@ export async function getOrganizationTokenConfig(
       inputTokens: asNonNegInt(row.inputTokens),
       outputTokens: asNonNegInt(row.outputTokens),
     };
+  }
+
+  for (const row of historyRows) {
+    if (!isOrgControlFeature(row.feature)) continue;
+    const user = byId.get(row.userId);
+    if (!user) continue;
+    user.allocationHistory.push({
+      id: row.id,
+      feature: row.feature,
+      inputTokens: asNonNegInt(row.inputTokens),
+      outputTokens: asNonNegInt(row.outputTokens),
+      allocatedAt: toIso(row.allocatedAt),
+    });
   }
 
   return {
@@ -174,74 +217,98 @@ export async function saveOrganizationTokenConfig(
   const now = new Date();
   const inputTokenQuota = asNonNegInt(input.inputTokenQuota);
   const outputTokenQuota = asNonNegInt(input.outputTokenQuota);
+  const allocatedBy =
+    input.allocatedBy != null && Number.isInteger(input.allocatedBy) && input.allocatedBy > 0
+      ? input.allocatedBy
+      : null;
 
-  const [existingQuota] = await db
-    .select({ id: orgFeatureTokenQuotas.id })
-    .from(orgFeatureTokenQuotas)
-    .where(
-      and(
-        eq(orgFeatureTokenQuotas.organizationId, organizationId),
-        eq(orgFeatureTokenQuotas.feature, input.feature),
-      ),
-    )
-    .limit(1);
+  const validUsers = input.users.filter(
+    (row) =>
+      orgUserIds.has(row.userId) &&
+      (asNonNegInt(row.inputTokens) > 0 || asNonNegInt(row.outputTokens) > 0),
+  );
 
-  if (existingQuota) {
-    await db
-      .update(orgFeatureTokenQuotas)
-      .set({
-        inputTokenQuota,
-        outputTokenQuota,
-        updatedAt: now,
-      })
-      .where(eq(orgFeatureTokenQuotas.id, existingQuota.id));
-  } else {
-    await db.insert(orgFeatureTokenQuotas).values({
-      organizationId,
-      feature: input.feature,
-      inputTokenQuota,
-      outputTokenQuota,
-      updatedAt: now,
-    });
-  }
-
-  const validUsers = input.users.filter((row) => orgUserIds.has(row.userId));
-
-  for (const user of validUsers) {
-    const inputTokens = asNonNegInt(user.inputTokens);
-    const outputTokens = asNonNegInt(user.outputTokens);
-    const [existing] = await db
-      .select({ id: orgUserTokenAllocations.id })
-      .from(orgUserTokenAllocations)
+  await db.transaction(async (tx) => {
+    const [existingQuota] = await tx
+      .select({ id: orgFeatureTokenQuotas.id })
+      .from(orgFeatureTokenQuotas)
       .where(
         and(
-          eq(orgUserTokenAllocations.organizationId, organizationId),
-          eq(orgUserTokenAllocations.userId, user.userId),
-          eq(orgUserTokenAllocations.feature, input.feature),
+          eq(orgFeatureTokenQuotas.organizationId, organizationId),
+          eq(orgFeatureTokenQuotas.feature, input.feature),
         ),
       )
       .limit(1);
 
-    if (existing) {
-      await db
-        .update(orgUserTokenAllocations)
+    if (existingQuota) {
+      await tx
+        .update(orgFeatureTokenQuotas)
         .set({
-          inputTokens,
-          outputTokens,
+          inputTokenQuota,
+          outputTokenQuota,
           updatedAt: now,
         })
-        .where(eq(orgUserTokenAllocations.id, existing.id));
+        .where(eq(orgFeatureTokenQuotas.id, existingQuota.id));
     } else {
-      await db.insert(orgUserTokenAllocations).values({
+      await tx.insert(orgFeatureTokenQuotas).values({
         organizationId,
-        userId: user.userId,
         feature: input.feature,
-        inputTokens,
-        outputTokens,
+        inputTokenQuota,
+        outputTokenQuota,
         updatedAt: now,
       });
     }
-  }
+
+    for (const user of validUsers) {
+      const addInput = asNonNegInt(user.inputTokens);
+      const addOutput = asNonNegInt(user.outputTokens);
+      const [existing] = await tx
+        .select({
+          id: orgUserTokenAllocations.id,
+          inputTokens: orgUserTokenAllocations.inputTokens,
+          outputTokens: orgUserTokenAllocations.outputTokens,
+        })
+        .from(orgUserTokenAllocations)
+        .where(
+          and(
+            eq(orgUserTokenAllocations.organizationId, organizationId),
+            eq(orgUserTokenAllocations.userId, user.userId),
+            eq(orgUserTokenAllocations.feature, input.feature),
+          ),
+        )
+        .limit(1);
+
+      if (existing) {
+        await tx
+          .update(orgUserTokenAllocations)
+          .set({
+            inputTokens: asNonNegInt(existing.inputTokens) + addInput,
+            outputTokens: asNonNegInt(existing.outputTokens) + addOutput,
+            updatedAt: now,
+          })
+          .where(eq(orgUserTokenAllocations.id, existing.id));
+      } else {
+        await tx.insert(orgUserTokenAllocations).values({
+          organizationId,
+          userId: user.userId,
+          feature: input.feature,
+          inputTokens: addInput,
+          outputTokens: addOutput,
+          updatedAt: now,
+        });
+      }
+
+      await tx.insert(orgUserTokenAllocationHistory).values({
+        organizationId,
+        userId: user.userId,
+        feature: input.feature,
+        inputTokens: addInput,
+        outputTokens: addOutput,
+        allocatedAt: now,
+        allocatedBy,
+      });
+    }
+  });
 
   return getOrganizationTokenConfig(organizationId);
 }

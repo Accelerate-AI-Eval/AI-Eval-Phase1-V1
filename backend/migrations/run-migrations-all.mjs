@@ -55,6 +55,7 @@ const sqlFiles = [
   "20260818_add_attestation_extended_fields.sql",
   "20260818_add_attestation_privacy_security_fields.sql",
   "20260820_attestation_privacy_security_checks.sql",
+  "20260827_org_user_token_allocation_history.sql",
 ];
 
 const pool = new pg.Pool({ connectionString });

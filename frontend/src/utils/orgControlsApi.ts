@@ -71,6 +71,14 @@ export type OrgFeatureQuota = {
   outputTokenQuota: number;
 };
 
+export type OrgTokenAllocationHistoryItem = {
+  id: number;
+  feature: OrgControlFeature;
+  inputTokens: number;
+  outputTokens: number;
+  allocatedAt: string;
+};
+
 export type OrgTokenUserRow = {
   userId: number;
   userName: string;
@@ -79,6 +87,7 @@ export type OrgTokenUserRow = {
     OrgControlFeature,
     { inputTokens: number; outputTokens: number }
   >;
+  allocationHistory: OrgTokenAllocationHistoryItem[];
 };
 
 export type OrgTokenConfigPayload = {
@@ -152,7 +161,16 @@ export async function fetchOrgTokenConfig(
         message: errorMessage(body, "Could not load token configuration."),
       };
     }
-    return { ok: true, data: body.data };
+    return {
+      ok: true,
+      data: {
+        ...body.data,
+        users: (body.data.users ?? []).map((user) => ({
+          ...user,
+          allocationHistory: user.allocationHistory ?? [],
+        })),
+      },
+    };
   } catch {
     return {
       ok: false,
@@ -186,7 +204,16 @@ export async function saveOrgTokenConfig(
         message: errorMessage(body, "Could not save token configuration."),
       };
     }
-    return { ok: true, data: body.data };
+    return {
+      ok: true,
+      data: {
+        ...body.data,
+        users: (body.data.users ?? []).map((user) => ({
+          ...user,
+          allocationHistory: user.allocationHistory ?? [],
+        })),
+      },
+    };
   } catch {
     return {
       ok: false,
@@ -211,6 +238,18 @@ export function formatTokenPreset(value: number): string {
     return `${value / 1000}k`;
   }
   return formatTokenCount(value);
+}
+
+export function formatAllocatedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 export function formatUsd(value: number): string {

@@ -71,3 +71,29 @@ export const orgUserTokenAllocations = pgTable(
     ),
   ],
 );
+
+export const orgUserTokenAllocationHistory = pgTable(
+  "org_user_token_allocation_history",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organization_id")
+      .notNull()
+      .references(() => createOrganization.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    feature: varchar("feature", { length: 64 }).notNull(),
+    inputTokens: bigint("input_tokens", { mode: "number" })
+      .notNull()
+      .default(0),
+    outputTokens: bigint("output_tokens", { mode: "number" })
+      .notNull()
+      .default(0),
+    allocatedAt: timestamp("allocated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    allocatedBy: integer("allocated_by").references(() => usersTable.id, {
+      onDelete: "set null",
+    }),
+  },
+);

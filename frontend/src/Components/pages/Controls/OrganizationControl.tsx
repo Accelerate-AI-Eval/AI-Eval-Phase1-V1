@@ -8,6 +8,7 @@ import {
   Coins,
   FileCheck,
   FileText,
+  History,
   Layers,
   LayoutGrid,
   MessageSquare,
@@ -27,6 +28,7 @@ import { premiumDataTableStyles } from "../../../styles/dataTableStyles";
 import {
   fetchOrgTokenConfig,
   fetchOrgUsage,
+  formatAllocatedAt,
   formatTokenCount,
   formatTokenPreset,
   formatUsd,
@@ -46,6 +48,7 @@ import "../UserManagement/user_management.css";
 import "../Organizations/organization.css";
 import "../Assessments/assessments.css";
 import "../Observability/observability.css";
+import "../../../styles/page_tabs.css";
 
 type OrganizationControlProps = {
   org: OrgConfigListItem;
@@ -55,6 +58,7 @@ type OrganizationControlProps = {
 
 type OrgControlTab = "stats" | "config";
 type TokenMode = "input" | "output";
+type AllocateDialogTab = "allocate" | "history";
 
 function TokenAmountInput({
   value,
@@ -181,6 +185,7 @@ function AllocateTokensDialog({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [dialogTab, setDialogTab] = useState<AllocateDialogTab>("allocate");
 
   useEffect(() => {
     let cancelled = false;
@@ -203,11 +208,17 @@ function AllocateTokensDialog({
   }, [orgId]);
 
   useEffect(() => {
-    const row = config?.users.find((item) => item.userId === user.userId);
-    const allocation = row?.allocations[feature];
-    setInputTokens(allocation?.inputTokens ?? 0);
-    setOutputTokens(allocation?.outputTokens ?? 0);
-  }, [config, feature, user.userId]);
+    setInputTokens(0);
+    setOutputTokens(0);
+  }, [feature]);
+
+  const currentUser = config?.users.find((item) => item.userId === user.userId);
+  const currentAllocation = currentUser?.allocations[feature];
+  const currentInput = currentAllocation?.inputTokens ?? 0;
+  const currentOutput = currentAllocation?.outputTokens ?? 0;
+  const history = (currentUser?.allocationHistory ?? []).filter(
+    (item) => item.feature === feature,
+  );
 
   const canAllocate = inputTokens > 0 && outputTokens > 0;
 
@@ -223,25 +234,11 @@ function AllocateTokensDialog({
       return;
     }
     setSaving(true);
-    const users = config.users.map((row) => {
-      const current = row.allocations[feature];
-      if (row.userId === user.userId) {
-        return { userId: row.userId, inputTokens, outputTokens };
-      }
-      return {
-        userId: row.userId,
-        inputTokens: current.inputTokens,
-        outputTokens: current.outputTokens,
-      };
-    });
-    if (!users.some((row) => row.userId === user.userId)) {
-      users.push({ userId: user.userId, inputTokens, outputTokens });
-    }
     const result = await saveOrgTokenConfig(orgId, {
       feature,
-      inputTokenQuota: config.features[feature].inputTokenQuota,
-      outputTokenQuota: config.features[feature].outputTokenQuota,
-      users,
+      inputTokenQuota: inputTokens,
+      outputTokenQuota: outputTokens,
+      users: [{ userId: user.userId, inputTokens, outputTokens }],
     });
     setSaving(false);
     if (result.ok === false) {
@@ -249,7 +246,7 @@ function AllocateTokensDialog({
       return;
     }
     toast.success(
-      `Allocated ${formatTokenPreset(inputTokens)} input and ${formatTokenPreset(outputTokens)} output tokens to ${user.userName}.`,
+      `Added ${formatTokenPreset(inputTokens)} input and ${formatTokenPreset(outputTokens)} output tokens to ${user.userName}.`,
     );
     onSaved();
     onClose();
@@ -269,10 +266,23 @@ function AllocateTokensDialog({
         aria-modal="true"
         aria-labelledby={titleId}
       >
-        <div className="usersPage__dialogHead">
-          <h2 id={titleId} className="usersPage__dialogTitle">
-            Allocate tokens
-          </h2>
+        <div className="usersPage__dialogHead orgAllocateDialog__head">
+          <div className="orgAllocateDialog__headText">
+            <h2 id={titleId} className="usersPage__dialogTitle">
+              Allocate tokens
+            </h2>
+            <p className="orgAllocateDialog__user">
+              <span>{user.userName}</span>
+              {user.email.trim() ? (
+                <>
+                  <span className="orgAllocateDialog__userDot" aria-hidden>
+                    ·
+                  </span>
+                  <span>{user.email.trim()}</span>
+                </>
+              ) : null}
+            </p>
+          </div>
           <button
             type="button"
             className="usersPage__dialogClose"
@@ -283,8 +293,39 @@ function AllocateTokensDialog({
             <X size={18} strokeWidth={2} aria-hidden />
           </button>
         </div>
-        <div className="usersPage__dialogBody">
-          <UserNameEmailCell name={user.userName} email={user.email} />
+        {loading || error ? null : (
+          <div
+            className="page_tabs orgAllocateDialog__tabs"
+            role="tablist"
+            aria-label="Allocate tokens"
+          >
+            <button
+              type="button"
+              role="tab"
+              id={`${titleId}-tab-allocate`}
+              aria-selected={dialogTab === "allocate"}
+              aria-controls={`${titleId}-panel-allocate`}
+              className={`page_tab ${dialogTab === "allocate" ? "page_tab_active" : ""}`}
+              onClick={() => setDialogTab("allocate")}
+            >
+              <Coins size={15} />
+              Allocate
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id={`${titleId}-tab-history`}
+              aria-selected={dialogTab === "history"}
+              aria-controls={`${titleId}-panel-history`}
+              className={`page_tab ${dialogTab === "history" ? "page_tab_active" : ""}`}
+              onClick={() => setDialogTab("history")}
+            >
+              <History size={15} />
+              History
+            </button>
+          </div>
+        )}
+        <div className="usersPage__dialogBody orgAllocateDialog__body">
           {loading ? (
             <LoadingMessage message="Loading current allocation…" />
           ) : error ? (
@@ -293,7 +334,7 @@ function AllocateTokensDialog({
             </p>
           ) : (
             <>
-              <label className="orgControlFilters__field" htmlFor={`${titleId}-feature`}>
+              <label className="orgAllocateDialog__feature" htmlFor={`${titleId}-feature`}>
                 <span>Feature</span>
                 <select
                   id={`${titleId}-feature`}
@@ -309,93 +350,179 @@ function AllocateTokensDialog({
                   ))}
                 </select>
               </label>
-              <div className="orgControlDistribute__quotas">
-                <label
-                  className={`orgControlQuota ${
-                    tokenMode === "input" ? "orgControlQuota--active" : ""
-                  }`}
+              {dialogTab === "allocate" ? (
+                <div
+                  role="tabpanel"
+                  id={`${titleId}-panel-allocate`}
+                  aria-labelledby={`${titleId}-tab-allocate`}
+                  className="orgAllocateDialog__panel"
                 >
-                  <span className="orgControlQuota__icon" aria-hidden>
-                    <ArrowDownToLine size={16} strokeWidth={2} />
-                  </span>
-                  <span className="orgControlQuota__copy">
-                    <span className="orgControlQuota__label">Input tokens</span>
-                    <TokenAmountInput
-                      className="orgControlQuota__input"
-                      ariaLabel="Input tokens"
-                      emptyWhenZero
-                      value={inputTokens}
-                      onFocus={() => setTokenMode("input")}
-                      onChange={setInputTokens}
-                    />
-                  </span>
-                </label>
-                <label
-                  className={`orgControlQuota ${
-                    tokenMode === "output" ? "orgControlQuota--active" : ""
-                  }`}
-                >
-                  <span className="orgControlQuota__icon" aria-hidden>
-                    <ArrowUpFromLine size={16} strokeWidth={2} />
-                  </span>
-                  <span className="orgControlQuota__copy">
-                    <span className="orgControlQuota__label">Output tokens</span>
-                    <TokenAmountInput
-                      className="orgControlQuota__input"
-                      ariaLabel="Output tokens"
-                      emptyWhenZero
-                      value={outputTokens}
-                      onFocus={() => setTokenMode("output")}
-                      onChange={setOutputTokens}
-                    />
-                  </span>
-                </label>
-              </div>
-              <div className="orgControlPresets" role="group" aria-label="Token presets">
-                <p className="orgControlPresets__label">
-                  Preset {tokenMode === "input" ? "input" : "output"} amount
-                </p>
-                <div className="orgControlPresets__row">
-                  {ORG_TOKEN_PRESETS.map((amount) => {
-                    const current =
-                      tokenMode === "input" ? inputTokens : outputTokens;
-                    return (
-                      <button
-                        key={amount}
-                        type="button"
-                        className={`orgControlPresets__btn ${
-                          current === amount ? "orgControlPresets__btn--active" : ""
-                        }`}
-                        onClick={() => applyPreset(amount)}
-                      >
-                        {formatTokenPreset(amount)}
-                      </button>
-                    );
-                  })}
+                  <div className="orgAllocateStats" aria-label="Current allocation">
+                    <div className="orgAllocateStats__item">
+                      <span>Input</span>
+                      <strong>{formatTokenCount(currentInput)}</strong>
+                    </div>
+                    <div className="orgAllocateStats__item">
+                      <span>Output</span>
+                      <strong>{formatTokenCount(currentOutput)}</strong>
+                    </div>
+                    <div className="orgAllocateStats__item">
+                      <span>Total</span>
+                      <strong>
+                        {formatTokenCount(currentInput + currentOutput)}
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="orgAllocateDialog__quotas">
+                    <label
+                      className={`orgAllocateField ${
+                        tokenMode === "input" ? "orgAllocateField--active" : ""
+                      }`}
+                    >
+                      <span className="orgAllocateField__label">
+                        <ArrowDownToLine size={14} strokeWidth={2} aria-hidden />
+                        Add input
+                      </span>
+                      <TokenAmountInput
+                        className="orgAllocateField__input"
+                        ariaLabel="Input tokens to add"
+                        emptyWhenZero
+                        value={inputTokens}
+                        onFocus={() => setTokenMode("input")}
+                        onChange={setInputTokens}
+                      />
+                    </label>
+                    <label
+                      className={`orgAllocateField ${
+                        tokenMode === "output" ? "orgAllocateField--active" : ""
+                      }`}
+                    >
+                      <span className="orgAllocateField__label">
+                        <ArrowUpFromLine size={14} strokeWidth={2} aria-hidden />
+                        Add output
+                      </span>
+                      <TokenAmountInput
+                        className="orgAllocateField__input"
+                        ariaLabel="Output tokens to add"
+                        emptyWhenZero
+                        value={outputTokens}
+                        onFocus={() => setTokenMode("output")}
+                        onChange={setOutputTokens}
+                      />
+                    </label>
+                  </div>
+                  <div className="orgAllocateDialog__presets" role="group" aria-label="Token presets">
+                    <p className="orgAllocateDialog__presetsLabel">
+                      Preset {tokenMode === "input" ? "input" : "output"}
+                    </p>
+                    <div className="orgAllocateDialog__presetsRow">
+                      {ORG_TOKEN_PRESETS.map((amount) => {
+                        const selected =
+                          tokenMode === "input" ? inputTokens : outputTokens;
+                        return (
+                          <button
+                            key={amount}
+                            type="button"
+                            className={`orgAllocateDialog__preset ${
+                              selected === amount
+                                ? "orgAllocateDialog__preset--active"
+                                : ""
+                            }`}
+                            onClick={() => applyPreset(amount)}
+                          >
+                            {formatTokenPreset(amount)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {inputTokens > 0 || outputTokens > 0 ? (
+                    <p className="orgAllocatePreview">
+                      After this grant:{" "}
+                      {formatTokenCount(currentInput + inputTokens)} input ·{" "}
+                      {formatTokenCount(currentOutput + outputTokens)} output ·{" "}
+                      {formatTokenCount(
+                        currentInput + currentOutput + inputTokens + outputTokens,
+                      )}{" "}
+                      total
+                    </p>
+                  ) : null}
                 </div>
-              </div>
+              ) : (
+                <div
+                  role="tabpanel"
+                  id={`${titleId}-panel-history`}
+                  aria-labelledby={`${titleId}-tab-history`}
+                  className="orgAllocateHistory"
+                >
+                  {history.length === 0 ? (
+                    <div className="orgAllocateHistory__empty">
+                      <History size={20} strokeWidth={1.75} aria-hidden />
+                      <p>No allocations yet for this feature.</p>
+                    </div>
+                  ) : (
+                    <div className="orgAllocateHistory__tableWrap">
+                      <table className="orgAllocateHistory__table">
+                        <thead>
+                          <tr>
+                            <th>Date and time</th>
+                            <th>Input</th>
+                            <th>Output</th>
+                            <th>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {history.map((item) => (
+                            <tr key={item.id}>
+                              <td>{formatAllocatedAt(item.allocatedAt)}</td>
+                              <td>{formatTokenCount(item.inputTokens)}</td>
+                              <td>{formatTokenCount(item.outputTokens)}</td>
+                              <td>
+                                {formatTokenCount(
+                                  item.inputTokens + item.outputTokens,
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
-        <div className="usersPage__dialogActions">
+        <div className="usersPage__dialogActions orgAllocateDialog__actions">
           <Button
             type="button"
             className="orgCancelBtn"
             onClick={onClose}
             disabled={saving}
           >
-            <Ban size={16} aria-hidden />
-            Cancel
+            {dialogTab === "history" ? (
+              <>
+                <X size={16} aria-hidden />
+                Close
+              </>
+            ) : (
+              <>
+                <Ban size={16} aria-hidden />
+                Cancel
+              </>
+            )}
           </Button>
-          <Button
-            type="button"
-            className="orgCreateBtn"
-            onClick={() => void save()}
-            disabled={loading || saving || Boolean(error) || !canAllocate}
-          >
-            <Coins size={16} aria-hidden />
-            {saving ? "Saving…" : "Allocate"}
-          </Button>
+          {dialogTab === "allocate" ? (
+            <Button
+              type="button"
+              className="orgCreateBtn"
+              onClick={() => void save()}
+              disabled={loading || saving || Boolean(error) || !canAllocate}
+            >
+              <Coins size={16} aria-hidden />
+              {saving ? "Saving…" : "Allocate"}
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -1031,12 +1158,6 @@ function OrganizationConfigPanel({
       setLoading(false);
       return;
     }
-    setQuotas({
-      attestation: result.data.features.attestation,
-      assessment: result.data.features.assessment,
-      sales_agent: result.data.features.sales_agent,
-      reports: result.data.features.reports,
-    });
     setUsers(result.data.users);
     setSelectedIds(result.data.users.map((u) => u.userId));
     setLoading(false);
@@ -1072,29 +1193,6 @@ function OrganizationConfigPanel({
     }));
   };
 
-  const updateUserTokens = (
-    userId: number,
-    key: "inputTokens" | "outputTokens",
-    value: number,
-  ) => {
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.userId === userId
-          ? {
-              ...user,
-              allocations: {
-                ...user.allocations,
-                [feature]: {
-                  ...user.allocations[feature],
-                  [key]: Math.max(0, Math.floor(value) || 0),
-                },
-              },
-            }
-          : user,
-      ),
-    );
-  };
-
   const allocateAndSave = async () => {
     if (inputQuota <= 0 || outputQuota <= 0) {
       toast.error("Enter both input and output tokens before allocating.");
@@ -1105,30 +1203,15 @@ function OrganizationConfigPanel({
       toast.error("Select at least one user to allocate tokens.");
       return;
     }
-    const targetIds = new Set(targets.map((u) => u.userId));
-    const nextUsers = users.map((user) => {
-      if (!targetIds.has(user.userId)) return user;
-      return {
-        ...user,
-        allocations: {
-          ...user.allocations,
-          [feature]: {
-            inputTokens: inputQuota,
-            outputTokens: outputQuota,
-          },
-        },
-      };
-    });
-    setUsers(nextUsers);
     setSaving(true);
     const result = await saveOrgTokenConfig(org.id, {
       feature,
       inputTokenQuota: inputQuota,
       outputTokenQuota: outputQuota,
-      users: nextUsers.map((user) => ({
+      users: targets.map((user) => ({
         userId: user.userId,
-        inputTokens: user.allocations[feature].inputTokens,
-        outputTokens: user.allocations[feature].outputTokens,
+        inputTokens: inputQuota,
+        outputTokens: outputQuota,
       })),
     });
     setSaving(false);
@@ -1142,7 +1225,7 @@ function OrganizationConfigPanel({
     }));
     setUsers(result.data.users);
     toast.success(
-      `Allocated ${formatTokenPreset(inputQuota)} input and ${formatTokenPreset(outputQuota)} output tokens to ${targets.length} users.`,
+      `Added ${formatTokenPreset(inputQuota)} input and ${formatTokenPreset(outputQuota)} output tokens to ${targets.length} users.`,
     );
   };
 
@@ -1232,20 +1315,12 @@ function OrganizationConfigPanel({
           </div>
         ),
         cell: (row: OrgTokenUserRow) => (
-          <div className="orgControlTable__tokenCell">
-            <TokenAmountInput
-              className="orgControlTokenInput"
-              ariaLabel={`${row.userName} input tokens`}
-              value={row.allocations[feature].inputTokens}
-              onChange={(next) =>
-                updateUserTokens(row.userId, "inputTokens", next)
-              }
-            />
+          <div className="orgControlTable__numeric">
+            {formatTokenCount(row.allocations[feature].inputTokens)}
           </div>
         ),
         minWidth: "140px",
         right: true,
-        ignoreRowClick: true,
       },
       {
         name: (
@@ -1254,20 +1329,34 @@ function OrganizationConfigPanel({
           </div>
         ),
         cell: (row: OrgTokenUserRow) => (
-          <div className="orgControlTable__tokenCell">
-            <TokenAmountInput
-              className="orgControlTokenInput"
-              ariaLabel={`${row.userName} output tokens`}
-              value={row.allocations[feature].outputTokens}
-              onChange={(next) =>
-                updateUserTokens(row.userId, "outputTokens", next)
-              }
-            />
+          <div className="orgControlTable__numeric">
+            {formatTokenCount(row.allocations[feature].outputTokens)}
           </div>
         ),
         minWidth: "140px",
         right: true,
         ignoreRowClick: true,
+      },
+      {
+        name: <div className="tableHeader">Last allocated</div>,
+        selector: (row: OrgTokenUserRow) => {
+          const last = (row.allocationHistory ?? []).find(
+            (item) => item.feature === feature,
+          );
+          return last?.allocatedAt ?? "";
+        },
+        cell: (row: OrgTokenUserRow) => {
+          const last = (row.allocationHistory ?? []).find(
+            (item) => item.feature === feature,
+          );
+          return (
+            <div className="orgControlTable__history">
+              {last ? formatAllocatedAt(last.allocatedAt) : "—"}
+            </div>
+          );
+        },
+        sortable: true,
+        minWidth: "170px",
       },
       {
         name: <div className="tableHeader">Actions</div>,
@@ -1283,7 +1372,7 @@ function OrganizationConfigPanel({
                   email: row.email,
                 })
               }
-              title="Allocate tokens"
+              title="Allocate tokens and view history"
               aria-label={`Allocate tokens for ${row.userName}`}
             >
               <Coins size={14} />
@@ -1361,7 +1450,7 @@ function OrganizationConfigPanel({
                 {ORG_CONTROL_FEATURE_LABELS[feature]} quotas
               </h2>
               <p className="orgControlPanelHead__hint">
-                Set input and output amounts, select users, then allocate and save.
+                Set input and output amounts to add, select users, then allocate and save.
               </p>
             </div>
           </div>
@@ -1376,7 +1465,7 @@ function OrganizationConfigPanel({
                 <ArrowDownToLine size={16} strokeWidth={2} />
               </span>
               <span className="orgControlQuota__copy">
-                <span className="orgControlQuota__label">Input tokens</span>
+                <span className="orgControlQuota__label">Add input tokens</span>
                 <TokenAmountInput
                   className="orgControlQuota__input"
                   ariaLabel="Input token quota"
@@ -1396,7 +1485,7 @@ function OrganizationConfigPanel({
                 <ArrowUpFromLine size={16} strokeWidth={2} />
               </span>
               <span className="orgControlQuota__copy">
-                <span className="orgControlQuota__label">Output tokens</span>
+                <span className="orgControlQuota__label">Add output tokens</span>
                 <TokenAmountInput
                   className="orgControlQuota__input"
                   ariaLabel="Output token quota"
@@ -1410,9 +1499,9 @@ function OrganizationConfigPanel({
           </div>
 
           <div className="orgControlPresets" role="group" aria-label="Token presets">
-            <p className="orgControlPresets__label">
-              Preset {tokenMode === "input" ? "input" : "output"} amount
-            </p>
+                <p className="orgControlPresets__label">
+                  Preset {tokenMode === "input" ? "input" : "output"} amount to add
+                </p>
             <div className="orgControlPresets__row">
               {ORG_TOKEN_PRESETS.map((amount) => {
                 const current = tokenMode === "input" ? inputQuota : outputQuota;
@@ -1452,7 +1541,7 @@ function OrganizationConfigPanel({
               {ORG_CONTROL_FEATURE_LABELS[feature]} users
             </h2>
             <p className="org_settings_card_subtitle">
-              Name, mail id, and token allocations for this feature.
+              Running totals by grant. Open allocate to add tokens or view history.
             </p>
           </div>
         </div>

@@ -2,16 +2,15 @@ import { logger } from "../../middlewares/logger.js";
 import { getAiRiskApiKeyConfig } from "../admin/aiRiskApiKeyConfig.service.js";
 
 /**
- * HTTP client for the Risk Intellect /risks/export service-to-service endpoint.
+ * HTTP client for Risk Intellect (hosted AI Risk Intelligence).
  *
- * Auth: the single platform AI Risk API key stored in AI-Q (Controls → AI Risk API Key).
- * Base URL: AI_RISK_INTELLECT_BASE_URL | RI_BASE_URL (server env).
+ * Hosted JSON list: GET /api/v1/risks  (X-API-Key from Controls).
+ * /api/v1/risks/export is tried as a fallback; the production host 404s that path
+ * after auth because it is not the public list route.
  *
- * Export fields used by scoring:
+ * Fields used by scoring:
  * - intent → type 2/3 intent multiplier
- * - likelihood, impact, severity → type 1 VTS product risk (L × I)
- *
- * Returns null on any failure so callers fall back to the static risk_mappings DB.
+ * - riskScoring.likelihood / impact / severityScore → type 1 VTS product risk (L × I)
  */
 
 export type RiRiskExportDto = {
@@ -54,9 +53,19 @@ export type RiExportParams = {
   limit?: number;
 };
 
-const TIMEOUT_MS = 2_000;
+const TIMEOUT_MS = 15_000;
 const MAX_RETRIES = 1;
 const RETRY_DELAY_MS = 150;
+const MAX_SECTOR_QUERY_LEN = 80;
+
+/** RI `sector` must be a short name (e.g. Healthcare). JSON blobs match nothing. */
+export function sanitizeRiSectorParam(raw: string | undefined): string | undefined {
+  const s = (raw ?? "").trim();
+  if (!s) return undefined;
+  if (s.startsWith("{") || s.startsWith("[")) return undefined;
+  if (s.length > MAX_SECTOR_QUERY_LEN) return undefined;
+  return s;
+}
 
 export function getRiConfig(): { baseUrl: string; apiKey: string } {
   // Single platform key from AI-Q Controls (persisted to .env.local / process.env).
@@ -69,21 +78,37 @@ export function isRiskIntellectConfigured(): boolean {
   return Boolean(baseUrl && apiKey);
 }
 
-export function buildExportUrl(baseUrl: string, params: RiExportParams): string {
-  const url = new URL(`${baseUrl.replace(/\/$/, "")}/api/v1/risks/export`);
+const RI_RISK_PATHS = ["/api/v1/risks", "/api/v1/risks/export"] as const;
+
+export function buildExportUrl(
+  baseUrl: string,
+  params: RiExportParams,
+  path: string = RI_RISK_PATHS[0],
+): string {
+  const url = new URL(`${baseUrl.replace(/\/$/, "")}${path}`);
   if (params.domains && params.domains.length > 0) {
     url.searchParams.set("domains", params.domains.join(","));
   }
   if (params.minQuality !== undefined) {
     url.searchParams.set("minQuality", String(params.minQuality));
   }
-  if (params.sector) {
-    url.searchParams.set("sector", params.sector);
+  const sector = sanitizeRiSectorParam(params.sector);
+  if (sector) {
+    url.searchParams.set("sector", sector);
   }
   if (params.limit !== undefined) {
     url.searchParams.set("limit", String(params.limit));
   }
   return url.toString();
+}
+
+function riAuthHeaders(apiKey: string): Record<string, string> {
+  // Hosted RI issues `ari_…` keys for the X-API-Key header. Do not send them as
+  // Authorization Bearer — that JWT middleware 404s a valid service key.
+  return {
+    Accept: "application/json",
+    "X-API-Key": apiKey,
+  };
 }
 
 function firstPresent(r: Record<string, unknown>, keys: string[]): unknown {
@@ -105,15 +130,39 @@ export function parseRiBoundedScore(
   return Math.min(max, Math.max(min, n));
 }
 
+function nestedRecord(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  return raw as Record<string, unknown>;
+}
+
+function firstCatalogMatch(r: Record<string, unknown>): Record<string, unknown> | null {
+  const analysis = nestedRecord(r["riskAnalysis"]);
+  const matches = analysis?.["catalogMatches"];
+  if (!Array.isArray(matches) || matches.length === 0) return null;
+  return nestedRecord(matches[0]);
+}
+
 function normalizeRiRisk(raw: unknown): RiRiskExportDto | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const r = raw as Record<string, unknown>;
-  const intentRaw = r["intent"] ?? r["Intent"];
-  const catalogMatchIdRaw = r["catalogMatchId"] ?? r["catalog_match_id"];
-  const catalogMatchTitleRaw = r["catalogMatchTitle"] ?? r["catalog_match_title"];
+  const scoring = nestedRecord(r["riskScoring"]) ?? {};
+  const catalog = firstCatalogMatch(r);
+  const intentRaw = r["intent"] ?? r["Intent"] ?? scoring["intent"];
+  const catalogMatchIdRaw =
+    r["catalogMatchId"] ??
+    r["catalog_match_id"] ??
+    catalog?.["id"] ??
+    catalog?.["riskId"] ??
+    catalog?.["risk_id"] ??
+    catalog?.["catalogMatchId"];
+  const catalogMatchTitleRaw =
+    r["catalogMatchTitle"] ??
+    r["catalog_match_title"] ??
+    catalog?.["title"] ??
+    catalog?.["riskTitle"];
   const quality = Number(r["qualityScore"] ?? r["quality_score"] ?? 0);
   const likelihood = parseRiBoundedScore(
-    firstPresent(r, [
+    firstPresent({ ...r, ...scoring }, [
       "likelihood",
       "likelihoodScore",
       "likelihood_score",
@@ -124,7 +173,7 @@ function normalizeRiRisk(raw: unknown): RiRiskExportDto | null {
     5,
   );
   const impact = parseRiBoundedScore(
-    firstPresent(r, [
+    firstPresent({ ...r, ...scoring }, [
       "impact",
       "impactScore",
       "impact_score",
@@ -135,7 +184,7 @@ function normalizeRiRisk(raw: unknown): RiRiskExportDto | null {
     5,
   );
   const severityRaw = parseRiBoundedScore(
-    firstPresent(r, [
+    firstPresent({ ...r, ...scoring }, [
       "severity",
       "severityScore",
       "severity_score",
@@ -149,8 +198,8 @@ function normalizeRiRisk(raw: unknown): RiRiskExportDto | null {
     severityRaw ??
     (likelihood != null && impact != null ? likelihood * impact : null);
   return {
-    id: String(r["id"] ?? ""),
-    riskTitle: String(r["riskTitle"] ?? r["risk_title"] ?? ""),
+    id: String(r["id"] ?? r["displayId"] ?? ""),
+    riskTitle: String(r["riskTitle"] ?? r["risk_title"] ?? r["title"] ?? ""),
     domain: String(r["domain"] ?? r["domains"] ?? ""),
     qualityScore: Number.isFinite(quality) ? quality : 0,
     description: String(r["description"] ?? ""),
@@ -165,9 +214,9 @@ function normalizeRiRisk(raw: unknown): RiRiskExportDto | null {
     severity,
     sector: r["sector"] == null ? null : String(r["sector"]),
     industry: r["industry"] == null ? null : String(r["industry"]),
-    sourceUrl: String(r["sourceUrl"] ?? r["source_url"] ?? ""),
+    sourceUrl: String(r["sourceUrl"] ?? r["source_url"] ?? r["articleUrl"] ?? ""),
     articleTitle: String(r["articleTitle"] ?? r["article_title"] ?? ""),
-    articleDate: String(r["articleDate"] ?? r["article_date"] ?? ""),
+    articleDate: String(r["articleDate"] ?? r["article_date"] ?? r["ingestedAt"] ?? ""),
     catalogMatchId:
       catalogMatchIdRaw == null || String(catalogMatchIdRaw).trim() === ""
         ? null
@@ -179,10 +228,23 @@ function normalizeRiRisk(raw: unknown): RiRiskExportDto | null {
   };
 }
 
-function isRiExportResult(data: unknown): data is RiExportResult {
-  if (!data || typeof data !== "object") return false;
+function extractRisksArray(data: unknown): unknown[] | null {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== "object") return null;
   const d = data as Record<string, unknown>;
-  return Array.isArray(d["risks"]) && typeof d["total"] === "number";
+  if (Array.isArray(d["risks"])) return d["risks"];
+  if (Array.isArray(d["items"])) return d["items"];
+  if (Array.isArray(d["data"])) return d["data"];
+  return null;
+}
+
+async function readErrorSnippet(response: Response): Promise<string> {
+  try {
+    const text = (await response.text()).replace(/\s+/g, " ").trim();
+    return text.slice(0, 300);
+  } catch {
+    return "";
+  }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -233,96 +295,132 @@ export async function fetchRisksFromRI(
     return null;
   }
 
-  let url: string;
-  try {
-    url = buildExportUrl(baseUrl, params);
-  } catch {
-    logger.warn("ri.fetch.failed", {
-      service: "risk-intellect-client",
-      event: "ri.fetch.failed",
-      reason: "invalid-base-url",
-      durationMs: 0,
-    });
-    return null;
-  }
+  const headers = riAuthHeaders(apiKey);
   const startMs = Date.now();
+  let lastUrl = "";
+  let lastStatus: number | undefined;
+  let lastBody = "";
 
-  let response: Response;
-  try {
-    response = await fetchWithRetry(url, { "X-API-Key": apiKey });
-  } catch {
-    logger.warn("ri.fetch.failed", {
+  for (const path of RI_RISK_PATHS) {
+    const queryParams: RiExportParams =
+      path === "/api/v1/risks" ? {} : params;
+    let url: string;
+    try {
+      url = buildExportUrl(baseUrl, queryParams, path);
+    } catch {
+      continue;
+    }
+    lastUrl = url;
+
+    let response: Response;
+    try {
+      response = await fetchWithRetry(url, headers);
+    } catch {
+      const durationMs = Date.now() - startMs;
+      logger.warn("ri.fetch.failed", {
+        service: "risk-intellect-client",
+        event: "ri.fetch.failed",
+        reason: "network-error",
+        durationMs,
+      });
+      console.warn("[RI] fetch failed", { reason: "network-error", durationMs, url });
+      continue;
+    }
+
+    if (!response.ok) {
+      lastStatus = response.status;
+      lastBody = await readErrorSnippet(response);
+      logger.warn("ri.fetch.failed", {
+        service: "risk-intellect-client",
+        event: "ri.fetch.failed",
+        reason: "http-error",
+        status: response.status,
+        durationMs: Date.now() - startMs,
+      });
+      console.warn("[RI] fetch failed", {
+        reason: "http-error",
+        status: response.status,
+        durationMs: Date.now() - startMs,
+        url,
+        body: lastBody || undefined,
+      });
+      if (response.status === 401 || response.status === 403) {
+        break;
+      }
+      continue;
+    }
+
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch {
+      console.warn("[RI] fetch failed", {
+        reason: "parse-error",
+        durationMs: Date.now() - startMs,
+        url,
+      });
+      continue;
+    }
+
+    const rawRisks = extractRisksArray(data);
+    if (!rawRisks) {
+      console.warn("[RI] fetch failed", {
+        reason: "invalid-shape",
+        durationMs: Date.now() - startMs,
+        url,
+      });
+      continue;
+    }
+
+    const payload = data as Record<string, unknown>;
+    const allRisks = rawRisks
+      .map((r) => normalizeRiRisk(r))
+      .filter((r): r is RiRiskExportDto => r != null);
+    const normalizedRisks =
+      typeof params.limit === "number" && params.limit > 0
+        ? allRisks.slice(0, params.limit)
+        : allRisks;
+
+    const normalized: RiExportResult = {
+      risks: normalizedRisks,
+      total: typeof payload.total === "number" ? payload.total : normalizedRisks.length,
+      limit:
+        typeof payload.limit === "number"
+          ? payload.limit
+          : params.limit ?? normalizedRisks.length,
+      minQuality: typeof payload.minQuality === "number" ? payload.minQuality : 0,
+      domains: Array.isArray(payload.domains) ? (payload.domains as string[]) : null,
+    };
+
+    logger.info("ri.fetch.success", {
       service: "risk-intellect-client",
-      event: "ri.fetch.failed",
-      reason: "network-error",
+      event: "ri.fetch.success",
+      count: normalized.risks.length,
+      path,
+      hasSector: !!params.sector,
       durationMs: Date.now() - startMs,
     });
-    return null;
-  }
-
-  if (!response.ok) {
-    logger.warn("ri.fetch.failed", {
-      service: "risk-intellect-client",
-      event: "ri.fetch.failed",
-      reason: "http-error",
-      status: response.status,
-      durationMs: Date.now() - startMs,
+    console.log("[type-01 VTS] AI Risk Intellect export (L/I per risk)", {
+      count: normalized.risks.length,
+      path,
+      sector: params.sector ?? null,
+      scores: normalized.risks.map((r) => ({
+        catalogMatchId: r.catalogMatchId,
+        riskTitle: r.riskTitle,
+        likelihood: r.likelihood,
+        impact: r.impact,
+        severity: r.severity,
+      })),
     });
-    return null;
+    return normalized;
   }
 
-  let data: unknown;
-  try {
-    data = await response.json();
-  } catch {
-    logger.warn("ri.fetch.failed", {
-      service: "risk-intellect-client",
-      event: "ri.fetch.failed",
-      reason: "parse-error",
-      durationMs: Date.now() - startMs,
-    });
-    return null;
-  }
-
-  if (!isRiExportResult(data)) {
-    logger.warn("ri.fetch.failed", {
-      service: "risk-intellect-client",
-      event: "ri.fetch.failed",
-      reason: "invalid-shape",
-      durationMs: Date.now() - startMs,
-    });
-    return null;
-  }
-
-  const normalizedRisks = data.risks
-    .map((r) => normalizeRiRisk(r))
-    .filter((r): r is RiRiskExportDto => r != null);
-
-  const normalized: RiExportResult = {
-    risks: normalizedRisks,
-    total: typeof data.total === "number" ? data.total : normalizedRisks.length,
-    limit: typeof data.limit === "number" ? data.limit : params.limit ?? normalizedRisks.length,
-    minQuality: typeof data.minQuality === "number" ? data.minQuality : 0,
-    domains: Array.isArray(data.domains) ? (data.domains as string[]) : null,
-  };
-
-  logger.info("ri.fetch.success", {
-    service: "risk-intellect-client",
-    event: "ri.fetch.success",
-    count: normalized.risks.length,
-    hasSector: !!params.sector,
+  console.warn("[RI] fetch failed", {
+    reason: "all-paths-exhausted",
+    status: lastStatus,
     durationMs: Date.now() - startMs,
+    url: lastUrl,
+    body: lastBody || undefined,
   });
-  console.log("[type-01 VTS] AI Risk Intellect export (L/I per risk)", {
-    count: normalized.risks.length,
-    sector: params.sector ?? null,
-    scores: normalized.risks.map((r) => ({
-      catalogMatchId: r.catalogMatchId,
-      riskTitle: r.riskTitle,
-      likelihood: r.likelihood,
-      impact: r.impact,
-      severity: r.severity,
-    })),
-  });
-  return normalized;
+  return null;
 }

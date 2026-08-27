@@ -15,6 +15,14 @@ function parseOrgId(value: unknown): number | null {
   return id;
 }
 
+function parseActorUserId(req: Request): number | null {
+  const payload = req.user as { id?: number; userId?: string | number } | undefined;
+  const rawId = payload?.id ?? payload?.userId;
+  const userId = rawId != null ? Number(rawId) : NaN;
+  if (!Number.isInteger(userId) || userId < 1) return null;
+  return userId;
+}
+
 function parseIsoDate(value: unknown, fallback: Date): Date {
   if (typeof value !== "string" || !value.trim()) return fallback;
   const parsed = new Date(`${value.trim()}T00:00:00.000Z`);
@@ -133,6 +141,7 @@ export async function putOrgTokenConfigHandler(
       feature: body.feature,
       inputTokenQuota: asNonNegInt(body.inputTokenQuota),
       outputTokenQuota: asNonNegInt(body.outputTokenQuota),
+      allocatedBy: parseActorUserId(req),
       users,
     });
     if (!data) {
