@@ -563,8 +563,6 @@ const Assessments = () => {
   const [vendorArchivedCardPage, setVendorArchivedCardPage] = useState(1);
   const [assessmentCardPageSize, setAssessmentCardPageSize] = useState(10);
 
-  const LOADER_MIN_MS = 2500; // show loader at least 2–3 seconds
-
   useEffect(() => {
     setVendorCardPage(1);
     setBuyerCardPage(1);
@@ -587,17 +585,19 @@ const Assessments = () => {
       setLoading(false);
       return;
     }
-    const startTime = Date.now();
     const organizationId = sessionStorage.getItem("organizationId");
     const query = organizationId
       ? `?organizationId=${encodeURIComponent(organizationId)}`
       : "";
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
     fetch(`${BASE_URL}/assessments${query}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
+      signal: controller.signal,
     })
       .then((res) => {
         return res.json().then((result) => {
@@ -618,9 +618,8 @@ const Assessments = () => {
         setAssessmentsList([]);
       })
       .finally(() => {
-        const elapsed = Date.now() - startTime;
-        const remaining = Math.max(0, LOADER_MIN_MS - elapsed);
-        setTimeout(() => setLoading(false), remaining);
+        window.clearTimeout(timeoutId);
+        setLoading(false);
       });
   }, []);
 

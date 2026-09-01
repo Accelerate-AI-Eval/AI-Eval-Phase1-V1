@@ -1035,15 +1035,13 @@ const MyVendors = () => {
   const [vendorListLoading, setVendorListLoading] = useState(false);
   const [detailReportLoading, setDetailReportLoading] = useState(false);
   const [detailMapLoading, setDetailMapLoading] = useState(false);
-  const [hasSettledOnce, setHasSettledOnce] = useState(false);
   const assessmentOptionsRef = useRef<{ label: string; value: string }[]>([]);
 
   const listsLoading = assessmentsLoading || (isVendorPortal && vendorListLoading);
   const detailLoading =
     Boolean(selectedAssessmentId) &&
     (isVendorPortal ? detailReportLoading : detailReportLoading || detailMapLoading);
-  /** One continuous loader on first entry — avoids list loader then assessment loader flash */
-  const pageLoading = !hasSettledOnce;
+  const pageLoading = listsLoading;
 
   const buyerFrameworkRows = useMemo(
     () =>
@@ -1094,24 +1092,6 @@ const MyVendors = () => {
   }, [assessments, isVendorPortal, vendorAssessmentIdsWithReport]);
 
   assessmentOptionsRef.current = completedActiveAssessmentOptions;
-
-  useEffect(() => {
-    if (hasSettledOnce) return;
-    if (listsLoading) return;
-    if (completedActiveAssessmentOptions.length === 0) {
-      setHasSettledOnce(true);
-      return;
-    }
-    if (selectedAssessmentId && !detailLoading) {
-      setHasSettledOnce(true);
-    }
-  }, [
-    hasSettledOnce,
-    listsLoading,
-    completedActiveAssessmentOptions.length,
-    selectedAssessmentId,
-    detailLoading,
-  ]);
 
   useEffect(() => {
     const token = sessionStorage.getItem("bearerToken");
@@ -1292,6 +1272,8 @@ const MyVendors = () => {
     }
     const currentAssessmentId = selectedAssessmentId;
     const controller = new AbortController();
+    let ignore = false;
+    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
     setDetailReportLoading(true);
     fetch(`${BASE_URL}/buyerCotsAssessment/${encodeURIComponent(currentAssessmentId)}/vendor-risk-report`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -1336,9 +1318,14 @@ const MyVendors = () => {
         setBuyerFrameworkRowsFromReport([]);
       })
       .finally(() => {
-        if (!controller.signal.aborted) setDetailReportLoading(false);
+        window.clearTimeout(timeoutId);
+        if (!ignore) setDetailReportLoading(false);
       });
-    return () => controller.abort();
+    return () => {
+      ignore = true;
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [selectedAssessmentId, isVendorPortal]);
 
   useEffect(() => {
@@ -1356,6 +1343,8 @@ const MyVendors = () => {
     }
     const currentAssessmentId = selectedAssessmentId;
     const controller = new AbortController();
+    let ignore = false;
+    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
     setDetailMapLoading(true);
     fetch(`${BASE_URL}/buyerCotsAssessment/${encodeURIComponent(currentAssessmentId)}/risk-mappings`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -1390,9 +1379,14 @@ const MyVendors = () => {
         setBuyerFrameworkRowsFromRiskMap([]);
       })
       .finally(() => {
-        if (!controller.signal.aborted) setDetailMapLoading(false);
+        window.clearTimeout(timeoutId);
+        if (!ignore) setDetailMapLoading(false);
       });
-    return () => controller.abort();
+    return () => {
+      ignore = true;
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [selectedAssessmentId, isVendorPortal]);
 
   const riskItems = useMemo(

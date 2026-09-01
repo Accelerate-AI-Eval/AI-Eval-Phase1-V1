@@ -44,8 +44,13 @@ import type {
 } from "../../frameworkMapping/FrameworkMappingCardGrid"
 import { sanitizeFrameworkMappingNotesForDisplay } from "../../../utils/frameworkMappingNotesDisplay"
 import { formatFrameworkMappingFrameworkForDisplay } from "../../../utils/frameworkMappingFrameworkDisplay"
-import { riskRowsToSummaryPoints, stringsToSummaryPoints } from "../../../utils/summarizeRiskPoints"
+import {
+  ensureSpaceAfterColon,
+  riskRowsToSummaryPoints,
+  stringsToSummaryPoints,
+} from "../../../utils/summarizeRiskPoints"
 import LoadingMessage from "../../UI/LoadingMessage"
+import { ShowMoreList, ShowMoreText } from "../../UI/ShowMoreText"
 import {
   buildReportPdfFilename,
   downloadElementAsPdf,
@@ -347,14 +352,16 @@ function formatRoiTimeSavedSourceLine(val: unknown): string {
 
 /** Remove markdown bold (**) and horizontal rules (---) from report text so they are not shown in the UI. */
 function stripMarkdownArtifacts(s: string): string {
-  return String(s)
-    .replace(/\*\*/g, "")
-    .replace(/^[ \t]*-{3,}[ \t]*$/gm, "")
-    .replace(/\s*-{3,}\s*/g, " ")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim()
+  return ensureSpaceAfterColon(
+    String(s)
+      .replace(/\*\*/g, "")
+      .replace(/^[ \t]*-{3,}[ \t]*$/gm, "")
+      .replace(/\s*-{3,}\s*/g, " ")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim(),
+  )
 }
 
 /** @deprecated use stripMarkdownArtifacts */
@@ -688,7 +695,7 @@ function mitigationLinesForRow(
     const bot = m.mitigation_summary_points
     if (Array.isArray(bot) && bot.length > 0) {
       for (const pt of bot) {
-        const line = String(pt ?? "").trim()
+        const line = ensureSpaceAfterColon(String(pt ?? "").trim())
         if (line.length > 1) lines.push(line)
       }
       continue
@@ -1174,7 +1181,7 @@ function ReportDetail() {
 
   if (loading) {
     return (
-      <div className="sec_user_page org_settings_page reports_page report_detail_page">
+      <div className="sec_user_page org_settings_page reports_page report_detail_page report_assessment_layout">
         <LoadingMessage message="Loading report…" className="loading_message_wrapper--page" />
       </div>
     )
@@ -1182,7 +1189,7 @@ function ReportDetail() {
 
   if (notFound || !report) {
     return (
-      <div className="sec_user_page org_settings_page reports_page report_detail_page">
+      <div className="sec_user_page org_settings_page reports_page report_detail_page report_assessment_layout">
         <div className="report_detail_empty">
           <h2 className="report_detail_empty_title">Report not found</h2>
           <p className="report_detail_empty_text">This report does not exist or has been removed.</p>
@@ -1514,15 +1521,21 @@ function ReportDetail() {
               const text = stripMarkdownBold(generated.executiveSummary)
                 .trim();
               return text
-                ? text
+                ? (
+                  <ShowMoreText lines={6}>
+                    {text
                     .split(/\n\n/)
                     .map((p) => stripMarkdownBold(p).trim())
                     .filter((p) => p.length > 0 && !/^\s*-{2,}\s*$/.test(p))
-                    .map((p, i) => <p key={i}>{p}</p>)
+                    .map((p, i) => <p key={i}>{p}</p>)}
+                  </ShowMoreText>
+                )
                 : <p>No executive summary generated.</p>;
             })()
           ) : generated?.summary ? (
-            <p>{stripMarkdownBold(String(generated.summary)).trim()}</p>
+            <ShowMoreText lines={6}>
+              <p>{stripMarkdownBold(String(generated.summary)).trim()}</p>
+            </ShowMoreText>
           ) : (
             <p>No executive summary generated.</p>
           )}
@@ -2069,13 +2082,16 @@ function ReportDetail() {
                               <p className="bvr_reco_desc report_impl_plan_activities_label">
                                 <strong>Activities</strong>
                               </p>
-                              <ul className="report_impl_phase_list">
-                                {phase.activities?.length ? (
-                                  phase.activities.map((a, j) => <li key={j}>{formatReportValue(a)}</li>)
-                                ) : (
-                                  <li>—</li>
-                                )}
-                              </ul>
+                              <ShowMoreList
+                                items={
+                                  phase.activities?.length
+                                    ? phase.activities.map((a) => formatReportValue(a))
+                                    : []
+                                }
+                                previewCount={3}
+                                empty="—"
+                                className="report_impl_phase_list"
+                              />
                             </>
                           ) : null}
                         </div>
@@ -2089,12 +2105,18 @@ function ReportDetail() {
                           role="cell"
                         >
                           {phase ? (
-                            <p className="bvr_reco_desc report_impl_plan_slot">
-                              <strong>Deliverables:</strong>{" "}
-                              {phase.deliverables?.length
-                                ? phase.deliverables.map((d) => formatReportValue(d)).join(", ")
-                                : "—"}
-                            </p>
+                            <>
+                              <p className="bvr_reco_desc report_impl_plan_slot">
+                                <strong>Deliverables:</strong>
+                              </p>
+                              <ShowMoreText lines={3}>
+                                <p className="bvr_reco_desc" style={{ margin: 0 }}>
+                                  {phase.deliverables?.length
+                                    ? phase.deliverables.map((d) => formatReportValue(d)).join(", ")
+                                    : "—"}
+                                </p>
+                              </ShowMoreText>
+                            </>
                           ) : null}
                         </div>
                       ))}
@@ -2114,7 +2136,9 @@ function ReportDetail() {
           Competitive Positioning and Recommendations
         </h2>
         <div className="report_competitive_positioning_block">
-          <p className="bvr_exec_text">{competitivePositioningDisplay}</p>
+          <ShowMoreText lines={5}>
+            <p className="bvr_exec_text">{competitivePositioningDisplay}</p>
+          </ShowMoreText>
         </div>
         <h3 className="report_recommendations_subheading bvr_title_with_icon">
           <User size={20} className="bvr_title_icon" aria-hidden />
@@ -2144,7 +2168,9 @@ function ReportDetail() {
                     highRecommendations.map((rec, i) => (
                       <article key={`high-${i}`} className="bvr_reco_priority_item">
                         <h3 className="bvr_reco_title">{formatReportValue(rec.title)}</h3>
-                        <p className="bvr_reco_desc">{formatReportValue(rec.description)}</p>
+                        <ShowMoreText lines={4}>
+                          <p className="bvr_reco_desc">{formatReportValue(rec.description)}</p>
+                        </ShowMoreText>
                         <p className="bvr_reco_time">
                           <strong>Timeline:</strong> {formatReportValue(rec.timeline)}
                         </p>
@@ -2159,7 +2185,9 @@ function ReportDetail() {
                     mediumRecommendations.map((rec, i) => (
                       <article key={`medium-${i}`} className="bvr_reco_priority_item">
                         <h3 className="bvr_reco_title">{formatReportValue(rec.title)}</h3>
-                        <p className="bvr_reco_desc">{formatReportValue(rec.description)}</p>
+                        <ShowMoreText lines={4}>
+                          <p className="bvr_reco_desc">{formatReportValue(rec.description)}</p>
+                        </ShowMoreText>
                         <p className="bvr_reco_time">
                           <strong>Timeline:</strong> {formatReportValue(rec.timeline)}
                         </p>
@@ -2174,7 +2202,9 @@ function ReportDetail() {
                     lowRecommendations.map((rec, i) => (
                       <article key={`low-${i}`} className="bvr_reco_priority_item">
                         <h3 className="bvr_reco_title">{formatReportValue(rec.title)}</h3>
-                        <p className="bvr_reco_desc">{formatReportValue(rec.description)}</p>
+                        <ShowMoreText lines={4}>
+                          <p className="bvr_reco_desc">{formatReportValue(rec.description)}</p>
+                        </ShowMoreText>
                         <p className="bvr_reco_time">
                           <strong>Timeline:</strong> {formatReportValue(rec.timeline)}
                         </p>

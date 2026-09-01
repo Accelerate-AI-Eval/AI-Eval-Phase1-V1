@@ -23,6 +23,7 @@ import {
   Workflow,
 } from "lucide-react";
 import LoadingMessage from "../../UI/LoadingMessage";
+import { ShowMoreList, ShowMoreText } from "../../UI/ShowMoreText";
 import {
   AdminLlmModelLabel,
   resolveStoredLlmModelId,
@@ -32,6 +33,7 @@ import {
   downloadElementAsPdf,
   splitAssessmentLabelForPdf,
 } from "../../../utils/reportPdfExport";
+import { ensureSpaceAfterColon } from "../../../utils/summarizeRiskPoints";
 import { getReportTypeDisplayLabel } from "./reportTypes";
 import VendorComparisonMatrixReportBody, {
   parseVendorComparisonMatrixJson,
@@ -45,6 +47,9 @@ import ImplementationRiskAssessmentReportBody, {
 import MitigationActionPlanReportBody, {
   parseMitigationActionPlanJson,
 } from "./MitigationActionPlanReportBody";
+import ImplementationRoadmapProposalReportBody, {
+  parseImplementationRoadmapProposal,
+} from "./ImplementationRoadmapProposalReportBody";
 import "../UserManagement/user_management.css";
 import "../Assessments/assessments.css";
 import "./reports.css";
@@ -139,6 +144,22 @@ function getBriefSectionDisplay(title: string): { displayTitle: string; Icon: Re
   return { displayTitle: titleNoNumber || trimmed, Icon: FileCheck };
 }
 
+function normalizeHeadingForCompare(value: string): string {
+  return stripSectionNumber(value)
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** LLM often emits the report type as the first markdown heading; the page header already shows it. */
+function isReportTypeNameHeading(sectionTitle: string, displayTitle: string, reportType: string): boolean {
+  const reportName = normalizeHeadingForCompare(getReportTypeDisplayLabel(reportType));
+  const raw = normalizeHeadingForCompare(sectionTitle);
+  const shown = normalizeHeadingForCompare(displayTitle);
+  if (!reportName) return false;
+  return raw === reportName || shown === reportName;
+}
+
 /** Parse brief content into sections by markdown headings (#–######). */
 function parseBriefContent(briefContent: string): BriefSection[] {
   const sections: BriefSection[] = [];
@@ -172,22 +193,24 @@ function parseBriefContent(briefContent: string): BriefSection[] {
 
 /** Remove markdown markers (*, **, #, ---) so they are not shown in the UI. */
 function stripMarkdownArtifacts(s: string): string {
-  return String(s ?? "")
-    .replace(/\*\*([^*]*)\*\*/g, "$1")
-    .replace(/\*([^*]*)\*/g, "$1")
-    .replace(/__([^_]*)__/g, "$1")
-    .replace(/`([^`]*)`/g, "$1")
-    .replace(/\*\*/g, "")
-    .replace(/\*/g, "")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/(^|\s)#{1,6}(?=\s|$)/g, "$1")
-    .replace(/#{2,}/g, "")
-    .replace(/^[ \t]*-{3,}[ \t]*$/gm, "")
-    .replace(/\s*-{3,}\s*/g, " ")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
+  return ensureSpaceAfterColon(
+    String(s ?? "")
+      .replace(/\*\*([^*]*)\*\*/g, "$1")
+      .replace(/\*([^*]*)\*/g, "$1")
+      .replace(/__([^_]*)__/g, "$1")
+      .replace(/`([^`]*)`/g, "$1")
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/(^|\s)#{1,6}(?=\s|$)/g, "$1")
+      .replace(/#{2,}/g, "")
+      .replace(/^[ \t]*-{3,}[ \t]*$/gm, "")
+      .replace(/\s*-{3,}\s*/g, " ")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim(),
+  );
 }
 
 /** Remove "[Assumption]" from executive brief body text for display. */
@@ -210,6 +233,322 @@ function isTopRisksSectionTitle(title: string): boolean {
 
 function isOwnershipMatrixSectionTitle(title: string): boolean {
   return /^ownership\s+matrix\b/i.test(stripSectionNumber(title));
+}
+
+function isRecommendedActionsSectionTitle(title: string): boolean {
+  return /^recommended\s+actions\b/i.test(stripSectionNumber(title));
+}
+
+function isCustomerContextSectionTitle(title: string): boolean {
+  return /^customer\s+context\b/i.test(stripSectionNumber(title));
+}
+
+function isMitigationsPerRiskSectionTitle(title: string): boolean {
+  return /^mitigations\s+per\s+risk\b/i.test(stripSectionNumber(title));
+}
+
+function isPhasingSectionTitle(title: string): boolean {
+  return /^phasing\b/i.test(stripSectionNumber(title));
+}
+
+function isPhaseStageTitle(title: string): boolean {
+  const t = stripSectionNumber(title).replace(/:$/, "").trim();
+  return /^(pre[-\s]?deploy|deploy|post[-\s]?go[-\s]?live)$/i.test(t);
+}
+
+function normalizePhaseStageLabel(label: string): string {
+  const s = stripSectionNumber(label).replace(/:$/, "").trim().toLowerCase();
+  if (s.startsWith("pre")) return "Pre-deploy";
+  if (s.startsWith("post")) return "Post-go-live";
+  return "Deploy";
+}
+
+function mergeCrmPhaseSections(sections: BriefSection[]): BriefSection[] {
+  const out: BriefSection[] = [];
+  for (const section of sections) {
+    if (!isPhaseStageTitle(section.title)) {
+      out.push({ title: section.title, body: section.body });
+      continue;
+    }
+    const block = `**${normalizePhaseStageLabel(section.title)}:**\n${section.body}`.trim();
+    const last = out[out.length - 1];
+    if (last && isPhasingSectionTitle(last.title)) {
+      last.body = last.body ? `${last.body}\n${block}` : block;
+    } else {
+      out.push({ title: "Phasing", body: block });
+    }
+  }
+  return out;
+}
+
+function isValidationCriteriaSectionTitle(title: string): boolean {
+  return /^validation\s+criteria\b/i.test(stripSectionNumber(title));
+}
+
+type CrmLabeledItem = { label: string; value: string };
+
+function splitCrmValueItems(value: string): string[] {
+  const t = stripMarkdownArtifacts(value).trim();
+  if (!t) return [];
+  if (/[;\n]/.test(t)) {
+    return t
+      .split(/[\n;]+/)
+      .map((part) => stripMarkdownArtifacts(part).replace(/^[-–—]\s*/, "").trim())
+      .filter(Boolean);
+  }
+  return [t];
+}
+
+function parseCrmLabeledItems(body: string): CrmLabeledItem[] {
+  const items: CrmLabeledItem[] = [];
+  for (const line of body.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || isMarkdownTableRow(trimmed) || isMarkdownTableSeparator(trimmed)) continue;
+    const bulletless = stripMarkdownArtifacts(trimmed.replace(/^\s*[-*]\s+/, ""));
+    if (!bulletless) continue;
+    const match = bulletless.match(/^([^:]{1,80}):\s*(.*)$/);
+    if (match) {
+      const label = match[1].replace(/^for\s+/i, "").trim();
+      items.push({ label, value: match[2].trim() });
+    } else if (items.length > 0) {
+      const prev = items[items.length - 1];
+      prev.value = prev.value ? `${prev.value}; ${bulletless}` : bulletless;
+    }
+  }
+  return items.filter((item) => item.label);
+}
+
+function renderCrmLabeledFields(items: CrmLabeledItem[], sectionKey: string): React.ReactNode {
+  return (
+    <dl className="report_crm_fields">
+      {items.map((item, i) => {
+        const values = splitCrmValueItems(item.value);
+        return (
+          <div key={`${sectionKey}-crm-${i}`} className="report_crm_field">
+            <dt>{item.label}</dt>
+            <dd>
+              {values.length > 1 ? (
+                <ul className="report_crm_field_list">
+                  {values.map((v, vi) => (
+                    <li key={`${sectionKey}-crm-${i}-${vi}`}>{v}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="report_crm_field_text">{values[0] || "—"}</p>
+              )}
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
+
+function isCrmRiskLabel(label: string): boolean {
+  return /^(for\s+)?risk(\s*\d+)?$/i.test(label.trim());
+}
+
+function isCrmNoteLabel(label: string): boolean {
+  return /^notes?\b/i.test(label.trim());
+}
+
+function isCrmNoteText(text: string): boolean {
+  return /^(notes?\b)/i.test(text.trim()) || /\balready covered\b/i.test(text);
+}
+
+function stripCrmNotePrefix(text: string): string {
+  return text.replace(/^notes?\s*[:–—-]\s*/i, "").trim();
+}
+
+type CrmMitigationBlock = {
+  title: string;
+  text: string;
+};
+
+type CrmMitigationCard = {
+  risk: string;
+  blocks: CrmMitigationBlock[];
+  note: string;
+};
+
+function emptyMitigationCard(): CrmMitigationCard {
+  return { risk: "", blocks: [], note: "" };
+}
+
+function appendMitigationNote(card: CrmMitigationCard, text: string) {
+  const cleaned = stripCrmNotePrefix(text);
+  if (!cleaned) return;
+  card.note = card.note ? `${card.note} ${cleaned}` : cleaned;
+}
+
+function applyRiskItemToCard(card: CrmMitigationCard, item: CrmLabeledItem) {
+  const parts = splitCrmValueItems(item.value);
+  const noteParts = parts.filter(isCrmNoteText);
+  const otherParts = parts.filter((p) => !isCrmNoteText(p));
+  const riskName = item.label.replace(/^for\s+/i, "").trim();
+  const numberedRisk = /^risk\s*\d+$/i.test(riskName);
+
+  noteParts.forEach((n) => appendMitigationNote(card, n));
+
+  if (numberedRisk) {
+    card.risk = riskName;
+    otherParts.forEach((text) => card.blocks.push({ title: "Mitigation", text }));
+    return;
+  }
+
+  card.risk = otherParts[0] || riskName;
+  otherParts.slice(1).forEach((text) => card.blocks.push({ title: "Mitigation", text }));
+}
+
+function parseCrmMitigationCards(body: string): CrmMitigationCard[] {
+  const labeled = parseCrmLabeledItems(body);
+  const cards: CrmMitigationCard[] = [];
+  let current: CrmMitigationCard | null = null;
+
+  const startCard = () => {
+    current = emptyMitigationCard();
+    cards.push(current);
+    return current;
+  };
+
+  for (const item of labeled) {
+    if (isCrmRiskLabel(item.label)) {
+      current = startCard();
+      applyRiskItemToCard(current, item);
+      continue;
+    }
+    if (!current) current = startCard();
+    if (isCrmNoteLabel(item.label) || isCrmNoteText(item.value)) {
+      appendMitigationNote(current, item.value || item.label);
+      current = null;
+      continue;
+    }
+    current.blocks.push({
+      title: item.label,
+      text: item.value,
+    });
+  }
+
+  return cards.filter((card) => card.risk || card.blocks.length || card.note);
+}
+
+function renderCrmMitigationCards(body: string, sectionKey: string): React.ReactNode {
+  const resolved = parseCrmMitigationCards(body);
+  if (resolved.length === 0) {
+    return <p className="report_crm_mitigation_text">Not specified</p>;
+  }
+
+  return (
+    <div className="report_crm_mitigation_grid">
+      {resolved.map((card, i) => (
+        <article key={`${sectionKey}-mit-${i}`} className="report_crm_mitigation_card">
+          <div className="report_crm_mitigation_block">
+            <span className="report_crm_mitigation_kicker">Risk</span>
+            <p className="report_crm_mitigation_title">{card.risk || "—"}</p>
+          </div>
+          {card.blocks.map((block, bi) => (
+            <div key={`${sectionKey}-mit-${i}-b-${bi}`} className="report_crm_mitigation_block">
+              <span className="report_crm_mitigation_kicker">{block.title}</span>
+              <p className="report_crm_mitigation_text">{block.text || "—"}</p>
+            </div>
+          ))}
+          {card.note ? (
+            <div className="report_crm_mitigation_block report_crm_mitigation_block_note">
+              <span className="report_crm_mitigation_kicker">Note</span>
+              <p className="report_crm_mitigation_note_text">{card.note}</p>
+            </div>
+          ) : null}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function renderCrmValidationCards(items: CrmLabeledItem[], sectionKey: string): React.ReactNode {
+  return (
+    <div className="report_crm_validation_grid">
+      {items.map((item, i) => {
+        const bodyText = splitCrmValueItems(item.value).join(" ") || "—";
+        return (
+          <article key={`${sectionKey}-val-${i}`} className="report_crm_validation_card">
+            <h4 className="report_crm_validation_title">{item.label}</h4>
+            <ShowMoreText lines={4} className="report_crm_validation_show_more">
+              {bodyText}
+            </ShowMoreText>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function parseCrmPhasingFromBody(body: string): { label: string; bullets: string[] }[] {
+  const stages: { label: string; bullets: string[] }[] = [];
+  let current: { label: string; bullets: string[] } | null = null;
+
+  const startStage = (label: string) => {
+    current = { label: normalizePhaseStageLabel(label), bullets: [] };
+    stages.push(current);
+    return current;
+  };
+
+  for (const line of body.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const bulletless = stripMarkdownArtifacts(
+      trimmed.replace(/^#{1,6}\s+/, "").replace(/^\s*[-*]\s+/, ""),
+    );
+    if (!bulletless) continue;
+
+    const stageMatch = bulletless.match(
+      /^(pre[-\s]?deploy|deploy|post[-\s]?go[-\s]?live)\s*:?\s*(.*)$/i,
+    );
+    const looksLikeStageHeading =
+      !!stageMatch &&
+      (/^#{1,6}\s+/.test(trimmed) ||
+        /^\*\*/.test(trimmed.replace(/^\s*[-*]\s+/, "")) ||
+        /^(pre[-\s]?deploy|deploy|post[-\s]?go[-\s]?live)\s*:?\s*$/i.test(bulletless) ||
+        (/^(pre[-\s]?deploy|deploy|post[-\s]?go[-\s]?live)\s*:/i.test(bulletless) &&
+          (stageMatch?.[2] ?? "").trim().length < 80));
+
+    if (stageMatch && looksLikeStageHeading) {
+      const stage = startStage(stageMatch[1]);
+      const rest = (stageMatch[2] ?? "").trim();
+      if (rest) stage.bullets.push(rest);
+      continue;
+    }
+
+    if (!current) current = startStage("Pre-deploy");
+    current.bullets.push(bulletless);
+  }
+
+  return stages.filter((stage) => stage.bullets.length > 0 || Boolean(stage.label));
+}
+
+function renderCrmPhasing(body: string, sectionKey: string): React.ReactNode {
+  const stages = parseCrmPhasingFromBody(body);
+  if (stages.length === 0) {
+    return <p className="report_crm_field_text">Not specified</p>;
+  }
+  return (
+    <div
+      className="report_crm_phase_grid"
+      style={{ ["--crm-phase-cols" as string]: String(Math.max(1, stages.length)) }}
+    >
+      {stages.map((stage, i) => (
+        <article key={`${sectionKey}-phase-${i}`} className="report_crm_phase_col">
+          <span className="report_crm_phase_index">{String(i + 1).padStart(2, "0")}</span>
+          <h4 className="report_crm_phase_label">{stage.label}</h4>
+          <ShowMoreList
+            items={stage.bullets}
+            previewCount={5}
+            empty="—"
+            className="report_crm_phase_list"
+          />
+        </article>
+      ))}
+    </div>
+  );
 }
 
 function isMarkdownTableRow(line: string): boolean {
@@ -399,39 +738,30 @@ function renderBriefLine(
     const isBlocker = isTopBlockersSectionTitle(sectionTitle);
     const labelRegex = isBlocker ? /^blocker:\s*/i : /^risk:\s*/i;
     const prefixMatch = main.match(labelRegex);
-    const label = prefixMatch?.[0]?.trim() ?? "";
     const body = prefixMatch ? main.slice(prefixMatch[0].length).trim() : main;
+    const titleText = (body || main).trim();
+    const sevClass = severity ? severityClassName(severity) : "";
     return (
       <li key={key} className="report_exec_brief_bullet report_blocker_item report_risk_like_item">
-        <div className="report_blocker_main">
-          {prefixMatch ? (
-            <>
-              <strong>{label}</strong>{body ? ` ${body}` : ""}
-            </>
-          ) : (
-            main
-          )}
+        <div className="report_blocker_topline">
+          <p className="report_blocker_main">{titleText}</p>
+          {severity ? (
+            <span className={`report_blocker_sev_pill ${sevClass}`}>{severity}</span>
+          ) : null}
         </div>
-        {(severity || likelihood || impact || evidence) ? (
-          <div className="report_blocker_meta">
-            {severity ? (
-              <span className="report_blocker_metric">
-                Severity: <span className={`report_blocker_metric_value ${severityClassName(severity)}`}>{severity}</span>
-              </span>
-            ) : null}
+        {likelihood || impact || evidence ? (
+          <div className="report_blocker_facts">
             {likelihood ? (
-              <span className="report_blocker_metric">
-                Likelihood: <span className={`report_blocker_metric_value ${severityClassName(likelihood)}`}>{likelihood}</span>
+              <span>
+                Likelihood <strong>{likelihood}</strong>
               </span>
             ) : null}
             {impact ? (
-              <span className="report_blocker_metric">
-                Impact: <span className={`report_blocker_metric_value ${severityClassName(impact)}`}>{impact}</span>
+              <span>
+                Impact <strong>{impact}</strong>
               </span>
             ) : null}
-            {evidence ? (
-              <span className="report_blocker_evidence">Evidence: {evidence}</span>
-            ) : null}
+            {evidence ? <span className="report_blocker_evidence">{evidence}</span> : null}
           </div>
         ) : null}
       </li>
@@ -445,6 +775,7 @@ function renderBriefLine(
   remaining = remaining.replace(/^#{1,6}\s+/, "").trim();
   // Remove leftover markdown horizontal rules from the line
   remaining = remaining.replace(/\s*-{3,}\s*/g, " ").trim();
+  remaining = ensureSpaceAfterColon(remaining);
   if (!remaining) return null;
   const boldRegex = /\*\*([^*]+)\*\*/g;
   let lastIndex = 0;
@@ -459,6 +790,10 @@ function renderBriefLine(
       </strong>,
     );
     lastIndex = match.index + match[0].length;
+    const afterBold = remaining.slice(lastIndex);
+    if (match[1].trim().endsWith(":") && afterBold && !/^\s/.test(afterBold)) {
+      parts.push(" ");
+    }
   }
   if (lastIndex < remaining.length) {
     parts.push(stripMarkdownArtifacts(remaining.slice(lastIndex)));
@@ -479,6 +814,27 @@ function renderBriefBody(
 ): React.ReactNode {
   if (isOwnershipMatrixSectionTitle(sectionTitle)) {
     return renderOwnershipMatrixTable(body, sectionKey);
+  }
+
+  if (isPhasingSectionTitle(sectionTitle)) {
+    return renderCrmPhasing(body, sectionKey);
+  }
+
+  if (
+    isCustomerContextSectionTitle(sectionTitle) ||
+    isMitigationsPerRiskSectionTitle(sectionTitle) ||
+    isValidationCriteriaSectionTitle(sectionTitle)
+  ) {
+    const labeled = parseCrmLabeledItems(body);
+    if (labeled.length > 0) {
+      if (isMitigationsPerRiskSectionTitle(sectionTitle)) {
+        return renderCrmMitigationCards(body, sectionKey);
+      }
+      if (isValidationCriteriaSectionTitle(sectionTitle)) {
+        return renderCrmValidationCards(labeled, sectionKey);
+      }
+      return renderCrmLabeledFields(labeled, sectionKey);
+    }
   }
 
   const lines = body.split(/\r?\n/).filter((l) => l.trim() !== "" || l.includes("\n"));
@@ -663,7 +1019,7 @@ function GeneralReportDetail() {
 
   if (loading) {
     return (
-      <div className="sec_user_page org_settings_page reports_page report_detail_page report_detail_type_general">
+      <div className="sec_user_page org_settings_page reports_page report_detail_page report_detail_type_general report_assessment_layout">
         <LoadingMessage message="Loading report…" className="loading_message_wrapper--page" />
       </div>
     );
@@ -671,7 +1027,7 @@ function GeneralReportDetail() {
 
   if (notFound || !report) {
     return (
-      <div className="sec_user_page org_settings_page reports_page report_detail_page report_detail_type_general">
+      <div className="sec_user_page org_settings_page reports_page report_detail_page report_detail_type_general report_assessment_layout">
         <div className="report_detail_empty">
           <h2 className="report_detail_empty_title">Report not found</h2>
           <p className="report_detail_empty_text">
@@ -732,9 +1088,14 @@ function GeneralReportDetail() {
       ? parseMitigationActionPlanJson(report.briefContent)
       : null;
 
+  const implementationRoadmapData =
+    report.reportType === "Implementation Roadmap Proposal"
+      ? parseImplementationRoadmapProposal(report.briefContent)
+      : null;
+
   return (
     <div
-      className={`sec_user_page org_settings_page reports_page report_detail_page report_detail_full report_detail_type_general${
+      className={`sec_user_page org_settings_page reports_page report_detail_page report_detail_full report_detail_type_general report_assessment_layout${
         isVendorComparisonMatrixReport ? " report_detail_type_vcm" : ""
       }`}
     >
@@ -847,7 +1208,16 @@ function GeneralReportDetail() {
         </div>
 
         <section className="general_report_detail_body">
-        {implementationRiskAssessmentData ? (
+        {implementationRoadmapData ? (
+          <div className="report_summary_body">
+            <ImplementationRoadmapProposalReportBody data={implementationRoadmapData} />
+          </div>
+        ) : report.reportType === "Implementation Roadmap Proposal" ? (
+          <p className="report_summary_body">
+            Implementation Roadmap Proposal data is missing or could not be read. Try generating the report
+            again from Assessment Analysis.
+          </p>
+        ) : implementationRiskAssessmentData ? (
           <div className="report_summary_body">
             <ImplementationRiskAssessmentReportBody data={implementationRiskAssessmentData} />
           </div>
@@ -866,7 +1236,7 @@ function GeneralReportDetail() {
             Assessment Analysis.
           </p>
         ) : complianceRiskSummaryData ? (
-          <div className="report_summary_body">
+          <div className="report_summary_body report_exec_brief_body">
             <ComplianceRiskSummaryReportBody data={complianceRiskSummaryData} />
           </div>
         ) : report.reportType === "Compliance & Risk Summary" ? (
@@ -885,24 +1255,48 @@ function GeneralReportDetail() {
           </p>
         ) : typeof report.briefContent === "string" && report.briefContent.trim() !== "" ? (
           <div className="report_summary_body report_exec_brief_body">
-            {parseBriefContent(report.briefContent).map((section, idx) => {
+            {(report.reportType === "Customer Risk Mitigation Plan"
+              ? mergeCrmPhaseSections(parseBriefContent(report.briefContent))
+              : parseBriefContent(report.briefContent)
+            ).map((section, idx) => {
               const { displayTitle, Icon } = getBriefSectionDisplay(section.title);
+              const hideReportNameHeading = isReportTypeNameHeading(
+                section.title,
+                displayTitle,
+                report.reportType,
+              );
+              if (hideReportNameHeading && !String(section.body ?? "").trim()) {
+                return null;
+              }
+              if (isPhaseStageTitle(section.title)) {
+                return null;
+              }
               return (
                 <div key={idx} className="report_exec_brief_section report_section_card">
-                  <h3 className="report_exec_brief_section_title">
-                    <Icon size={20} className="report_exec_brief_section_icon" aria-hidden />
-                    {displayTitle}
-                  </h3>
+                  {/* Report type name is already in the page header — do not repeat it as a section title. */}
+                  {!hideReportNameHeading ? (
+                    <h3 className="report_exec_brief_section_title">
+                      <Icon size={20} className="report_exec_brief_section_icon" aria-hidden />
+                      {displayTitle}
+                    </h3>
+                  ) : null}
                   <div className="report_exec_brief_section_body">
-                    {renderBriefBody(
-                      section.body,
-                      `sec-${idx}`,
-                      report.reportType === "Sales Qualification Report" ||
-                        report.reportType === "Qualification" ||
+                    {(() => {
+                      const body = renderBriefBody(
+                        section.body,
+                        `sec-${idx}`,
+                        report.reportType === "Sales Qualification Report" ||
+                          report.reportType === "Qualification" ||
+                          report.reportType === "Customer Risk Mitigation Plan" ||
+                          report.reportType === "Implementation Roadmap Proposal",
+                        section.title,
+                      );
+                      const showFullSection =
                         report.reportType === "Customer Risk Mitigation Plan" ||
-                        report.reportType === "Implementation Roadmap Proposal",
-                      section.title,
-                    )}
+                        isOwnershipMatrixSectionTitle(section.title) ||
+                        isRecommendedActionsSectionTitle(section.title);
+                      return showFullSection ? body : <ShowMoreText lines={8}>{body}</ShowMoreText>;
+                    })()}
                   </div>
                 </div>
               );

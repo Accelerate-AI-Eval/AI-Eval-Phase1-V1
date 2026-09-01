@@ -159,7 +159,7 @@
 .report_pdf_capture .report_table_cell_list li {
   margin: 0 0 3pt 0 !important;
   font-size: 8pt !important;
-  line-height: 1.3 !important;
+  line-height: 1.45 !important;
 }
 
 .report_pdf_capture .report_risk_assessment_table tbody tr,
@@ -193,6 +193,10 @@
 .report_pdf_capture .report_compliance_card,
 .report_pdf_capture .report_appendix_card,
 .report_pdf_capture .report_blocker_item,
+.report_pdf_capture .report_crm_field,
+.report_pdf_capture .report_crm_phase_col,
+.report_pdf_capture .report_crm_mitigation_card,
+.report_pdf_capture .report_crm_validation_card,
 .report_pdf_capture .report_impl_plan_chunk,
 .report_pdf_capture .report_deployment_roi_pair,
 .report_pdf_capture .report_deployment_roi_titles,
@@ -212,7 +216,7 @@
 .report_pdf_capture .map_action_table_wrap table tr,
 .report_pdf_capture .bvr_matrix_table tr,
 .report_pdf_capture .report_framework_table tr,
-.report_pdf_capture .crs_risks_table tr,
+.report_pdf_capture .crs_risk_item,
 .report_pdf_capture .crs_mapping_table tr,
 .report_pdf_capture .report_appendix_risk_table tr {
   break-inside: avoid !important;
@@ -383,4 +387,19 @@
   justify-content: center !important;
   text-align: center !important;
   background: transparent !important;
+}
+
+.report_pdf_capture .report_show_more_body {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+.report_pdf_capture .report_show_more_btn {
+  display: none !important;
+}
+
+.report_pdf_capture .report_show_more_item_hidden {
+  display: list-item !important;
 }

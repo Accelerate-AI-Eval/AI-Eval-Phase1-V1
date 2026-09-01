@@ -31,7 +31,8 @@ const SALES_REPORT_PROMPT = `You are a sales qualification analyst. Using ONLY t
 - [Action – if supported]
 - [Action – if supported]
 
-Use only the data provided. If a section has no relevant data, say "Not specified" or "To be confirmed."`;
+Use only the data provided. If a section has no relevant data, say "Not specified" or "To be confirmed."
+Always put a space after a colon in bullets (e.g. "SalesQualificationScore: 38.32 / 100", never "SalesQualificationScore:38.32").`;
 
 function buildContext(reportJson: Record<string, unknown>, attestationSummary: string): string {
   const reportStr =
