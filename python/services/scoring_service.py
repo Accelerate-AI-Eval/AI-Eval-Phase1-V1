@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from exceptions.custom_exceptions import RiskCalculationException
+from services import attestation_answer_map as answers
 from services.category_coverage_service import resolve_category_coverage_inputs
 from services.cert_industry_segment import (
     CERTIFICATIONS_SCORE_CAP,
@@ -132,6 +133,9 @@ def calc_timing_multiplier(p: LooseInput) -> dict[str, Any]:
         "testing": 0.85,
         "staging": 0.95,
         "production": 1.30,
+        # Product Stage answers distinguish new vs mature production; both are live.
+        "production_new": 1.30,
+        "production_mature": 1.30,
     }
     phase_map = {
         "pre_procurement": -0.05,
@@ -648,13 +652,14 @@ def calc_certifications_score(p: LooseInput) -> dict[str, Any]:
 
 
 def calc_assessment_quality_score(p: LooseInput) -> dict[str, Any]:
+    # Vocabulary matches calculate_confidence_factor, the other assessmentMethod consumer.
     method_map = {
         "third_party_audit": 20,
         "third_party_review": 15,
         "internal_audit": 10,
-        "internal_review": 8,
-        "self_assessment": 3,
-        "none": 0,
+        "self_reported_verified": 5,
+        "self_reported_unverified": 3,
+        "no_formal_assessment": 0,
     }
     freq_map = {"annual": 5, "bi_annual": 3, "ad_hoc": 0}
     base = method_map.get(p.get("assessmentMethod"), 0)
@@ -926,7 +931,8 @@ def calculate_governance_risk(p: LooseInput) -> dict[str, Any]:
         + adversarial["value"]
         + dpa["value"]
     )
-    governance_score = min(100.0, raw_score)
+    # vendor_maturity_adjustment can be negative; floor so risk never exceeds 100.
+    governance_score = max(0.0, min(100.0, raw_score))
     governance_risk = 100 - governance_score
     return {
         "certifications_score": cert,
@@ -975,7 +981,14 @@ def calc_sla_score(p: LooseInput) -> dict[str, Any]:
 
 def calc_incident_management_score(p: LooseInput) -> dict[str, Any]:
     plan_map = {"quarterly_drills": 12, "annual_test": 10, "documented_untested": 6}
-    auto_map = {"automated": 10, "semi_automated": 7, "manual": 3, "none": 0}
+    # Same rollbackProcedures vocabulary as calc_operational_controls_score.
+    auto_map = {
+        "automated_instant": 10,
+        "automated_manual_trigger": 7,
+        "manual_documented": 3,
+        "manual_undocumented": 1,
+        "none": 0,
+    }
     comm_map = {"proactive_status_page": 8, "email_notifications": 5, "reactive_only": 2, "none": 0}
     plan_pts = plan_map.get(p.get("planTesting"), 0) if p.get("incidentResponsePlan") else 0
     auto_pts = auto_map.get(p.get("rollbackProcedures"), 0)
@@ -996,7 +1009,14 @@ def calc_deployment_maturity_score(p: LooseInput) -> dict[str, Any]:
         "small_business": 4,
         "pilot": 2,
     }
-    readiness_map = {"production_mature": 10, "production_new": 8, "staging": 4, "development": 1}
+    readiness_map = {
+        "production_mature": 10,
+        "production_new": 8,
+        "staging": 4,
+        "testing": 2,
+        "development": 1,
+        "design": 0,
+    }
     iso_map = {"full_instance_isolation": 8, "schema_isolation": 6, "row_level_security": 4}
     scale_pts = scale_map.get(p.get("deploymentScale"), 0)
     readiness_pts = readiness_map.get(p.get("devStage"), 0)
@@ -1228,6 +1248,51 @@ def calculate_vendor_trust_score(user_input: LooseInput) -> dict[str, Any]:
     }
 
 
+def band_employee_count(raw: Any) -> str:
+    """Map stored employee-count labels (commas, en-dashes) onto VTS size bands."""
+    compact = re.sub(r"[,\s]", "", str(raw or ""))
+    compact = compact.replace("–", "-").replace("—", "-").replace("−", "-")
+    nums = [int(n) for n in re.findall(r"\d+", compact)]
+    if not nums:
+        return "1-10"
+    lo = min(nums)
+    if "+" in compact and lo >= 10000:
+        return "10000+"
+    if lo >= 10000:
+        return "10000+"
+    if lo >= 5001:
+        return "5001-10000"
+    if lo >= 1001:
+        return "1001-5000"
+    if lo >= 201:
+        return "201-1000"
+    if lo >= 51:
+        return "51-200"
+    if lo >= 11:
+        return "11-50"
+    return "1-10"
+
+
+def band_geographic_regions(regions: Any) -> str:
+    """Band by Global semantics first, then by enumerated region count."""
+    if isinstance(regions, str):
+        items = [regions] if regions.strip() else []
+    elif isinstance(regions, list):
+        items = [str(x).strip() for x in regions if str(x or "").strip()]
+    else:
+        items = []
+    if any("global" in x.lower() for x in items):
+        return "global"
+    region_count = len(items)
+    if region_count >= 5:
+        return "global"
+    if region_count >= 3:
+        return "multi_national"
+    if region_count == 2:
+        return "national"
+    return "regional"
+
+
 def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
     cp = payload.get("companyProfile") if isinstance(payload.get("companyProfile"), dict) else {}
 
@@ -1240,9 +1305,6 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
     def lower(v: Any) -> str:
         return as_str(v).lower()
 
-    def in_set(v: str, allowed: list[str], fallback: str) -> str:
-        return v if v in allowed else fallback
-
     def to_num(v: Any, fallback: float) -> float:
         try:
             n = float(v)
@@ -1250,42 +1312,35 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
         except (TypeError, ValueError):
             return fallback
 
-    text = " ".join([
-        lower(get("decision_autonomy")),
-        lower(get("ai_autonomy_level")),
-        lower(get("assessment_completion_level")),
-        lower(get("pii_handling")),
-        lower(get("incident_response_plan")),
-    ])
-    employee_raw = lower(get("employeeCount") if get("employeeCount") is not None else get("no_of_employees"))
+    employee_raw = get("employeeCount") if get("employeeCount") is not None else get("no_of_employees")
     year_founded = int(max(1990, min(datetime.now().year, to_num(get("yearFounded") if get("yearFounded") is not None else get("year_founded"), 2020))))
     regions = get("operatingRegions")
-    region_count = len(regions) if isinstance(regions, list) else 1
+    if regions is None:
+        regions = get("operate_regions")
 
-    if "fully" in text and "autonom" in text:
-        decision_autonomy_level = "fully_autonomous"
-    elif "autonom" in text:
-        decision_autonomy_level = "autonomous"
-    elif "assist" in text:
-        decision_autonomy_level = "assisted"
-    elif "advis" in text:
-        decision_autonomy_level = "advisory"
-    else:
-        decision_autonomy_level = "supervised"
+    # Autonomy and stake each come from their own answer; sharing one text blob let an
+    # unrelated answer containing "critical" or "autonomous" set the multiplier.
+    autonomy_answer = get("decision_autonomy") if get("decision_autonomy") is not None else get("ai_autonomy_level")
+    decision_autonomy_level = answers.decision_autonomy_level(autonomy_answer)
+    pii_answer = get("pii_handling") if get("pii_handling") is not None else get("pii_information")
+    decision_stake_level = answers.lookup(answers.PII_STAKE_LEVEL, pii_answer, "Low")
+    pii_handling = answers.lookup(answers.PII_HANDLING, pii_answer, "moderate")
 
-    if "life" in text:
-        decision_stake_level = "Life-Critical"
-    elif "critical" in text:
-        decision_stake_level = "Critical"
-    elif "high" in text:
-        decision_stake_level = "High"
-    elif "moderate" in text:
-        decision_stake_level = "Moderate"
-    else:
-        decision_stake_level = "Low"
+    stage_answer = get("product_stage") if get("product_stage") is not None else get("stage_product")
+    dev_stage = answers.lookup(answers.PRODUCT_STAGE, stage_answer, "development")
 
-    stage_raw = lower(get("product_stage") if get("product_stage") is not None else get("stage_product"))
-    dev_stage = in_set(stage_raw, ["design", "development", "testing", "staging", "production"], "development")
+    # "No" is an answer, not an absent one — presence of text is not evidence of a policy.
+    retention_answer = get("data_retention_policy")
+    data_retention_policy = bool(answers.yes_no(retention_answer, default=False))
+    incident_response_plan_maturity, ir_plan_testing = answers.reconcile_ir_plan(
+        get("incident_response_plan"), get("ir_plan_test_frequency")
+    )
+    pen_test_report_available, pen_test_cadence = answers.reconcile_pen_testing(
+        get("adversarial_security_testing"), get("independent_pen_test_frequency")
+    )
+    privacy_programme_scope = answers.passthrough(
+        get("privacy_programme_scope"), {"comprehensive_gdpr_ccpa", "standard", "basic"}, ""
+    )
 
     host_raw = lower(get("hosting_deployment") if get("hosting_deployment") is not None else get("solution_hosted"))
     if "hybrid" in host_raw:
@@ -1295,34 +1350,15 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
     else:
         hosting_type = "cloud_hosted"
 
-    if "10000" in employee_raw:
-        employee_count = "10000+"
-    elif "5001" in employee_raw:
-        employee_count = "5001-10000"
-    elif "1001" in employee_raw:
-        employee_count = "1001-5000"
-    elif "201" in employee_raw:
-        employee_count = "201-1000"
-    elif "51" in employee_raw:
-        employee_count = "51-200"
-    elif "11" in employee_raw:
-        employee_count = "11-50"
-    else:
-        employee_count = "1-10"
-
-    if region_count >= 5:
-        geographic_regions = "global"
-    elif region_count >= 3:
-        geographic_regions = "multi_national"
-    elif region_count == 2:
-        geographic_regions = "national"
-    else:
-        geographic_regions = "regional"
+    employee_count = band_employee_count(employee_raw)
+    geographic_regions = band_geographic_regions(regions)
 
     compliance_upload_names = collect_compliance_upload_file_names(payload)
     compliance_upload_blob = " ".join(compliance_upload_names).lower()
     cert_form_blob = certification_form_text_from_getter(get).lower()
     certifications_search_blob = f"{cert_form_blob} {compliance_upload_blob}".strip()
+    sector_raw = get("sector") if get("sector") is not None else get("target_industries")
+    vts_sector = answers.vts_sector_from_value(sector_raw)
     buyer_industry_segment = normalize_cert_industry_segment_input(
         as_str(
             get("buyerIndustrySegment")
@@ -1330,6 +1366,7 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
             or get("industrySegment")
             or get("industry_segment")
             or get("buyerSegment")
+            or answers.first_industry_segment(sector_raw)
             or ""
         )
     )
@@ -1405,12 +1442,20 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
         "decisionStakeLevel": decision_stake_level,
         "devStage": dev_stage,
         "assessmentPhase": "vendor_evaluation",
-        "customizationLevel": "lightly_customized",
-        "integrationComplexity": "moderate_integration",
+        "customizationLevel": answers.lookup(
+            answers.DEPLOYMENT_CUSTOMIZATION, get("deployment_customization"), "lightly_customized"
+        ),
+        "integrationComplexity": answers.lookup(
+            answers.INTEGRATION_COMPLEXITY, get("integration_complexity"), "moderate_integration"
+        ),
         "hostingType": hosting_type,
         "employeeCount": employee_count,
         "geographicRegions": geographic_regions,
-        "dataVolumeScale": "moderate",
+        "dataVolumeScale": answers.passthrough(
+            get("typical_data_volume"),
+            {"minimal", "moderate", "large", "very_large", "petabyte_scale"},
+            "moderate",
+        ),
         "aiRiskAppetite": "moderate",
         "intentionalRiskCount": intentional_count,
         "unintentionalRiskCount": unintentional_count,
@@ -1419,18 +1464,25 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
             {"domain": "AI System Safety", "riskCount": 1},
             {"domain": "Accountability & Governance", "riskCount": 1},
         ],
-        "sector": as_str(get("sector")) or "Technology",
+        "sector": vts_sector,
         "aiCapabilityType": "administrative",
-        "piiHandling": "critical" if "critical" in text else "moderate",
+        "piiHandling": pii_handling,
         "regulatoryComplexity": [],
-        "deploymentScale": lower(get("deployment_scale")) or "mid_market",
+        "deploymentScale": answers.lookup(
+            answers.DEPLOYMENT_SCALE, get("deployment_scale"), "mid_market"
+        ),
         "patientDemographic": "general",
         "requiredCategories": list(coverage_inputs["requiredCategories"]),
         "implementedCategories": list(coverage_inputs["implementedCategories"]),
         "mitigations": list(coverage_inputs["mitigations"]),
         "_categoryCoverageMeta": coverage_inputs.get("meta") or {},
-        "assessmentMethod": "internal_audit",
-        "complianceDocumentationComplete": True,
+        "assessmentMethod": answers.lookup(
+            answers.ASSESSMENT_METHOD,
+            get("assessment_completion_level") if get("assessment_completion_level") is not None
+            else get("assessment_feedback"),
+            "self_reported_unverified",
+        ),
+        "complianceDocumentationComplete": bool(compliance_upload_names),
         "encryptionAtRest": as_str(get("encryption_at_rest")),
         "encryptionAtRestEvidenceId": as_str(get("encryption_at_rest_evidence_id")),
         "tlsInTransit": as_str(get("tls_in_transit")),
@@ -1443,15 +1495,9 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
             else {}
         ),
         "bugBounty": get("bug_bounty") if isinstance(get("bug_bounty"), dict) else {},
-        "independentPenTestFrequency": as_str(get("independent_pen_test_frequency")),
+        "independentPenTestFrequency": pen_test_cadence,
         "dpaAvailable": as_str(get("dpa_available")),
-        "penetrationTestReportAvailable": bool(
-            as_str(get("adversarial_security_testing"))
-            or (
-                as_str(get("independent_pen_test_frequency"))
-                not in ("", "none")
-            )
-        ),
+        "penetrationTestReportAvailable": pen_test_report_available,
         "soc2Type2Current": bool(
             re.search(r"\bsoc\s*2\b|soc2", certifications_search_blob, re.I)
             and re.search(r"type\s*2|type\s*ii|type2", certifications_search_blob, re.I)
@@ -1480,35 +1526,110 @@ def build_formula_input_from_payload(payload: dict[str, Any]) -> LooseInput:
         "complianceUploadBlob": compliance_upload_blob,
         "buyerIndustrySegment": buyer_industry_segment,
         "yearFounded": year_founded,
-        "fundingStatus": "series_a",
+        "fundingStatus": answers.passthrough(
+            get("fundingStatus") if get("fundingStatus") is not None else get("funding_status"),
+            {
+                "publicly_traded",
+                "series_d_plus",
+                "series_b_c",
+                "series_a",
+                "seed_angel",
+                "bootstrapped",
+            },
+            "series_a",
+        ),
         "revenueSufficient": True,
-        "enterpriseCustomers": 5,
-        "auditFrequency": "annual",
-        "dataRetentionPolicy": bool(as_str(get("data_retention_policy"))),
-        "dataRetentionPolicyCompleteness": "documented_not_enforced",
-        "incidentResponsePlan": bool(as_str(get("incident_response_plan"))),
-        "incidentResponsePlanMaturity": "documented_not_tested",
-        "privacyPolicy": True,
-        "privacyPolicyScope": "standard",
-        "aiEthicsPolicy": True,
-        "aiEthicsMaturity": "documented_not_operationalized",
-        "rollbackProcedures": "manual_documented",
-        "humanOversightCapabilities": "monitoring_with_intervention",
-        "continuousMonitoring": "daily_dashboard",
-        "modelVersionControl": True,
-        "versioningMaturity": "manual_documented",
-        "slaUptime": as_str(get("uptime_sla") if get("uptime_sla") is not None else get("sla_guarantee")) or "99.5-99.9%",
-        "criticalIncidentResponse": "< 4 hours",
-        "criticalIncidentResolution": "< 24 hours",
-        "planTesting": "annual_test",
-        "incidentCommunication": "email_notifications",
-        "multiTenancySupport": True,
-        "isolationMethod": "schema_isolation",
-        "financialStatus": "break_even",
-        "customerRetentionRate": 85,
-        "supportTiers": "business_hours_email",
-        "supportsHipaaWorkflows": "health" in lower(get("sector")),
-        "technicalAccountManager": "standard_support",
+        "enterpriseCustomers": answers.number(
+            get("enterpriseCustomers") if get("enterpriseCustomers") is not None
+            else get("enterprise_customers"),
+            0,
+        ),
+        "auditFrequency": answers.lookup(
+            answers.AUDIT_FREQUENCY, get("audit_frequency"), "ad_hoc"
+        ),
+        "dataRetentionPolicy": data_retention_policy,
+        "dataRetentionPolicyCompleteness": "documented_and_enforced" if data_retention_policy else "informal",
+        "incidentResponsePlan": incident_response_plan_maturity is not None,
+        "incidentResponsePlanMaturity": incident_response_plan_maturity or "basic_runbook",
+        "privacyPolicy": bool(privacy_programme_scope),
+        "privacyPolicyScope": privacy_programme_scope or "basic",
+        "aiEthicsPolicy": answers.yes_no(get("documented_ai_governance_policy"), default=False),
+        "aiEthicsMaturity": answers.passthrough(
+            get("ai_ethics_governance_maturity"),
+            {"board_approved_operationalized", "documented_not_operationalized", "draft"},
+            "draft",
+        ),
+        "rollbackProcedures": answers.lookup(
+            answers.ROLLBACK_CAPABILITY,
+            get("rollback_capability") if get("rollback_capability") is not None
+            else get("rollback_deployment_issues"),
+            "none",
+        ),
+        "humanOversightCapabilities": answers.strongest_human_oversight(get("human_oversight")),
+        "continuousMonitoring": answers.passthrough(
+            get("production_model_monitoring"),
+            {"real_time_alerting", "daily_dashboard", "weekly_reports", "monthly_reviews", "none"},
+            "none",
+        ),
+        "modelVersionControl": answers.yes_no(get("versions_models"), default=False),
+        "versioningMaturity": answers.passthrough(
+            get("model_versioning_method"),
+            {"automated_mlops_pipeline", "manual_documented", "basic_tracking"},
+            "basic_tracking",
+        ),
+        "slaUptime": answers.lookup(
+            answers.UPTIME_SLA,
+            get("uptime_sla") if get("uptime_sla") is not None else get("sla_guarantee"),
+            "< 95%",
+        ),
+        "criticalIncidentResponse": as_str(get("critical_incident_response_target")),
+        "criticalIncidentResolution": as_str(get("critical_incident_resolution_target")),
+        "planTesting": ir_plan_testing,
+        "incidentCommunication": answers.passthrough(
+            get("incident_customer_communication"),
+            {"proactive_status_page", "email_notifications", "reactive_only", "none"},
+            "none",
+        ),
+        "multiTenancySupport": answers.yes_no(get("is_multi_tenant"), default=False),
+        "isolationMethod": answers.passthrough(
+            get("tenant_isolation_model"),
+            {"full_instance_isolation", "schema_isolation", "row_level_security"},
+            "row_level_security",
+        ),
+        "financialStatus": answers.passthrough(
+            get("financialPosition") if get("financialPosition") is not None
+            else get("financial_position"),
+            {
+                "profitable_3_years",
+                "profitable_1_year",
+                "break_even",
+                "funded_runway_2_years",
+                "funded_runway_1_year",
+                "uncertain",
+            },
+            "uncertain",
+        ),
+        "customerRetentionRate": answers.number(
+            get("customerRetentionRate") if get("customerRetentionRate") is not None
+            else get("customer_retention_rate")
+        ),
+        "supportTiers": answers.passthrough(
+            get("support_coverage"),
+            {
+                "24_7_phone_chat_email",
+                "business_hours_phone_chat",
+                "business_hours_email",
+                "email_only",
+            },
+            "email_only",
+        ),
+        "supportsHipaaWorkflows": "health" in vts_sector.lower()
+        or "health" in " ".join(answers.flatten_sector_labels(sector_raw)).lower(),
+        "technicalAccountManager": answers.passthrough(
+            get("account_management"),
+            {"dedicated_tam", "shared_tam", "standard_support"},
+            "standard_support",
+        ),
     }
 
 

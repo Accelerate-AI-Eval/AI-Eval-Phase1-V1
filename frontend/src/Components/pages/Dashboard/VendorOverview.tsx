@@ -857,7 +857,7 @@ const VendorOverview = () => {
                         ? "vendor_portal_grade_shield_b"
                         : vendorGrade === "D"
                           ? "vendor_portal_grade_shield_d"
-                          : vendorGrade === "E" || vendorGrade === "F" /* E = legacy stored; display normalized to F */
+                          : String(vendorGrade) === "E" || String(vendorGrade) === "F"
                             ? "vendor_portal_grade_shield_ef"
                             : "";
                   const complianceCertificates = findCertificateTypesForAssessment(

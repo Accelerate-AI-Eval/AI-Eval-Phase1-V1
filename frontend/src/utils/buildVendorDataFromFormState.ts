@@ -73,6 +73,11 @@ export function buildVendorDataFromFormState(formState: VendorSelfAttestationFor
   lines.push("Support SLAs by severity: " + formatVal(att.support_slas));
   lines.push("Change management / release cadence: " + formatVal(att.change_management));
   lines.push("Incident response plan: " + formatVal(att.incident_response_plan));
+  lines.push(
+    "Publicly disclosed security incident in the last 24 months: " +
+      formatVal(att.has_public_security_incident),
+  );
+  lines.push("Disclosed security incidents: " + formatVal(att.security_incidents));
   lines.push("Production model monitoring: " + formatVal(att.production_model_monitoring));
   lines.push("Critical incident response target: " + formatVal(att.critical_incident_response_target));
   lines.push("Critical incident resolution target: " + formatVal(att.critical_incident_resolution_target));

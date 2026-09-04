@@ -179,8 +179,8 @@ export const VENDOR_SELF_ATTESTATION = {
       required: true,
     },
     3: {
-      label: "Do you offer a HIPAA Business Associate Agreement?",
-      placeholder: "Select whether you offer a HIPAA BAA",
+      label: "Which privacy or regulatory frameworks do you comply with?",
+      placeholder: "Select HIPAA BAA, GDPR Compliant, and/or CCPA Compliant",
       required: true,
     },
     5: {

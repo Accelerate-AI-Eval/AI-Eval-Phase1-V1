@@ -48,6 +48,6 @@ def certification_form_text_from_getter(get: Callable[[str], Any]) -> str:
     walk(get("security_compliance_certificates"))
     walk(get("regulatorycompliance_cert_material"))
     hipaa_baa = str(get("hipaa_baa") or "").strip().lower()
-    if hipaa_baa == "yes":
+    if hipaa_baa in ("yes", "yes_standard", "yes_on_request"):
         parts.append("HIPAA BAA")
     return " ".join(parts)

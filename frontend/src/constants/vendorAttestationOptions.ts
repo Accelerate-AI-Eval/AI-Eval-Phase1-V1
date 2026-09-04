@@ -129,12 +129,12 @@ export const SECURITY_CERTIFICATIONS_OPTIONS: OptionItem[] = [
   { label: "SOC 2 Type 2", value: "SOC 2 Type 2" },
   { label: "ISO 27001", value: "ISO 27001" },
   { label: "ISO 42001 (AI Management)", value: "ISO 42001 (AI Management)" },
-  { label: "HIPAA BAA", value: "HIPAA BAA" },
+  // { label: "HIPAA BAA", value: "HIPAA BAA" },
   { label: "HITRUST", value: "HITRUST" },
   { label: "FedRAMP", value: "FedRAMP" },
   { label: "PCI DSS", value: "PCI DSS" },
-  { label: "GDPR Compliant", value: "GDPR Compliant" },
-  { label: "CCPA Compliant", value: "CCPA Compliant" },
+  // { label: "GDPR Compliant", value: "GDPR Compliant" },
+  // { label: "CCPA Compliant", value: "CCPA Compliant" },
   { label: "None Currently", value: "None Currently" },
 ];
 
@@ -153,11 +153,53 @@ export const FEDRAMP_LEVEL_OPTIONS: OptionItem[] = [
 ];
 
 export const HIPAA_BAA_OPTIONS: OptionItem[] = [
-  { label: "Yes (standard)", value: "yes_standard" },
-  { label: "Yes (on request)", value: "yes_on_request" },
-  { label: "No", value: "no" },
-  { label: "Not applicable", value: "not_applicable" },
+  { label: "HIPAA BAA", value: "HIPAA BAA" },
+  { label: "GDPR Compliant", value: "GDPR Compliant" },
+  { label: "CCPA Compliant", value: "CCPA Compliant" },
+  { label: "None / Not applicable", value: "not_applicable" },
 ];
+
+const HIPAA_BAA_LEGACY_TO_VALUE: Record<string, string> = {
+  yes: "HIPAA BAA",
+  yes_standard: "HIPAA BAA",
+  yes_on_request: "HIPAA BAA",
+  no: "not_applicable",
+  not_applicable: "not_applicable",
+};
+
+/** Normalize stored HIPAA/GDPR/CCPA answers (legacy yes/no or comma-separated) into chip values. */
+export function normalizeHipaaBaaSelection(raw: unknown): string[] {
+  const known = new Set(HIPAA_BAA_OPTIONS.map((o) => o.value));
+  const tokens: string[] = [];
+  const push = (s: string) => {
+    const t = s.trim();
+    if (!t) return;
+    const mapped = HIPAA_BAA_LEGACY_TO_VALUE[t.toLowerCase()] ?? t;
+    if (known.has(mapped) && !tokens.includes(mapped)) tokens.push(mapped);
+  };
+  if (raw == null) return [];
+  if (Array.isArray(raw)) {
+    raw.forEach((x) => push(String(x)));
+    return tokens;
+  }
+  const s = String(raw).trim();
+  if (!s) return [];
+  if (HIPAA_BAA_LEGACY_TO_VALUE[s.toLowerCase()]) {
+    push(s);
+    return tokens;
+  }
+  try {
+    const parsed = JSON.parse(s);
+    if (Array.isArray(parsed)) {
+      parsed.forEach((x) => push(String(x)));
+      return tokens;
+    }
+  } catch {
+    /* not JSON */
+  }
+  s.split(/[,|]/).forEach(push);
+  return tokens;
+}
 
 export const ASSESSMENT_COMPLETION_LEVEL_OPTIONS: OptionItem[] = [
   {

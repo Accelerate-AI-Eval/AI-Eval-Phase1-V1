@@ -53,23 +53,34 @@ function TabVendorManagement({
   const rows = processors.length > 0 ? processors : [{ ...EMPTY_SUB_PROCESSOR }];
 
   function updateProcessor(index: number, patch: Partial<AttestationSubProcessor>) {
-    const next = rows.map((row, i) => (i === index ? { ...row, ...patch } : row));
-    setAttestation((prev) => ({ ...prev, sub_processors: next }));
+    setAttestation((prev) => {
+      const current = mapSubProcessors(prev.sub_processors);
+      const base = current.length > 0 ? current : [{ ...EMPTY_SUB_PROCESSOR }];
+      const next = base.map((row, i) => (i === index ? { ...row, ...patch } : row));
+      return { ...prev, sub_processors: next };
+    });
   }
 
   function addProcessor() {
-    setAttestation((prev) => ({
-      ...prev,
-      sub_processors: [...rows, { ...EMPTY_SUB_PROCESSOR }],
-    }));
+    setAttestation((prev) => {
+      const current = mapSubProcessors(prev.sub_processors);
+      const base = current.length > 0 ? current : [{ ...EMPTY_SUB_PROCESSOR }];
+      return {
+        ...prev,
+        sub_processors: [...base, { ...EMPTY_SUB_PROCESSOR }],
+      };
+    });
   }
 
   function removeProcessor(index: number) {
-    const next = rows.filter((_, i) => i !== index);
-    setAttestation((prev) => ({
-      ...prev,
-      sub_processors: next.length > 0 ? next : [{ ...EMPTY_SUB_PROCESSOR }],
-    }));
+    setAttestation((prev) => {
+      const current = mapSubProcessors(prev.sub_processors);
+      const next = current.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        sub_processors: next.length > 0 ? next : [{ ...EMPTY_SUB_PROCESSOR }],
+      };
+    });
   }
 
   return (

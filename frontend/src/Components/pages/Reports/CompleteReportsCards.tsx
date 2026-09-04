@@ -94,6 +94,7 @@ function CompleteReportsCards({
     title: string;
     traceType: "irs" | "scs";
     llmModelName: string | null;
+    cardScore: number | null;
   } | null>(null);
 
   const rowWithFetchedReport = useCallback(
@@ -123,7 +124,9 @@ function CompleteReportsCards({
         return srs != null ? Math.round(srs) : null;
       }
       if (report.source === "buyer_vendor_risk") {
-        return reportContextScoreFromListPayload(row);
+        const irs = reportContextScoreFromListPayload(row);
+        if (irs == null) return null;
+        return isVendorPortalSession() ? irs : Math.round(Math.max(0, Math.min(100, 100 - irs)));
       }
       if (isVendorPortalSession() && implementationRiskScoreFromReportPayload(row) != null) {
         return implementationRiskScoreFromReportPayload(row);
@@ -139,7 +142,13 @@ function CompleteReportsCards({
       if (archived && !viewEnabledWhenArchived) return;
 
       if (report.source === "buyer_vendor_risk") {
-        const report_context_score = reportContextScoreFromListPayload(report);
+        const irs = reportContextScoreFromListPayload(report);
+        const report_context_score =
+          irs == null
+            ? null
+            : isVendorPortalSession()
+              ? irs
+              : Math.round(Math.max(0, Math.min(100, 100 - irs)));
         setScoreByReportId((prev) => ({ ...prev, [report.id]: report_context_score }));
         onViewReport(report);
         return;
@@ -189,9 +198,16 @@ function CompleteReportsCards({
     const report_context_score = resolveDisplayScore(report);
     const isFetching = fetchingReportId === report.id;
     const meterGrading = riskMeterGradingForReport(report, riskMeterGrading);
+    const meterInputScore =
+      report_context_score == null
+        ? null
+        : !isVendorPortalSession() &&
+            (report.source === "buyer_vendor_risk" || meterGrading === "vendor_cots_irs")
+          ? Math.max(0, Math.min(100, 100 - report_context_score))
+          : report_context_score;
     const meterColor =
-      !archived && report_context_score != null
-        ? completeReportRiskMeterColor(rowForMeter, report_context_score, meterGrading)
+      !archived && meterInputScore != null
+        ? completeReportRiskMeterColor(rowForMeter, meterInputScore, meterGrading)
         : undefined;
     const scoreSubtitle =
       !archived && report_context_score != null
@@ -280,7 +296,11 @@ function CompleteReportsCards({
         <div className="complete_rpr_card_risk_block">
           <div className="complete_rpr_card_risk_row">
             <span className="complete_rpr_card_risk_label">
-              {isVendorPortalSession() ? "CONFIDENCE SCORE" : "RISK SCORE"}
+              {isVendorPortalSession()
+                ? "READINESS SCORE"
+                : report.source === "buyer_vendor_risk" || meterGrading === "vendor_cots_irs"
+                  ? "RISK SCORE"
+                  : "READINESS SCORE"}
             </span>
             <span className="complete_rpr_card_risk_value_wrap">
               <span className="complete_rpr_card_risk_value_row">
@@ -303,6 +323,7 @@ function CompleteReportsCards({
                         reportId: String(report.id ?? ""),
                         title: getTitle(report),
                         traceType: scoreTraceTypeForReport(report, riskMeterGrading),
+                        cardScore: report_context_score,
                         llmModelName: resolveStoredLlmModelId({
                           llmModelId: report.llmModelId,
                           report: rowForMeter.report,
@@ -378,6 +399,7 @@ function CompleteReportsCards({
       traceType={scoreTraceTarget?.traceType ?? "scs"}
       reportId={scoreTraceTarget?.reportId || undefined}
       llmModelName={scoreTraceTarget?.llmModelName}
+      cardScore={scoreTraceTarget?.cardScore ?? null}
     />
   ) : null;
 

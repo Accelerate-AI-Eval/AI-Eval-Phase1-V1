@@ -60,6 +60,7 @@ export async function invokePythonLlmWithVector(options: {
   const modelId = options.modelId?.trim() || getActiveBedrockModelId();
   // Resolve org/user before the Python call so usage events get names.
   const actor = await resolveActorSnapshot(getRequestActor().userId ?? null);
+  const includeFormula = options.includeFormulaContext ?? false;
   let response: Response;
   try {
     response = await fetch(url, {
@@ -68,11 +69,13 @@ export async function invokePythonLlmWithVector(options: {
       body: JSON.stringify({
         assessment_type: options.assessmentType,
         user_prompt: options.userPrompt,
-        query_text: options.queryText,
+        ...(includeFormula && options.queryText
+          ? { query_text: options.queryText }
+          : {}),
         max_tokens: options.maxTokens ?? 8192,
         temperature: options.temperature ?? 0.3,
         model_id: modelId,
-        include_formula_context: options.includeFormulaContext ?? false,
+        include_formula_context: includeFormula,
         actor_user_id: actor.userId,
         actor_user_name: actor.userName,
         actor_organization_id: actor.organizationId,

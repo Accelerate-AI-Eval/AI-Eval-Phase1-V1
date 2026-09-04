@@ -139,6 +139,7 @@ export const attestationExtendedColumnSelect = {
   bug_bounty: vendorSelfAttestations.bug_bounty,
   independent_pen_test_frequency: vendorSelfAttestations.independent_pen_test_frequency,
   dpa_available: vendorSelfAttestations.dpa_available,
+  dpa_url: vendorSelfAttestations.dpa_url,
 };
 
 export function parseAttestationExtendedFields(get: (key: string) => unknown) {
@@ -193,6 +194,10 @@ export function parseAttestationExtendedFields(get: (key: string) => unknown) {
       30,
     ),
     dpa_available: oneOf(get("dpa_available"), DPA_AVAILABLE, 30),
+    dpa_url:
+      oneOf(get("dpa_available"), DPA_AVAILABLE, 30) === "publicly_available"
+        ? asOptionalVarchar(get("dpa_url"), 500)
+        : null,
   };
 }
 
@@ -228,5 +233,6 @@ export function mapExtendedFieldsToApi(row: Record<string, unknown>) {
     bug_bounty: row.bug_bounty ?? undefined,
     independent_pen_test_frequency: row.independent_pen_test_frequency ?? undefined,
     dpa_available: row.dpa_available ?? undefined,
+    dpa_url: row.dpa_url ?? undefined,
   };
 }

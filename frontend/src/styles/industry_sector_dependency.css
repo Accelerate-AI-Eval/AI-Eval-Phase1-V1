@@ -111,6 +111,38 @@
   /* border-color: var(--focus-ring, #3b82f6); */
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
+
+.industry-sector-selected-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.industry-sector-selected-group-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--light-gray-color, #6b7280);
+  margin-bottom: 0.25rem;
+}
+
+.industry-sector-selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.industry-sector-selected-chip {
+  background: #e8eef7;
+  color: #1f2937;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.8125rem;
+}
+
 .custom_css_chk{
   padding: 0 0 0.5rem 0;
 }

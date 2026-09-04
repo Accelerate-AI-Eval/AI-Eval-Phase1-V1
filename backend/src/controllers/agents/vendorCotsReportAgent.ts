@@ -204,6 +204,32 @@ function buildAssessmentContext(
     `Key advantages: ${toStr(payload.key_advantages ?? payload.keyAdvantages)}`,
     `Customer-specific risks: ${toStr(payload.customer_specific_risks ?? payload.customerSpecificRisks)}`,
     `Customer-specific risks (other): ${toStr(payload.customer_specific_risks_other ?? payload.customerSpecificRisksOther)}`,
+    `Customer employee count: ${toStr(payload.customer_employee_count ?? payload.customerEmployeeCount)}`,
+    `Customer engineering headcount: ${toStr(payload.customer_eng_headcount ?? payload.customerEngHeadcount)}`,
+    `Customer annual revenue: ${toStr(payload.customer_annual_revenue ?? payload.customerAnnualRevenue)}`,
+    `Customer ownership: ${toStr(payload.customer_ownership ?? payload.customerOwnership)}`,
+    `Customer HQ country: ${toStr(payload.customer_hq_country ?? payload.customerHqCountry)}`,
+    `Customer operating regions: ${toStr(payload.customer_operating_regions ?? payload.customerOperatingRegions)}`,
+    `Customer certifications: ${toStr(payload.customer_certifications ?? payload.customerCertifications)}`,
+    `Customer regulators: ${toStr(payload.customer_regulators ?? payload.customerRegulators)}`,
+    `Customer public incident: ${toStr(payload.customer_public_incident ?? payload.customerPublicIncident)}`,
+    `Customer cloud provider: ${toStr(payload.customer_cloud_provider ?? payload.customerCloudProvider)}`,
+    `Customer identity provider: ${toStr(payload.customer_identity_provider ?? payload.customerIdentityProvider)}`,
+    `Customer source-control platform: ${toStr(payload.customer_scm_platform ?? payload.customerScmPlatform)}`,
+    `Incumbent AI tooling: ${toStr(payload.customer_incumbent_ai_tooling ?? payload.customerIncumbentAiTooling)}`,
+    `Likely integration systems: ${toStr(payload.likely_integration_systems ?? payload.likelyIntegrationSystems)}`,
+    `Customer AI maturity evidence: ${toStr(payload.customer_ai_maturity_evidence ?? payload.customerAiMaturityEvidence)}`,
+    `Customer AI leadership: ${toStr(payload.customer_ai_leadership ?? payload.customerAiLeadership)}`,
+    `Customer public AI policy: ${toStr(payload.customer_public_ai_policy ?? payload.customerPublicAiPolicy)}`,
+    `Opportunity type: ${toStr(payload.opportunity_type ?? payload.opportunityType)}`,
+    `Target user function: ${toStr(payload.target_user_function ?? payload.targetUserFunction)}`,
+    `Estimated users in scope: ${toStr(payload.estimated_users_in_scope ?? payload.estimatedUsersInScope)}`,
+    `Competitors: ${toStr(payload.competitors)}`,
+    `Build vs buy signal: ${toStr(payload.build_vs_buy_signal ?? payload.buildVsBuySignal)}`,
+    `Key advantages (rows): ${toStr(payload.key_advantages_rows ?? payload.keyAdvantagesRows)}`,
+    `Information basis: ${toStr(payload.information_basis ?? payload.informationBasis)}`,
+    `Answer confidence: ${toStr(payload.answer_confidence ?? payload.answerConfidence)}`,
+    `Research date: ${toStr(payload.research_date ?? payload.researchDate)}`,
     `Identified risks: ${toStr(payload.identified_risks ?? payload.identifiedRisks)}`,
     `Risk domain scores: ${toStr(payload.risk_domain_scores ?? payload.riskDomainScores)}`,
     `Contextual multipliers: ${toStr(payload.contextual_multipliers ?? payload.contextualMultipliers)}`,
@@ -1310,7 +1336,7 @@ function calculateSalesRiskScore(userInput: any) {
       implementation_risk: IR,
       competitive_risk: CR,
       final_formula: {
-        expression: "SRS = 100 - ((CFR × 0.35) + (IR × 0.35) + (CR × 0.30))",
+        expression: "SRS = min(100, ((CFR × 0.35) + (IR × 0.35) + (CR × 0.30)) × Intent)",
         customer_friction_contribution: parseFloat(
           (CFR.value * 0.35).toFixed(4),
         ),
@@ -1615,6 +1641,153 @@ function customerTypeForFormula(
   return "SMB";
 }
 
+function parseJsonish(v: unknown): unknown {
+  if (v == null) return null;
+  if (Array.isArray(v) || (typeof v === "object" && v !== null)) return v;
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (s.startsWith("[") || s.startsWith("{")) {
+      try {
+        return JSON.parse(s);
+      } catch {
+        return v;
+      }
+    }
+  }
+  return v;
+}
+
+function firstPresent(payload: Record<string, unknown>, ...keys: string[]): unknown {
+  for (const key of keys) {
+    const v = payload[key];
+    if (v == null || v === "") continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    return v;
+  }
+  return undefined;
+}
+
+function competitorRowsFromPayload(payload: Record<string, unknown>): Record<string, unknown>[] {
+  const parsed = parseJsonish(firstPresent(payload, "competitors"));
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((item) => {
+    if (item && typeof item === "object" && "name" in item) {
+      return String((item as { name?: unknown }).name ?? "").trim() !== "";
+    }
+    return String(item ?? "").trim() !== "";
+  }) as Record<string, unknown>[];
+}
+
+function competitorLabelFromCount(n: number): string {
+  if (n <= 0) return "0 (sole source)";
+  if (n === 1) return "1 competitor";
+  if (n <= 3) return "2-3 competitors";
+  return "4+ competitors";
+}
+
+function headcountMidpoint(raw: unknown): number | null {
+  if (raw == null || raw === "") return null;
+  const n = Number(raw);
+  if (Number.isFinite(n) && n > 0 && typeof raw !== "string") return Math.trunc(n);
+  const compact = String(raw)
+    .replace(/[,\s]/g, "")
+    .replace(/[–—]/g, "-")
+    .toLowerCase();
+  if (!compact || compact.startsWith("not")) return null;
+  const table: [string, number][] = [
+    ["50000+", 75000],
+    ["10001-50000", 30000],
+    ["5001-10000", 7500],
+    ["1001-5000", 3000],
+    ["501-1000", 750],
+    ["201-500", 350],
+    ["51-200", 125],
+    ["1-50", 25],
+  ];
+  for (const [key, mid] of table) {
+    if (compact.includes(key)) return mid;
+  }
+  return null;
+}
+
+function customerTypeFromHeadcount(mid: number): "Enterprise" | "Mid_market" | "SMB" {
+  if (mid >= 5001) return "Enterprise";
+  if (mid >= 501) return "Mid_market";
+  return "SMB";
+}
+
+function yearsFromOpportunityType(raw: string): number | null {
+  const s = raw.toLowerCase();
+  if (!s.trim()) return null;
+  if (s.includes("renewal")) return 5;
+  if (s.includes("expansion")) return 3;
+  if (s.includes("new logo") || s.includes("speculative") || s.includes("displacement"))
+    return 0;
+  return null;
+}
+
+function buildVsBuyFromSignal(raw: string): { build: boolean; cap: string } | null {
+  const s = raw.toLowerCase().trim();
+  if (!s) return null;
+  if (s.startsWith("yes")) return { build: true, cap: "Strong (can build)" };
+  if (s.startsWith("possible")) return { build: true, cap: "Moderate (difficult build)" };
+  if (s.startsWith("no signal") || s.includes("not known"))
+    return { build: false, cap: "Weak (unlikely to build)" };
+  return null;
+}
+
+function capabilityFromEngHeadcount(raw: string): string | null {
+  const s = raw.toLowerCase();
+  if (!s.trim() || s.includes("not known")) return null;
+  if (s.includes("under 50")) return "Weak (unlikely to build)";
+  if (s.startsWith("50-") || s.includes("50-250")) return "Moderate (difficult build)";
+  return "Strong (can build)";
+}
+
+function approvalFromOwnership(raw: string): string | null {
+  const s = raw.toLowerCase();
+  if (!s.trim() || s.includes("not known")) return null;
+  if (s.includes("government") || s.includes("publicly")) return "Board_approval";
+  if (s.includes("pe owned") || s.includes("pe-owned")) return "C_suite_multiple";
+  if (s.includes("founder") || s.includes("family")) return "VP_and_below";
+  if (s.includes("vc") || s.includes("non-profit") || s.includes("ngo")) return "C_suite_single";
+  return null;
+}
+
+function integrationBandFromSystems(raw: unknown): string | null {
+  if (raw == null || raw === "") return null;
+  const systems = toStringList(raw);
+  const n = systems.length;
+  if (n === 0) return "Standalone - No Integrations Required";
+  if (n === 1) return "Simple - Single System Integration (e.g., SSO only)";
+  if (n <= 3) return "Moderate - 2-3 System Integrations";
+  if (n <= 6) return "Complex - 4-6 System Integrations";
+  return "Very Complex - 7+ System Integrations or Legacy Systems";
+}
+
+function advantageRowsFromPayload(payload: Record<string, unknown>): Record<string, unknown>[] {
+  const parsed = parseJsonish(firstPresent(payload, "key_advantages_rows", "keyAdvantagesRows"));
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((item) => {
+    if (!item || typeof item !== "object") return false;
+    const text = String(
+      (item as { advantage?: unknown; text?: unknown }).advantage ??
+        (item as { text?: unknown }).text ??
+        "",
+    ).trim();
+    return text !== "";
+  }) as Record<string, unknown>[];
+}
+
+const ADVANTAGE_CATEGORY_MAP: Record<string, string> = {
+  product: "Superior_feature_set",
+  security: "Technology_leadership",
+  compliance: "Regulatory_certification",
+  price: "Lower_TCO",
+  support: "Faster_deployment",
+  ecosystem: "Proven_customer_in_sector",
+};
+
 function riskLevelFromFormulaScore(score: number): "Low" | "Moderate" | "High" {
   if (score <= 33) return "Low";
   if (score <= 66) return "Moderate";
@@ -1637,13 +1810,95 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>) {
   const budgetMidpoint = budgetForFormula(
     toStringValue(payload.customer_budget_range ?? payload.customerBudgetRange),
   );
-  const customerType = customerTypeForFormula(budgetMidpoint);
+  const customerEmp = headcountMidpoint(
+    firstPresent(payload, "customer_employee_count", "customerEmployeeCount"),
+  );
+  const customerType =
+    customerEmp != null
+      ? customerTypeFromHeadcount(customerEmp)
+      : customerTypeForFormula(budgetMidpoint);
+  const customerEmployeeCount =
+    customerEmp ??
+    (customerType === "Enterprise" ? 2000 : customerType === "Mid_market" ? 500 : 100);
+
+  const competitorRows = competitorRowsFromPayload(payload);
   const alternatives = toStringValue(
     payload.alternatives_considered ?? payload.alternativesConsidered,
   );
-  const keyAdvantages = toStringList(
-    payload.key_advantages ?? payload.keyAdvantages,
+  let competitorCount = alternatives ? "2-3 competitors" : "1 competitor";
+  let consideringBuild = alternatives.toLowerCase().includes("build");
+  if (competitorRows.length > 0) {
+    competitorCount = competitorLabelFromCount(competitorRows.length);
+    consideringBuild = false;
+  }
+
+  const buildSignal = buildVsBuyFromSignal(
+    toStringValue(firstPresent(payload, "build_vs_buy_signal", "buildVsBuySignal") ?? ""),
   );
+  const engCap = capabilityFromEngHeadcount(
+    toStringValue(firstPresent(payload, "customer_eng_headcount", "customerEngHeadcount") ?? ""),
+  );
+  if (buildSignal) {
+    consideringBuild = buildSignal.build;
+  }
+  const customerTechnicalCapability =
+    engCap ?? buildSignal?.cap ?? "Moderate (difficult build)";
+
+  const advRows = advantageRowsFromPayload(payload);
+  const keyAdvantages = toStringList(payload.key_advantages ?? payload.keyAdvantages);
+  const uniqueDifferentiators = advRows.length
+    ? advRows.slice(0, 3).map((row) => ({
+        advantageType:
+          ADVANTAGE_CATEGORY_MAP[
+            String(row.category ?? "")
+              .trim()
+              .toLowerCase()
+          ] ?? "Domain_expertise",
+      }))
+    : keyAdvantages.length
+      ? keyAdvantages.slice(0, 3).map(() => ({ advantageType: "Domain_expertise" }))
+      : [];
+
+  const oppYears = yearsFromOpportunityType(
+    toStringValue(firstPresent(payload, "opportunity_type", "opportunityType") ?? ""),
+  );
+  const yearsInCustomerSector =
+    oppYears ??
+    (() => {
+      const explicit = Number(payload.yearsInCustomerSector ?? payload.years_in_customer_sector);
+      if (Number.isFinite(explicit) && explicit >= 0) return explicit;
+      const founded = Number(payload.yearFounded ?? payload.year_founded);
+      if (founded >= 1900 && founded <= new Date().getFullYear()) {
+        return Math.max(0, new Date().getFullYear() - founded);
+      }
+      return 0;
+    })();
+
+  const vendorEmployeeCount = (() => {
+    const n = Number(payload.vendorEmployeeCount ?? payload.employeeCount ?? payload.no_of_employees);
+    return Number.isFinite(n) && n > 0 ? n : 50;
+  })();
+
+  const integrationBand =
+    integrationBandFromSystems(
+      firstPresent(payload, "likely_integration_systems", "likelyIntegrationSystems"),
+    ) ??
+    toStringValue(payload.integration_complexity ?? payload.integrationComplexity);
+
+  const evidence = toStringList(
+    firstPresent(payload, "customer_ai_maturity_evidence", "customerAiMaturityEvidence"),
+  );
+  let vendorStage = (() => {
+    const raw = toStringValue(
+      payload.vendorStage ?? payload.vendorMaturity ?? payload.vendor_maturity ?? payload.company_stage,
+    ).toLowerCase();
+    if (/startup|early/.test(raw)) return "startup";
+    if (/mature|publicly|profitable/.test(raw)) return "mature";
+    if (/established|late/.test(raw)) return "established";
+    if (/growth|scaling/.test(raw)) return "growth";
+    return "established";
+  })();
+  if (evidence.length >= 3) vendorStage = "mature";
 
   return {
     customerRegulatoryRequirements: regulatory,
@@ -1658,21 +1913,11 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>) {
     ),
     customerSpecificRiskCount: customerSpecificRisks.length,
     customerType,
-    customerHasUniqueRequirements: Boolean(
-      toStringValue(
-        payload.customer_specific_risks_other ??
-          payload.customerSpecificRisksOther,
-      ),
-    ),
+    customerHasUniqueRequirements: false,
     uniqueRequirementsList: toStringList(
-      payload.customer_specific_risks_other ??
-        payload.customerSpecificRisksOther,
+      payload.customer_specific_risks_other ?? payload.customerSpecificRisksOther,
     ),
-    integrationPoints: buildIntegrationPointsForFormula(
-      toStringValue(
-        payload.integration_complexity ?? payload.integrationComplexity,
-      ),
-    ),
+    integrationPoints: buildIntegrationPointsForFormula(integrationBand),
     customizationLevel: normalizeCustomizationForFormula(
       toStringValue(payload.customization_level ?? payload.customizationLevel),
     ),
@@ -1688,30 +1933,25 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>) {
     ),
     regulatoryDeadlineExists: false,
     monthsUntilDeadline: undefined,
-    productFeatureMatchPct: 80,
+    productFeatureMatchPct: Number(payload.productFeatureMatchPct ?? payload.product_feature_match_pct) ||
+      Math.min(100, 40 + 8 * Math.min(keyAdvantages.length || toStringList(payload.product_features ?? payload.productFeatures).length, 7)),
     missingCriticalFeatures: [],
     proposedMitigationsCount: riskMitigations.length,
-    avgMitigationsPerRisk: 4,
-    competitorCount: alternatives ? "2-3 competitors" : "1 competitor",
-    customerConsideringBuildVsBuy: alternatives.toLowerCase().includes("build"),
-    customerTechnicalCapability: "Moderate (difficult build)",
+    avgMitigationsPerRisk: riskMitigations.length ? 4 : 0,
+    competitorCount,
+    customerConsideringBuildVsBuy: consideringBuild,
+    customerTechnicalCapability,
     budgetMidpoint,
-    approvalLevels: "C_suite_single",
-    uniqueDifferentiators: keyAdvantages.length
-      ? keyAdvantages
-          .slice(0, 3)
-          .map(() => ({ advantageType: "Domain_expertise" }))
-      : [{ advantageType: "Faster_deployment" }],
-    yearsInCustomerSector: 5,
-    vendorStage: "growth",
-    customerExpectsLargerVendorFeatures: customerType === "Enterprise",
-    customerEmployeeCount:
-      customerType === "Enterprise"
-        ? 2000
-        : customerType === "Mid_market"
-          ? 500
-          : 100,
-    vendorEmployeeCount: 250,
+    approvalLevels:
+      approvalFromOwnership(
+        toStringValue(firstPresent(payload, "customer_ownership", "customerOwnership") ?? ""),
+      ) ?? "C_suite_single",
+    uniqueDifferentiators,
+    yearsInCustomerSector,
+    vendorStage,
+    customerExpectsLargerVendorFeatures: customerEmployeeCount > vendorEmployeeCount * 2,
+    customerEmployeeCount,
+    vendorEmployeeCount,
   };
 }
 
@@ -1730,7 +1970,6 @@ async function invokeModel(userInput: string): Promise<string> {
     const result = await invokePythonLlmWithVector({
       assessmentType: "cots_vendor",
       userPrompt: userInput,
-      queryText: userInput.slice(0, 2000),
       maxTokens: 8192,
       temperature: 0.3,
       includeFormulaContext: false,

@@ -64,16 +64,13 @@ const SECTION_ID_TO_VIS_KEY: Record<number, keyof typeof defaultSectionVis> = {
   2: "companyIdentity",
   3: "dataPrivacy",
   4: "compliance",
-  5: "modelRisk",
+  5: "securityPosture",
   6: "dataPractices",
   7: "complianceCertifications",
   8: "operationsSupport",
   9: "vendorManagement",
-  /** AI Safety & Testing — same visibility flag as AI Models & Technology (dataPrivacy) */
   10: "dataPrivacy",
-  /** Evidence & Trust — same visibility flag as Compliance & Certifications */
   11: "complianceCertifications",
-  /** Company reach — same toggle as Company reach in product profile */
   12: "companyReach",
 };
 
@@ -101,6 +98,9 @@ function parseGeneratedReport(
         | undefined,
     },
     sections: o.sections as GeneratedProductProfileReport["sections"],
+    scoringSource: String(
+      o.scoring_source ?? o.scoringSource ?? (o.scoringResult as { scoring_source?: string } | undefined)?.scoring_source ?? "",
+    ) || undefined,
   };
 }
 
@@ -2113,6 +2113,7 @@ const VendorDirectory = () => {
                               report={{
                                 trustScore: mergedReport.trustScore,
                                 sections: filteredSections,
+                                scoringSource: mergedReport.scoringSource,
                               }}
                             />
                           </div>

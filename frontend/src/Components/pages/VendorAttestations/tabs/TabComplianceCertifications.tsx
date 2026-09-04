@@ -43,7 +43,7 @@ export interface TabComplianceCertificationsProps {
   attestationId?: string | null;
   onUploadDocument?: (attestationId: string, file: File) => Promise<string>;
   onStorePendingFiles?: (
-    slot: "0" | "1" | "evidenceTestingPolicy" | "aiGovernancePolicy",
+    slot: "0" | "1" | "2" | "evidenceTestingPolicy" | "aiGovernancePolicy",
     files: File[],
     category?: string,
   ) => void;
@@ -73,8 +73,10 @@ function TabComplianceCertifications({
   const regulatory = documentUpload?.["2"] ?? { categories: [], byCategory: {} };
   const categories = regulatory.categories ?? [];
   const byCategory = regulatory.byCategory ?? {};
+  const allowedCertificationValues = new Set<string>(DOCUMENT_CATEGORIES.map((c) => c.value));
   const selectedUploadCategories = categories.filter(
-    (category) => category !== NONE_CERTIFICATION_VALUE,
+    (category) =>
+      category !== NONE_CERTIFICATION_VALUE && allowedCertificationValues.has(category),
   );
   const hasNoCertificationsSelected = categories.includes(NONE_CERTIFICATION_VALUE);
 
@@ -154,6 +156,28 @@ function TabComplianceCertifications({
         setAttestation={setAttestation}
         fieldErrors={fieldErrors}
       />
+
+      {attestation.dpa_available === "publicly_available" && (
+        <div className="form_fields_vendor">
+          <FormField
+            label="DPA URL"
+            mandatory={true}
+            tooltipText="Public URL for the Data Processing Agreement."
+            errorText={fieldErrors?.dpa_url}
+          >
+            <Input
+              labelName=""
+              type="url"
+              id="dpa_url"
+              name="dpa_url"
+              value={attestation.dpa_url ?? ""}
+              onChange={(e) =>
+                setAttestation((prev) => ({ ...prev, dpa_url: e.target.value }))
+              }
+            />
+          </FormField>
+        </div>
+      )}
 
       <div className="form_fields_vendor">
         <FormField
@@ -268,7 +292,7 @@ function TabComplianceCertifications({
               id="regulatory-document-categories-compliance"
               labelName=""
               options={DOCUMENT_CATEGORIES.map((c) => ({ label: c.label, value: c.value }))}
-              value={categories}
+              value={categories.filter((category) => allowedCertificationValues.has(category))}
               onChange={setRegulatoryCategories}
               globalExclusiveValue={NONE_CERTIFICATION_VALUE}
             />

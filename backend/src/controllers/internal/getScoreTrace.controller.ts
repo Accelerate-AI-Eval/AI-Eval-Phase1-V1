@@ -15,11 +15,9 @@ import { db } from "../../database/db.js";
 import { cotsBuyerAssessments } from "../../schema/assessments/cotsBuyerAssessments.js";
 import { assessments } from "../../schema/assessments/assessments.js";
 import { customerRiskAssessmentReports } from "../../schema/assessments/customerRiskAssessmentReports.js";
-import { generatedProfileReports } from "../../schema/schema.js";
 import { buildIrsScoreTrace } from "../../services/irsScoreTrace.js";
 import { buildIrsFactorExplanations } from "../../services/irsFactorExplanations.js";
-import { buildVtsScoreTrace } from "../../services/vtsScoreTrace.js";
-import { rebuildFactorExplanationsFromStoredDetail } from "../../services/vtsFactorExplanations.js";
+import { loadVtsScoreTraceByReportOrAttestationId } from "../../services/loadVtsScoreTrace.js";
 import { buildScsScoreTrace } from "../../services/scsScoreTrace.js";
 import { findAttestationForBuyerVendorProduct } from "../../services/findAttestationForBuyerVendorProduct.js";
 import { scoreCotsBuyerWithPython } from "../../services/pythonScoringClient.js";
@@ -29,6 +27,33 @@ import {
   extractOverallRiskScoreFromReport,
 } from "../../utils/mergeScoreRationale.js";
 import { getActiveLlmModelMeta } from "../../utils/activeLlmModelMeta.js";
+
+function toIsoTimestamp(value: unknown): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  if (typeof value === "string" && value.trim()) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  return null;
+}
+
+/** Stored score time — never wall-clock of the explainability request. */
+function resolveScoreCalculatedAt(
+  report: Record<string, unknown> | null | undefined,
+  ...rowTimes: unknown[]
+): string | null {
+  if (report != null && typeof report === "object") {
+    for (const key of ["irsRescoredAt", "generatedAt", "generated_at"] as const) {
+      const iso = toIsoTimestamp(report[key]);
+      if (iso) return iso;
+    }
+  }
+  for (const t of rowTimes) {
+    const iso = toIsoTimestamp(t);
+    if (iso) return iso;
+  }
+  return null;
+}
 
 /** Prefer DB column, then report JSON modelId fields, then active Controls model. */
 function resolveStoredLlmModelId(
@@ -220,6 +245,9 @@ export async function getIrsScoreTrace(req: Request, res: Response): Promise<voi
         audit_logs:                       cotsBuyerAssessments.audit_logs,
         testing_results:                  cotsBuyerAssessments.testing_results,
         assessment_status:                assessments.status,
+        assessment_updated_at:            assessments.updated_at,
+        buyer_updated_at:                 cotsBuyerAssessments.updated_at,
+        buyer_created_at:                 cotsBuyerAssessments.created_at,
       })
       .from(cotsBuyerAssessments)
       .innerJoin(assessments, eq(cotsBuyerAssessments.assessment_id, assessments.id))
@@ -287,6 +315,12 @@ export async function getIrsScoreTrace(req: Request, res: Response): Promise<voi
       (reportRaw.implementationRiskSource as Record<string, unknown> | undefined) ??
       (reportRaw.source as Record<string, unknown> | undefined);
     let usedAttestation = Boolean(riskSource?.usedAttestation);
+    let calculatedAt = resolveScoreCalculatedAt(
+      reportRaw,
+      row.buyer_updated_at,
+      row.buyer_created_at,
+      row.assessment_updated_at,
+    );
 
     let probe = buildIrsScoreTrace({
       buyerPayload,
@@ -295,6 +329,7 @@ export async function getIrsScoreTrace(req: Request, res: Response): Promise<voi
       usedAttestation,
       vendorName,
       productName,
+      generatedAt: calculatedAt,
     });
     const needsRefresh = probe.warnings.some(
       (w) =>
@@ -317,6 +352,9 @@ export async function getIrsScoreTrace(req: Request, res: Response): Promise<voi
       storedScore = refreshed.storedScore;
       usedAttestation = refreshed.usedAttestation;
       irsRefreshed = refreshed.refreshed;
+      if (irsRefreshed) {
+        calculatedAt = resolveScoreCalculatedAt(refreshed.report) ?? new Date().toISOString();
+      }
       probe = buildIrsScoreTrace({
         buyerPayload,
         storedBreakdown,
@@ -324,6 +362,7 @@ export async function getIrsScoreTrace(req: Request, res: Response): Promise<voi
         usedAttestation,
         vendorName,
         productName,
+        generatedAt: calculatedAt,
       });
       if (irsRefreshed) {
         probe.warnings = [
@@ -369,144 +408,18 @@ export async function getVtsScoreTrace(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const selectFields = {
-      id:             generatedProfileReports.id,
-      trust_score:    generatedProfileReports.trust_score,
-      report:         generatedProfileReports.report,
-      attestation_id: generatedProfileReports.attestation_id,
-      product_risk:   generatedProfileReports.product_risk,
-      governance_risk: generatedProfileReports.governance_risk,
-      operational_risk: generatedProfileReports.operational_risk,
-      formula_detail: generatedProfileReports.formula_detail,
-      llm_model_id:   generatedProfileReports.llm_model_id,
-    };
-
-    // Primary lookup: reportId is the generated_profile_reports UUID
-    let [row] = await db
-      .select(selectFields)
-      .from(generatedProfileReports)
-      .where(eq(generatedProfileReports.id, reportId))
-      .limit(1);
-
-    // Fallback: treat reportId as a vendor_self_attestations UUID (vendorAttestationId from listing)
-    if (!row) {
-      [row] = await db
-        .select(selectFields)
-        .from(generatedProfileReports)
-        .where(eq(generatedProfileReports.attestation_id, reportId))
-        .orderBy(desc(generatedProfileReports.created_at))
-        .limit(1);
-    }
-
-    if (!row) {
+    const loaded = await loadVtsScoreTraceByReportOrAttestationId(reportId);
+    if (!loaded) {
       res.status(404).json({
         error: "Score trace unavailable: no stored score breakdown for this vendor assessment. Submit a new attestation to generate one.",
       });
       return;
     }
 
-    const report = row.report as Record<string, unknown> | null;
-    const trustScoreBlock = (report?.trustScore ?? report?.trust_score) as
-      | Record<string, unknown>
-      | undefined;
-    const rawScoreByCategory = trustScoreBlock?.scoreByCategory as
-      | Record<string, unknown>
-      | undefined;
-
-    let scoreByCategory: Record<string, number> | null = rawScoreByCategory
-      ? Object.fromEntries(
-          Object.entries(rawScoreByCategory)
-            .filter(([, v]) => typeof v === "number" || (typeof v === "string" && Number.isFinite(Number(v))))
-            .map(([k, v]) => [k, Number(v)]),
-        )
-      : null;
-
-    // Fallback: derive category scores from stored risk columns (formula path)
-    if (!scoreByCategory || Object.keys(scoreByCategory).length === 0) {
-      const pr = row.product_risk != null && Number.isFinite(Number(row.product_risk))
-        ? Number(row.product_risk) : null;
-      const gr = row.governance_risk != null && Number.isFinite(Number(row.governance_risk))
-        ? Number(row.governance_risk) : null;
-      const opr = row.operational_risk != null && Number.isFinite(Number(row.operational_risk))
-        ? Number(row.operational_risk) : null;
-      if (pr != null && gr != null && opr != null) {
-        scoreByCategory = {
-          Product: Math.max(0, Math.min(100, 100 - pr)),
-          Governance: Math.max(0, Math.min(100, 100 - gr)),
-          Operational: Math.max(0, Math.min(100, 100 - opr)),
-        };
-      }
-    }
-
-    const rawFactorExplanations = trustScoreBlock?.factorExplanations;
-    let factorExplanations = Array.isArray(rawFactorExplanations) ? rawFactorExplanations : undefined;
-
-    // Older / CSV-imported reports may lack factorExplanations. Rebuild from stored
-    // formula_detail (or scoringResult.detail) so Score Trace does not warn about re-scoring.
-    if (!factorExplanations?.length) {
-      const scoringResult = report?.scoringResult as Record<string, unknown> | undefined;
-      const detailSource =
-        row.formula_detail ??
-        scoringResult?.detail ??
-        null;
-      const rebuilt = rebuildFactorExplanationsFromStoredDetail({
-        storedTrustScore: Number(row.trust_score ?? 0),
-        productRisk:
-          row.product_risk != null && Number.isFinite(Number(row.product_risk))
-            ? Number(row.product_risk)
-            : null,
-        governanceRisk:
-          row.governance_risk != null && Number.isFinite(Number(row.governance_risk))
-            ? Number(row.governance_risk)
-            : null,
-        operationalRisk:
-          row.operational_risk != null && Number.isFinite(Number(row.operational_risk))
-            ? Number(row.operational_risk)
-            : null,
-        formulaDetail: detailSource,
-      });
-      if (rebuilt.length > 0) {
-        factorExplanations = rebuilt;
-
-        // Persist so subsequent opens skip rebuild and stay consistent with generation path.
-        try {
-          const trustKey = report && "trustScore" in report ? "trustScore" : "trust_score";
-          const prevTrust =
-            trustScoreBlock && typeof trustScoreBlock === "object" ? trustScoreBlock : {};
-          const updatedReport = {
-            ...(report && typeof report === "object" ? report : {}),
-            [trustKey]: {
-              ...prevTrust,
-              factorExplanations: rebuilt,
-            },
-          };
-          await db
-            .update(generatedProfileReports)
-            .set({ report: updatedReport })
-            .where(eq(generatedProfileReports.id, row.id));
-        } catch (persistErr) {
-          console.warn(
-            "getVtsScoreTrace: failed to persist rebuilt factorExplanations:",
-            persistErr instanceof Error ? persistErr.message : persistErr,
-          );
-        }
-      }
-    }
-
-    const trace = buildVtsScoreTrace({
-      storedTrustScore: Number(row.trust_score ?? 0),
-      scoreByCategory:  Object.keys(scoreByCategory ?? {}).length > 0 ? scoreByCategory : null,
-      reportId: row.id,
-      attestationId:    row.attestation_id ?? null,
-      factorExplanations,
+    res.status(200).json({
+      success: true,
+      data: { ...loaded.trace, llmModelId: loaded.llmModelId },
     });
-
-    const llmModelId = resolveStoredLlmModelId(
-      row.llm_model_id,
-      report && typeof report === "object" ? report : null,
-    );
-
-    res.status(200).json({ success: true, data: { ...trace, llmModelId } });
   } catch (e) {
     console.error("getVtsScoreTrace:", e);
     res.status(500).json({ error: "Failed to generate VTS score trace" });
@@ -538,6 +451,7 @@ export async function getScsScoreTrace(req: Request, res: Response): Promise<voi
         title: customerRiskAssessmentReports.title,
         score_rationale: customerRiskAssessmentReports.score_rationale,
         llm_model_id: customerRiskAssessmentReports.llm_model_id,
+        created_at: customerRiskAssessmentReports.created_at,
       })
       .from(customerRiskAssessmentReports)
       .where(eq(customerRiskAssessmentReports.assessment_id, assessmentId))
@@ -629,6 +543,7 @@ export async function getScsScoreTrace(req: Request, res: Response): Promise<voi
         detailRaw != null && typeof detailRaw === "object" && !Array.isArray(detailRaw)
           ? (detailRaw as Record<string, unknown>)
           : null,
+      generatedAt: resolveScoreCalculatedAt(report, row.created_at),
     });
 
     const llmModelId = resolveStoredLlmModelId(row.llm_model_id, report);

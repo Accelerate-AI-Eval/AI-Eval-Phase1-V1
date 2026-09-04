@@ -781,7 +781,6 @@ async function invokeModel(prompt: string): Promise<string> {
     const result = await invokePythonLlmWithVector({
       assessmentType: "cots_buyer",
       userPrompt: prompt,
-      queryText: prompt.slice(0, 2000),
       maxTokens: 8192,
       temperature: 0.35,
       includeFormulaContext: false,
@@ -826,132 +825,119 @@ export async function generateBuyerVendorRiskReport(
     console.error("getTop5RisksWithMitigations (buyer vendor risk report):", e);
   }
 
-  // Implementation Risk Score formula runs in Python (same ownership as VTS).
-  let implementationRisk: Awaited<ReturnType<typeof scoreCotsBuyerWithPython>>;
-  try {
-    implementationRisk = await scoreCotsBuyerWithPython({
-      buyerPayload: scoringBuyerPayload,
-      attestationRow,
-      vendorName,
-      productName,
-    });
-  } catch (scoreErr) {
-    console.error(
-      "Python buyer IRS formula failed; using local Node IRS fallback:",
-      scoreErr,
-    );
+  // Formula IRS does not depend on LLM text — overlap it with Bedrock.
+  const scorePromise = (async () => {
     try {
-      const local = calculateBuyerImplementationRiskScore(
-        scoringBuyerPayload,
+      return await scoreCotsBuyerWithPython({
+        buyerPayload: scoringBuyerPayload,
         attestationRow,
         vendorName,
         productName,
+      });
+    } catch (scoreErr) {
+      console.error(
+        "Python buyer IRS formula failed; using local Node IRS fallback:",
+        scoreErr,
       );
-      const intentRaw = Number(
-        scoringBuyerPayload.intent_multiplier_value ??
-          scoringBuyerPayload.intentMultiplierValue ??
-          1,
-      );
-      const intent =
-        Number.isFinite(intentRaw) && intentRaw > 0
-          ? Math.min(1.5, Math.max(0.5, intentRaw))
-          : 1;
-      const parts = irsFinalScoreFromParts(
-        local.breakdown.vendorRisk,
-        local.breakdown.organizationalReadinessGap,
-        local.breakdown.integrationRisk,
-        intent,
-      );
-      const grade =
-        parts.score >= 76
-          ? "A"
-          : parts.score >= 51
-            ? "B"
-            : parts.score >= 26
-              ? "C"
-              : "D";
-      const classification =
-        grade === "A"
-          ? "High Readiness"
-          : grade === "B"
-            ? "Moderate Readiness"
-            : grade === "C"
-              ? "Low Readiness"
-              : "Readiness Review Required";
-      const decision =
-        grade === "A"
-          ? "PROCEED"
-          : grade === "D"
-            ? "DO NOT PROCEED"
-            : "PROCEED WITH CAUTION";
-      implementationRisk = {
-        implementationRiskScore: parts.score,
-        grade,
-        classification,
-        decision,
-        readiness_profile: local.readiness_profile,
-        recommendedAction: local.recommendedAction,
-        formula:
-          "IRS = 100 - (((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30)) × Intent)",
-        breakdown: {
-          vendorRisk: parts.vendorRisk,
-          organizationalReadinessGap: parts.orgGap,
-          integrationRisk: parts.integrationRisk,
-          vendorTrustScore: local.breakdown.vendorTrustScore,
-          intentMultiplier: intent,
-          intentProfile: String(
-            scoringBuyerPayload.intent_profile ??
-              scoringBuyerPayload.intentProfile ??
-              "Mixed",
-          ),
-        },
-        source: local.source,
-        scoring_source: "node-fallback",
-        scoring_version: "irs-node-1.0",
-      };
-    } catch (localErr) {
-      console.error("Local Node IRS fallback also failed; using neutral 50:", localErr);
-      implementationRisk = {
-        implementationRiskScore: 50,
-        grade: "B",
-        classification: "Moderate Readiness",
-        decision: "PROCEED WITH CAUTION",
-        readiness_profile: "Score temporarily unavailable — using neutral fallback.",
-        recommendedAction: "Re-run scoring after the scoring service is available.",
-        formula:
-          "IRS = 100 - ((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30))",
-        breakdown: {
-          vendorRisk: 50,
-          organizationalReadinessGap: 50,
-          integrationRisk: 50,
-          vendorTrustScore: 50,
-          intentMultiplier: 1,
-          intentProfile: "Mixed",
-        },
-        source: {
-          vendorName: vendorName || "Vendor",
-          productName: productName || "Product",
-          usedAttestation: attestationRow != null,
-        },
-        scoring_source: "fallback",
-        scoring_version: "irs-fallback",
-      };
+      try {
+        const local = calculateBuyerImplementationRiskScore(
+          scoringBuyerPayload,
+          attestationRow,
+          vendorName,
+          productName,
+        );
+        const intentRaw = Number(
+          scoringBuyerPayload.intent_multiplier_value ??
+            scoringBuyerPayload.intentMultiplierValue ??
+            1,
+        );
+        const intent =
+          Number.isFinite(intentRaw) && intentRaw > 0
+            ? Math.min(1.5, Math.max(0.5, intentRaw))
+            : 1;
+        const parts = irsFinalScoreFromParts(
+          local.breakdown.vendorRisk,
+          local.breakdown.organizationalReadinessGap,
+          local.breakdown.integrationRisk,
+          intent,
+        );
+        const grade =
+          parts.score >= 76
+            ? "A"
+            : parts.score >= 51
+              ? "B"
+              : parts.score >= 26
+                ? "C"
+                : "D";
+        const classification =
+          grade === "A"
+            ? "High Readiness"
+            : grade === "B"
+              ? "Moderate Readiness"
+              : grade === "C"
+                ? "Low Readiness"
+                : "Readiness Review Required";
+        const decision =
+          grade === "A"
+            ? "PROCEED"
+            : grade === "D"
+              ? "DO NOT PROCEED"
+              : "PROCEED WITH CAUTION";
+        return {
+          implementationRiskScore: parts.score,
+          grade,
+          classification,
+          decision,
+          readiness_profile: local.readiness_profile,
+          recommendedAction: local.recommendedAction,
+          formula:
+            "IRS = 100 - (((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30)) × Intent)",
+          breakdown: {
+            vendorRisk: parts.vendorRisk,
+            organizationalReadinessGap: parts.orgGap,
+            integrationRisk: parts.integrationRisk,
+            vendorTrustScore: local.breakdown.vendorTrustScore,
+            intentMultiplier: intent,
+            intentProfile: String(
+              scoringBuyerPayload.intent_profile ??
+                scoringBuyerPayload.intentProfile ??
+                "Mixed",
+            ),
+          },
+          source: local.source,
+          scoring_source: "node-fallback",
+          scoring_version: "irs-node-1.0",
+        };
+      } catch (localErr) {
+        console.error("Local Node IRS fallback also failed; using neutral 50:", localErr);
+        return {
+          implementationRiskScore: 50,
+          grade: "B",
+          classification: "Moderate Readiness",
+          decision: "PROCEED WITH CAUTION",
+          readiness_profile: "Score temporarily unavailable — using neutral fallback.",
+          recommendedAction: "Re-run scoring after the scoring service is available.",
+          formula:
+            "IRS = 100 - ((Vendor_Risk × 0.35) + (Organizational_Readiness_Gap × 0.35) + (Integration_Risk × 0.30))",
+          breakdown: {
+            vendorRisk: 50,
+            organizationalReadinessGap: 50,
+            integrationRisk: 50,
+            vendorTrustScore: 50,
+            intentMultiplier: 1,
+            intentProfile: "Mixed",
+          },
+          source: {
+            vendorName: vendorName || "Vendor",
+            productName: productName || "Product",
+            usedAttestation: attestationRow != null,
+          },
+          scoring_source: "fallback",
+          scoring_version: "irs-fallback",
+        };
+      }
     }
-  }
-  console.log("irs", implementationRisk.implementationRiskScore);
-  if (implementationRisk.rationale?.trim()) {
-    console.log(implementationRisk.rationale);
-  } else {
-    console.log(
-      "[cots_buyer] IRS",
-      implementationRisk.implementationRiskScore,
-      "|",
-      implementationRisk.grade,
-      implementationRisk.classification,
-      "|",
-      implementationRisk.decision,
-    );
-  }
+  })();
   const attestationSlice: Record<string, unknown> = attestationRow
     ? {
         product_name: attestationRow.product_name,
@@ -974,9 +960,9 @@ export async function generateBuyerVendorRiskReport(
     SYSTEM_PROMPT,
     "",
     "--- Buyer assessment (answers) ---",
-    JSON.stringify(scoringBuyerPayload, null, 2).slice(0, 14000),
+    JSON.stringify(scoringBuyerPayload).slice(0, 14000),
     "--- Vendor attestation (selected product; may be empty) ---",
-    JSON.stringify(attestationSlice, null, 2).slice(0, 12000),
+    JSON.stringify(attestationSlice).slice(0, 12000),
     dbRisksBlock ? `\n${dbRisksBlock}\n` : "",
     `Vendor display name: ${vendorName}. Product: ${productName}.`,
     `Vendor Trust Score (from vendor self-attestation; use EXACTLY this value in executiveSummary as 'Vendor trust score: ${canonicalVendorTrustScore}/100'): ${canonicalVendorTrustScore}/100.`,
@@ -984,7 +970,24 @@ export async function generateBuyerVendorRiskReport(
   ].join("\n");
 
   try {
-    const rawText = await invokeModel(userPrompt);
+    const [implementationRisk, rawText] = await Promise.all([
+      scorePromise,
+      invokeModel(userPrompt),
+    ]);
+    console.log("irs", implementationRisk.implementationRiskScore);
+    if (implementationRisk.rationale?.trim()) {
+      console.log(implementationRisk.rationale);
+    } else {
+      console.log(
+        "[cots_buyer] IRS",
+        implementationRisk.implementationRiskScore,
+        "|",
+        implementationRisk.grade,
+        implementationRisk.classification,
+        "|",
+        implementationRisk.decision,
+      );
+    }
     const parsed = extractJsonObject(rawText);
     if (parsed) {
       const normalized = normalizeReport(
@@ -1014,6 +1017,7 @@ export async function generateBuyerVendorRiskReport(
     if (isTokenQuotaExceededError(e)) throw e;
     console.error("generateBuyerVendorRiskReport LLM error:", e);
   }
+  const implementationRisk = await scorePromise;
   const fallback = buildFallbackReport(
     vendorName,
     productName,

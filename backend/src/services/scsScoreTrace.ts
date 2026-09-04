@@ -25,6 +25,15 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function toIsoTimestamp(value: string | Date | null | undefined): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  if (typeof value === "string" && value.trim()) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  return null;
+}
+
 function component(
   label: string,
   category: string,
@@ -61,6 +70,8 @@ export type ScsTraceInput = {
   classification?: string | null;
   /** Optional nested formula detail for richer improvement tips. */
   detail?: Record<string, unknown> | null;
+  /** When the stored sales-risk score was calculated (report created_at). */
+  generatedAt?: string | Date | null;
 };
 
 export function buildScsScoreTrace(input: ScsTraceInput): ScoreTrace {
@@ -217,7 +228,7 @@ export function buildScsScoreTrace(input: ScsTraceInput): ScoreTrace {
     warnings,
     missingEvidence,
     scsFactorExplanations: scsFactorExplanations.length > 0 ? scsFactorExplanations : undefined,
-    generatedAt: new Date().toISOString(),
+    generatedAt: toIsoTimestamp(input.generatedAt) ?? new Date().toISOString(),
     internalOnly: true,
   };
 }

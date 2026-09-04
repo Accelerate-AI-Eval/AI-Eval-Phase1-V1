@@ -161,6 +161,11 @@ function prepareSubmitPayload(
   if (riskMitigationMappingIds.length > 0) {
     out.riskMitigationMappingIds = riskMitigationMappingIds;
   }
+  const attestationId = String(data.vendorAttestationId ?? data.selectedProductId ?? "").trim();
+  if (attestationId) {
+    out.vendorAttestationId = attestationId;
+    out.selectedProductId = attestationId;
+  }
   return out;
 }
 
@@ -173,7 +178,7 @@ const BuyerAssessment = () => {
   );
   const [currentStep, setCurrentStep] = useState(0);
   const [allStepsFilled, setAllStepsFilled] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Record<string, string>>({
     ...BUYER_COTS_INITIAL_STATE,
     integrationSystemsOther: "",
   });
@@ -487,7 +492,7 @@ const BuyerAssessment = () => {
     }
     if (!silent) setSavingDraft(true);
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         organizationId,
         ...prepareSubmitPayload(formData, riskMitigationMappingIds),
       };
@@ -548,7 +553,7 @@ const BuyerAssessment = () => {
       return;
     }
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         organizationId,
         ...prepareSubmitPayload(formData, riskMitigationMappingIds),
       };

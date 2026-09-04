@@ -972,6 +972,19 @@ html[data-theme="dark"] .vd_empty_state__action:hover {
   font-weight: 600;
 }
 
+.vendor_intel_score_source_chip {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: #e2e8f0;
+  color: #334155;
+  text-transform: none;
+}
+
 @media (max-width: 780px) {
   .vendor_intel_hero {
     flex-direction: column;

@@ -1,7 +1,7 @@
 {
   "region": "us-east-1",
-  "fetchedAt": "2026-09-01T11:05:52.396Z",
-  "count": 71,
+  "fetchedAt": "2026-09-04T07:47:10.169Z",
+  "count": 73,
   "profiles": [
     {
       "inferenceProfileName": "GLOBAL Amazon Nova 2 Lite",
@@ -44,6 +44,27 @@
       "profileType": "SYSTEM_DEFINED",
       "modelId": "global.anthropic.claude-fable-5",
       "foundationModelId": "anthropic.claude-fable-5"
+    },
+    {
+      "inferenceProfileName": "Global Anthropic Claude Fable 5.1",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/global.anthropic.claude-fable-5-1",
+      "models": [
+        {
+          "modelArn": "arn:aws:bedrock:::foundation-model/anthropic.claude-fable-5-1"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-fable-5-1"
+        }
+      ],
+      "inferenceProfileId": "global.anthropic.claude-fable-5-1",
+      "status": "ACTIVE",
+      "type": "SYSTEM_DEFINED",
+      "description": "Routes requests to Anthropic Claude Fable 5.1 globally across all supported AWS Regions.",
+      "createdAt": "2026-08-28T19:54:28.437Z",
+      "updatedAt": "2026-09-01T23:55:52.804Z",
+      "profileType": "SYSTEM_DEFINED",
+      "modelId": "global.anthropic.claude-fable-5-1",
+      "foundationModelId": "anthropic.claude-fable-5-1"
     },
     {
       "inferenceProfileName": "Global Anthropic Claude Haiku 4.5",
@@ -187,7 +208,7 @@
       "type": "SYSTEM_DEFINED",
       "description": "Routes requests to Anthropic Claude Sonnet 4.6 globally across all supported AWS Regions.",
       "createdAt": "2026-02-13T21:58:21.641Z",
-      "updatedAt": "2026-04-23T22:00:08.065Z",
+      "updatedAt": "2026-09-02T09:15:12.415Z",
       "profileType": "SYSTEM_DEFINED",
       "modelId": "global.anthropic.claude-sonnet-4-6",
       "foundationModelId": "anthropic.claude-sonnet-4-6"
@@ -470,6 +491,30 @@
       "profileType": "SYSTEM_DEFINED",
       "modelId": "us.anthropic.claude-fable-5",
       "foundationModelId": "anthropic.claude-fable-5"
+    },
+    {
+      "inferenceProfileName": "US Anthropic Claude Fable 5.1",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/us.anthropic.claude-fable-5-1",
+      "models": [
+        {
+          "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-fable-5-1"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-fable-5-1"
+        },
+        {
+          "modelArn": "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-fable-5-1"
+        }
+      ],
+      "inferenceProfileId": "us.anthropic.claude-fable-5-1",
+      "status": "ACTIVE",
+      "type": "SYSTEM_DEFINED",
+      "description": "Routes requests to Anthropic Claude Fable 5.1 in us-east-1, us-east-2 and us-west-2.",
+      "createdAt": "2026-08-28T19:54:28.334Z",
+      "updatedAt": "2026-09-01T23:55:49.193Z",
+      "profileType": "SYSTEM_DEFINED",
+      "modelId": "us.anthropic.claude-fable-5-1",
+      "foundationModelId": "anthropic.claude-fable-5-1"
     },
     {
       "inferenceProfileName": "US Anthropic Claude Haiku 4.5",

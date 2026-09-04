@@ -91,7 +91,7 @@ async def llm_with_vector(body: LlmWithVectorRequest) -> LlmWithVectorResponse:
 
         include_formula = body.include_formula_context
         if include_formula is None:
-            include_formula = body.assessment_type == "vendor_self_attestation"
+            include_formula = False
 
         started = time.perf_counter()
         vector_meta: dict[str, Any] = {

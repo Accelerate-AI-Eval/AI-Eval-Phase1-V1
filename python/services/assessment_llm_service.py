@@ -100,8 +100,7 @@ def _invoke_bedrock_once(
         flush=True,
     )
     started = time.perf_counter()
-    client = create_bedrock_runtime_client()
-    response = client.invoke_model(
+    response = create_bedrock_runtime_client().invoke_model(
         modelId=model_id,
         contentType="application/json",
         accept="application/json",

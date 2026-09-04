@@ -30,7 +30,7 @@ import Input from "../../UI/Input";
 import Select from "../../UI/Select";
 import UserDataTable from "./UserDataTable";
 import { toast } from "react-toastify";
-import { useDispatch, useSelector } from "react-redux";
+import { useAppDispatch, useAppSelector } from "../../../Context/hooks";
 import { getOrganizations } from "../../../Context/OrganizationsData";
 
 type RoleCategory = "system" | "vendor" | "buyer";
@@ -169,8 +169,8 @@ const UserManagement = () => {
   const [organization, setOrganization] = useState("");
   const [role, setRole] = useState("");
   const [userListRefreshKey, setUserListRefreshKey] = useState(0);
-  const dispatch = useDispatch();
-  const { data } = useSelector((state) => state.organizations);
+  const dispatch = useAppDispatch();
+  const { data } = useAppSelector((state) => state.organizations);
 
   const handleInvite = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -276,7 +276,7 @@ const UserManagement = () => {
     selectedOrg?.hasAdmin === true
       ? orgRoleOptions.filter((r) => r.value !== "admin")
       : orgRoleOptions;
-  const isSystemOrgSelected = organization === "1" || organization === 1;
+  const isSystemOrgSelected = String(organization) === "1";
 
   const systemRoleOptions = [
     { value: "system admin", label: "System Admin" },

@@ -92,6 +92,7 @@ export const vendorSelfAttestations = pgTable("vendor_self_attestations", {
   bug_bounty: jsonb("bug_bounty"),
   independent_pen_test_frequency: varchar("independent_pen_test_frequency", { length: 30 }),
   dpa_available: varchar("dpa_available", { length: 30 }),
+  dpa_url: varchar("dpa_url", { length: 500 }),
   rollback_deployment_issues: varchar("rollback_deployment_issues", { length: 100 }),
   solution_hosted: jsonb("solution_hosted"),
   deployment_scale: varchar("deployment_scale", { length: 100 }),

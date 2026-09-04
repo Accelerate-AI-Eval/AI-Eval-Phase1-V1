@@ -69,8 +69,8 @@ export interface VendorSelfAttestationPayload {
   security_certifications?: string[] | null;
   assessment_completion_level?: string | null;
   audit_frequency?: string | null;
-  /** Yes / No — vendor offers a HIPAA Business Associate Agreement */
-  hipaa_baa?: string | null;
+  /** HIPAA BAA / GDPR / CCPA (multi-select); legacy yes/no strings still accepted */
+  hipaa_baa?: string | string[] | null;
   fedramp_authorization?: FedrampAuthorization | null;
   pii_handling?: string | null;
   data_residency_options?: string[] | null;
@@ -87,6 +87,7 @@ export interface VendorSelfAttestationPayload {
   bug_bounty?: BugBountyProgram | null;
   independent_pen_test_frequency?: string | null;
   dpa_available?: string | null;
+  dpa_url?: string | null;
   bias_testing_approach?: string[] | null;
   adversarial_security_testing?: string | null;
   human_oversight?: string[] | null;

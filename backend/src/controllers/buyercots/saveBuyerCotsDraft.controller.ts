@@ -71,7 +71,10 @@ function buildPayloadCots(body: Record<string, unknown>) {
     phased_rollout_plan: get("pilotRolloutPlan") != null ? String(get("pilotRolloutPlan")).slice(0, 100) : null,
     rollback_capability: get("rollbackCapability") != null ? String(get("rollbackCapability")).slice(0, 100) : null,
     management_plan: get("changeManagementPlan") != null ? String(get("changeManagementPlan")).slice(0, 100) : null,
-    compliance_document: get("complianceDocument") != null ? String(get("complianceDocument")) : null,
+    compliance_document: (() => {
+      const raw = get("vendorComplianceDocumentation") ?? get("complianceDocument");
+      return raw != null ? String(raw) : null;
+    })(),
     vendor_usage_data: get("monitoringDataAvailable") != null ? String(get("monitoringDataAvailable")).slice(0, 100) : null,
     audit_logs: get("auditLogsAvailable") != null ? String(get("auditLogsAvailable")).slice(0, 100) : null,
     testing_results: get("testingResultsAvailable") != null ? String(get("testingResultsAvailable")).slice(0, 100) : null,

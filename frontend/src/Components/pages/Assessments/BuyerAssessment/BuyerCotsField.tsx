@@ -37,7 +37,7 @@ const BuyerCotsField = ({
   multiselect,
   value,
   onChange,
-  readOnly,
+  readOnly = false,
   errorMessage,
 }) => {
   const safeValue = value ?? "";
@@ -70,7 +70,6 @@ const BuyerCotsField = ({
             <select
               value={strValue || ""}
               disabled
-              readOnly
               className="select_input input_readonly"
               aria-label={label}
             >
@@ -152,9 +151,17 @@ const BuyerCotsField = ({
         <input
           type="text"
           value={safeValue}
-          onChange={(e) => onChange(e.target.value)}
+          maxLength={fieldKey === "expectedOutcomes" ? 300 : undefined}
+          onChange={(e) =>
+            onChange(
+              fieldKey === "expectedOutcomes" ? e.target.value.slice(0, 300) : e.target.value,
+            )
+          }
         />
       </FormField>
+      {fieldKey === "expectedOutcomes" && (
+        <p className="chip-multi-select-description">{String(safeValue).length}/300</p>
+      )}
       {errorMessage && <FieldError message={errorMessage} />}
     </>
   );

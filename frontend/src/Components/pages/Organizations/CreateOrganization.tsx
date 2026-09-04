@@ -1,6 +1,6 @@
 import { Ban, CircleX, Landmark, Plus, Mail, Tags, Shield } from "lucide-react";
 import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useAppDispatch, useAppSelector } from "../../../Context/hooks";
 import { toast } from "react-toastify";
 import { getOrganizations } from "../../../Context/OrganizationsData";
 import "../UserProfile/user_profile.css";
@@ -14,8 +14,8 @@ const CreateOrganization = ({ setIsOrganization }) => {
   const [adminEmail, setAdminEmail] = useState("");
   const [isError, setIsError] = useState("");
   const [isCreateLoading, setIsCreateLoading] = useState(false);
-  const dispatch = useDispatch();
-  const { data: organizations } = useSelector((state) => state.organizations);
+  const dispatch = useAppDispatch();
+  const { data: organizations } = useAppSelector((state) => state.organizations);
 
   const closeNewOrg = () => {
     setIsOrganization(false);

@@ -1,7 +1,7 @@
 {
   "region": "us-east-1",
-  "updatedAt": "2026-08-20T12:14:04.394Z",
-  "count": 4,
+  "updatedAt": "2026-09-03T13:25:48.842Z",
+  "count": 5,
   "results": [
     {
       "profileName": "US Anthropic Claude 3 Sonnet",
@@ -121,6 +121,49 @@
       "summary": {
         "working": 1,
         "notWorking": 0
+      }
+    },
+    {
+      "profileName": "Global Anthropic Claude Opus 4.8",
+      "profileType": "SYSTEM_DEFINED",
+      "inferenceProfileId": "global.anthropic.claude-opus-4-8",
+      "inferenceProfileArn": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/global.anthropic.claude-opus-4-8",
+      "foundationModelId": "anthropic.claude-opus-4-8",
+      "prompt": "Hi",
+      "testedAt": "2026-09-03T13:25:48.839Z",
+      "tests": [
+        {
+          "status": "not working",
+          "identifierType": "inferenceProfileId",
+          "value": "global.anthropic.claude-opus-4-8",
+          "prompt": "Hi",
+          "latencyMs": 2340,
+          "error": "Model is not enabled in your AWS account.",
+          "errorName": "AccessDeniedException"
+        },
+        {
+          "status": "not working",
+          "identifierType": "inferenceProfileArn",
+          "value": "arn:aws:bedrock:us-east-1:983911888509:inference-profile/global.anthropic.claude-opus-4-8",
+          "prompt": "Hi",
+          "latencyMs": 1595,
+          "error": "Model is not enabled in your AWS account.",
+          "errorName": "AccessDeniedException"
+        },
+        {
+          "status": "not working",
+          "identifierType": "model",
+          "value": "anthropic.claude-opus-4-8",
+          "prompt": "Hi",
+          "latencyMs": 1285,
+          "error": "Model is not enabled in your AWS account.",
+          "errorName": "AccessDeniedException"
+        }
+      ],
+      "overallStatus": "not working",
+      "summary": {
+        "working": 0,
+        "notWorking": 3
       }
     }
   ]

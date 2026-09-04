@@ -7,6 +7,7 @@ import {
   sanitizeRiSectorParam,
   type RiRiskExportDto,
 } from "./riskIntellect/riskIntellectClient.js";
+import { firstSectorLabel, vtsSectorFromPayload } from "../utils/attestationSector.js";
 
 export interface RiskMappingRow {
   risk_mapping_id: number;
@@ -93,13 +94,42 @@ function toStr(v: unknown): string {
   return String(v).trim();
 }
 
-function classifyIntentToken(raw: string | null | undefined): "intentional" | "unintentional" | null {
+/**
+ * Canonical intent vocabulary.
+ *
+ * Risk Intellect emits Malicious | Accidental | Systemic | Unknown; the local
+ * risk_mappings table stores Intentional / Unintentional. Both feed the same
+ * intent multiplier, so both have to resolve here — matching only on the
+ * "intentional" substring silently classified every RI value as null, which
+ * dropped RI intent entirely and fell back to local-DB intent.
+ *
+ * Unknown stays unclassified: it is excluded from the multiplier rather than
+ * counted as either side.
+ */
+const RI_INTENT_TOKENS: Record<string, "intentional" | "unintentional"> = {
+  malicious: "intentional",
+  intentional: "intentional",
+  deliberate: "intentional",
+  accidental: "unintentional",
+  systemic: "unintentional",
+  unintentional: "unintentional",
+};
+
+export function classifyIntentToken(
+  raw: string | null | undefined,
+): "intentional" | "unintentional" | null {
   const s = String(raw ?? "")
     .trim()
     .toLowerCase();
-  if (!s) return null;
+  if (!s || s === "unknown") return null;
+  if (RI_INTENT_TOKENS[s]) return RI_INTENT_TOKENS[s];
+  // Free-text values from either source: check the compound token first, since
+  // "unintentional" contains "intentional".
   if (s.includes("unintentional")) return "unintentional";
   if (s.includes("intentional")) return "intentional";
+  for (const [token, kind] of Object.entries(RI_INTENT_TOKENS)) {
+    if (s.includes(token)) return kind;
+  }
   return null;
 }
 
@@ -275,23 +305,8 @@ export function applyRiEnrichmentToPayload(
  * JSON-stringifying that and sending it as `?sector={...}` returns zero risks.
  */
 function firstPlainSector(raw: unknown): string | undefined {
-  if (raw == null) return undefined;
-  if (typeof raw === "string") return sanitizeRiSectorParam(raw);
-  if (Array.isArray(raw)) {
-    for (const item of raw) {
-      const found = firstPlainSector(item);
-      if (found) return found;
-    }
-    return undefined;
-  }
-  if (typeof raw === "object") {
-    const o = raw as Record<string, unknown>;
-    for (const key of ["private_sector", "public_sector", "non_profit_sector"]) {
-      const found = firstPlainSector(o[key]);
-      if (found) return found;
-    }
-  }
-  return undefined;
+  const label = firstSectorLabel(raw);
+  return sanitizeRiSectorParam(label) ?? (label.trim() || undefined);
 }
 
 function extractRiSector(payload: Record<string, unknown>): string | undefined {
@@ -307,6 +322,7 @@ function extractRiSector(payload: Record<string, unknown>): string | undefined {
     payload.industry,
     payload.sector,
     cp.sector,
+    payload.target_industries,
   ];
   for (const raw of candidates) {
     const found = firstPlainSector(raw);
@@ -315,8 +331,21 @@ function extractRiSector(payload: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
+function isType01AttestationPayload(payload: Record<string, unknown>): boolean {
+  return Boolean(
+    payload.decision_autonomy ??
+      payload.ai_autonomy_level ??
+      payload.pii_handling ??
+      payload.pii_information ??
+      payload.product_stage ??
+      payload.stage_product ??
+      payload.documented_ai_governance_policy,
+  );
+}
+
 /**
  * Extract assessment context for matching risk_mappings table on domain, timing, intent, primary_risk, secondary_risks.
+ * Type 01 uses attestation answers; types 2/3 keep buyer/vendor COTS fields.
  */
 function extractContext(payload: Record<string, unknown>): {
   domain: string;
@@ -329,6 +358,37 @@ function extractContext(payload: Record<string, unknown>): {
     payload.companyProfile && typeof payload.companyProfile === "object" && !Array.isArray(payload.companyProfile)
       ? (payload.companyProfile as Record<string, unknown>)
       : {};
+
+  if (isType01AttestationPayload(payload)) {
+    const sectorLabel =
+      firstSectorLabel(payload.sector ?? cp.sector ?? payload.target_industries) ||
+      vtsSectorFromPayload(payload);
+    const domain = [
+      sectorLabel,
+      toStr(payload.pii_handling ?? payload.pii_information),
+      "Privacy",
+      "AI System Safety",
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .slice(0, 200);
+    const intent = toStr(payload.decision_autonomy ?? payload.ai_autonomy_level);
+    const timing = toStr(payload.product_stage ?? payload.stage_product);
+    const primary_risk =
+      toStr(payload.pii_handling ?? payload.pii_information) ||
+      toStr(payload.pain_points_solved ?? payload.pain_points).slice(0, 200);
+    const secondary_risks = [
+      toStr(payload.adversarial_security_testing ?? payload.security_testing),
+      toStr(payload.incident_response_plan),
+      toStr(payload.human_oversight),
+      toStr(payload.bias_testing_approach ?? payload.bias_ai),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .slice(0, 200);
+    return { domain, intent, timing, primary_risk, secondary_risks };
+  }
+
   const domain =
     toStr(payload.customer_sector ?? payload.customerSector) ||
     toStr(payload.industry_sector ?? payload.industrySector ?? payload.industry) ||
@@ -396,23 +456,20 @@ async function enrichIntentFromRiskIntellect(
 
   try {
     const riSector = sanitizeRiSectorParam(sector);
-    let riResult = await fetchRisksFromRI({
+    const riResult = await fetchRisksFromRI({
       limit: 50,
       sector: riSector,
     });
-    if ((!riResult || riResult.risks.length === 0) && riSector) {
-      console.log(
-        "[type-01 VTS] RI export empty for sector filter; retrying without sector",
-        { sector: riSector },
-      );
-      riResult = await fetchRisksFromRI({ limit: 50 });
-    }
     if (!riResult || riResult.risks.length === 0) {
       console.log(
-        "[type-01 VTS] likelihood/impact STATIC fallback [3,3,3] — AI Risk Intellect returned no risks",
+        "[type-01 VTS] likelihood/impact STATIC fallback [3,3,3] — AI Risk Intellect returned no sector-matched risks",
         {
           requestedSector: riSector ?? null,
-          fetchReturned: riResult ? "empty-list" : "null (timeout/http/parse — see [RI] fetch failed)",
+          fetchReturned: riResult
+            ? riResult.clientFiltered
+              ? "empty-after-client-filter"
+              : "empty-list"
+            : "null (timeout/http/parse — see [RI] fetch failed)",
         },
       );
       return localFallback();
@@ -420,8 +477,15 @@ async function enrichIntentFromRiskIntellect(
 
     const byCatalogId = new Map<string, RiRiskExportDto>();
     for (const ri of riResult.risks) {
-      const key = (ri.catalogMatchId ?? "").trim();
-      if (key) byCatalogId.set(key, ri);
+      const keys = [
+        ...(ri.catalogMatchIds ?? []),
+        ri.catalogMatchId ?? "",
+      ]
+        .map((k) => k.trim())
+        .filter(Boolean);
+      for (const key of keys) {
+        if (!byCatalogId.has(key)) byCatalogId.set(key, ri);
+      }
     }
 
     let matchedWithRiIntent = 0;

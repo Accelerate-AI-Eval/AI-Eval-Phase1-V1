@@ -24,6 +24,7 @@ import StepVendorSelfAttestationPrev, {
 } from "./StepVendorSelfAttestationPrev";
 import { VENDOR_SELF_ATTESTATION } from "../../../constants/vendorAttestionData";
 import { ATTESTATION_SECTION_FIELDS } from "../../../constants/vendorAttestationFields";
+import { DOCUMENT_CATEGORIES } from "../../../constants/vendorAttestationDocumentConstants";
 import type {
   AttestationCompanyProfile,
   VendorSelfAttestationPayload,
@@ -99,6 +100,14 @@ function hasValue(v: unknown): boolean {
   if (typeof v === "string") return v.trim().length > 0;
   if (Array.isArray(v)) return v.length > 0;
   return true;
+}
+
+const CERTIFICATION_CATEGORY_VALUES = new Set<string>(DOCUMENT_CATEGORIES.map((c) => c.value));
+
+function selectedCertificationCategories(formState: VendorSelfAttestationFormState): string[] {
+  return (formState.documentUpload?.["2"]?.categories ?? []).filter((c) =>
+    CERTIFICATION_CATEGORY_VALUES.has(c),
+  );
 }
 
 /** Validate one attestation step (2–9) using required flags from VENDOR_SELF_ATTESTATION. */
@@ -214,7 +223,7 @@ function isVendorAttestationStepValid(
   if (!sectionData) return true;
   // Compliance & Certifications: also require at least one Regulatory/Compliance certification category selected
   if (sectionKey === "compliance_certifications") {
-    const regulatoryCategories = formState.documentUpload?.["2"]?.categories ?? [];
+    const regulatoryCategories = selectedCertificationCategories(formState);
     if (regulatoryCategories.length === 0) return false;
   }
   if (sectionKey === "ai_technical_capabilities") {
@@ -284,7 +293,7 @@ function getStepFieldErrors(
   if (!sectionData || !mappings) return {};
   // Compliance: require at least one Regulatory/Compliance certification category
   if (sectionKey === "compliance_certifications") {
-    const regulatoryCategories = formState.documentUpload?.["2"]?.categories ?? [];
+    const regulatoryCategories = selectedCertificationCategories(formState);
     if (regulatoryCategories.length === 0) {
       errors.regulatoryCertificationMaterial = "Select at least one certification type and upload materials";
     }
@@ -496,6 +505,7 @@ const VendorAttestationsMainForm = () => {
     import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
 
   const [currentStep, setCurrentStep] = useState<number>(0);
+  const [visitedSteps, setVisitedSteps] = useState<Set<number>>(() => new Set([0]));
   const [allStepsFilled, setAllStepsFilled] = useState<boolean>(false);
   const [formState, setFormState] =
     useState<VendorSelfAttestationFormState>(defaultFormState);
@@ -530,7 +540,7 @@ const VendorAttestationsMainForm = () => {
   const pendingFilesRef = useRef<PendingDocFiles>({ ...defaultPending });
   const storePendingFiles = useCallback(
     (
-      slot: "0" | "1" | "evidenceTestingPolicy" | "aiGovernancePolicy",
+      slot: "0" | "1" | "2" | "evidenceTestingPolicy" | "aiGovernancePolicy",
       files: File[],
       category?: string,
     ) => {
@@ -950,16 +960,27 @@ const VendorAttestationsMainForm = () => {
     setCurrentStep((prev) => Math.max(0, prev - 1));
   };
 
+  useEffect(() => {
+    setVisitedSteps((prev) => {
+      if (prev.has(currentStep)) return prev;
+      const next = new Set(prev);
+      next.add(currentStep);
+      return next;
+    });
+  }, [currentStep]);
+
   const disabledSteps = useMemo(() => {
     const disabled: number[] = [];
     for (let i = 0; i < totalSteps; i++) {
       if (!isVendorAttestationStepValid(i, formState)) {
-        for (let j = i + 1; j < totalSteps; j++) disabled.push(j);
+        for (let j = i + 1; j < totalSteps; j++) {
+          if (!visitedSteps.has(j)) disabled.push(j);
+        }
         break;
       }
     }
     return disabled;
-  }, [formState, totalSteps]);
+  }, [formState, totalSteps, visitedSteps]);
 
   const stepFieldErrors = useMemo(
     () => getStepFieldErrors(currentStep, formState),

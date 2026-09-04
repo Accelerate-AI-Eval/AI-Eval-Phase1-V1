@@ -7,6 +7,7 @@ import { customerRiskAssessmentReports } from "../../schema/assessments/customer
 import { vendorSelfAttestations } from "../../schema/assessments/vendorSelfAttestations.js";
 import { eq, and, or } from "drizzle-orm";
 import { generateVendorCotsReport } from "../agents/vendorCotsReportAgent.js";
+import { buildVendorCotsPayload } from "../../utils/buildVendorCotsPayload.js";
 import {
   getTop5RisksWithMitigations,
   type Top5RisksWithMitigations,
@@ -487,54 +488,7 @@ const submitVendorCotsAssessment = async (req: Request, res: Response) => {
       [firstName, lastName].filter(Boolean).join(" ") || userName || email || "—";
 
     const body = req.body ?? {};
-    const get = (key: string) => body[key] ?? body[key.replace(/_([a-z])/g, (_, c) => c.toUpperCase())];
-    const parseJson = (v: unknown): unknown => {
-      if (v == null) return null;
-      if (typeof v === "string" && v.trim().length > 0) {
-        try {
-          const parsed = JSON.parse(v);
-          return parsed;
-        } catch {
-          return v;
-        }
-      }
-      return v;
-    };
-
-    const selectedProduct = get("selectedProductId");
-    const vendorAttestationAlt = get("vendor_attestation_id") ?? get("vendorAttestationId");
-    const resolvedAttestationId = (() => {
-      const a = selectedProduct != null ? String(selectedProduct).trim() : "";
-      if (a) return a;
-      const b = vendorAttestationAlt != null ? String(vendorAttestationAlt).trim() : "";
-      return b || null;
-    })();
-
-    const payloadCots = {
-      vendor_attestation_id: resolvedAttestationId,
-      customer_organization_name: get("customerOrganizationName") != null ? String(get("customerOrganizationName")).slice(0, 200) : null,
-      customer_sector: get("customerSector") != null ? String(get("customerSector")).slice(0, 200) : null,
-      primary_pain_point: get("primaryPainPoint") != null ? String(get("primaryPainPoint")) : null,
-      expected_outcomes: get("expectedOutcomes") != null ? String(get("expectedOutcomes")).slice(0, 300) : null,
-      customer_budget_range: get("customerBudgetRange") != null ? String(get("customerBudgetRange")).slice(0, 100) : null,
-      implementation_timeline: get("implementationTimeline") != null ? String(get("implementationTimeline")).slice(0, 100) : null,
-      product_features: parseJson(get("productFeatures") ?? get("product_features")),
-      implementation_approach: get("implementationApproach") != null ? String(get("implementationApproach")).slice(0, 100) : null,
-      customization_level: get("customizationLevel") != null ? String(get("customizationLevel")).slice(0, 100) : null,
-      integration_complexity: get("integrationComplexity") != null ? String(get("integrationComplexity")).slice(0, 100) : null,
-      regulatory_requirements: parseJson(get("regulatoryRequirements") ?? get("regulatory_requirements")),
-      regulatory_requirements_other: get("regulatoryRequirementsOther") != null ? String(get("regulatoryRequirementsOther")).slice(0, 300) : null,
-      data_sensitivity: get("dataSensitivity") != null ? String(get("dataSensitivity")).slice(0, 100) : null,
-      customer_risk_tolerance: get("customerRiskTolerance") != null ? String(get("customerRiskTolerance")).slice(0, 100) : null,
-      alternatives_considered: get("alternativesConsidered") != null ? String(get("alternativesConsidered")) : null,
-      key_advantages: get("keyAdvantages") != null ? String(get("keyAdvantages")) : null,
-      customer_specific_risks: parseJson(get("customerSpecificRisks") ?? get("customer_specific_risks")),
-      customer_specific_risks_other: get("customerSpecificRisksOther") != null ? String(get("customerSpecificRisksOther")).slice(0, 300) : null,
-      identified_risks: get("identifiedRisks") != null ? String(get("identifiedRisks")) : null,
-      risk_domain_scores: get("riskDomainScores") != null ? String(get("riskDomainScores")) : null,
-      contextual_multipliers: get("contextualMultipliers") != null ? String(get("contextualMultipliers")) : null,
-      risk_mitigation: get("riskMitigation") != null ? String(get("riskMitigation")) : null,
-    };
+    const payloadCots = buildVendorCotsPayload(body as Record<string, unknown>);
 
     const assessmentIdRaw = body.assessmentId ?? body.assessment_id;
     const assessmentId = typeof assessmentIdRaw === "string" ? assessmentIdRaw.trim() || null : null;

@@ -20,6 +20,7 @@ import {
   CheckCircle2,
 } from "lucide-react"
 import { formatDateDDMMMYYYY } from "../../../utils/formatDate.js"
+import { formatPreviewValueAsString } from "../../../utils/formatPreviewValue"
 import {
   customerRiskReportApprovalHeading,
   alignmentScoreFromRiskScore,
@@ -333,12 +334,20 @@ function formatReportValue(val: unknown): string {
   if (val == null || val === "") return "—"
   if (Array.isArray(val)) {
     const joined = val
-      .map((v) => stripMarkdownArtifacts(String(v)))
-      .filter((s) => s.length > 0)
+      .map((v) => {
+        if (v != null && typeof v === "object") {
+          return stripMarkdownArtifacts(formatPreviewValueAsString(v))
+        }
+        return stripMarkdownArtifacts(String(v))
+      })
+      .filter((s) => s.length > 0 && s !== "N/A")
       .join(", ")
     return joined || "—"
   }
-  if (typeof val === "object") return JSON.stringify(val)
+  if (typeof val === "object") {
+    const s = formatPreviewValueAsString(val)
+    return s === "N/A" ? "—" : stripMarkdownArtifacts(s)
+  }
   return stripMarkdownArtifacts(String(val)) || "—"
 }
 
@@ -1762,7 +1771,7 @@ function ReportDetail() {
           <span className="report_overall_risk_right">
             <span className="report_overall_risk_score_row">
               <span className="report_overall_risk_score_label">
-                {usePortalStyleUi ? "Overall Confidence Score" : "Overall Risk Score"}
+                {usePortalStyleUi ? "Overall Readiness Score" : "Overall Risk Score"}
               </span>
               <span className="report_overall_risk_score_wrap">
                 {renderRiskScoreCircle(

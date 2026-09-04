@@ -26,6 +26,12 @@ import {
   applyRiEnrichmentToPayload,
   getTop5RisksWithMitigations,
 } from "../../services/getTop5RisksFromAssessmentContext.js";
+import { persistAssessmentRisks } from "../../services/persistAssessmentRisks.js";
+import * as answers from "../../utils/attestationAnswerMap.js";
+import {
+  firstIndustrySegmentFromPayload,
+  vtsSectorFromPayload,
+} from "../../utils/attestationSector.js";
 
 // const REGION = process.env.AWS_DEFAULT_REGION || "us-east-1";
 // // const MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
@@ -55,6 +61,7 @@ export interface VendorAttestationReport {
   trustScore: TrustScoreBlock;
   sections: ReportSection[];
   raw?: string;
+  scoring_source?: string;
   /** Structured VTS from Python (LLM Overall Trust Score + formula risk breakdown). */
   scoringResult?: PythonScoreResult;
 }
@@ -112,7 +119,8 @@ Then continue with the detailed sections below.
 - **Year Founded:** [year]
 - **Employees:** [range or count]
 - **Annual Revenue / Funding Stage:** [if stated]
-- **Key Investors / Headquarters:** [if stated]
+- **Key Investors:** [if stated]
+- **Headquarters:** [if stated]
 - **Operating Regions:** [regions]
 
 ## 3. AI Models & Technology
@@ -551,6 +559,7 @@ export type ReportPayloadAndSummary = {
     sections: ReportSection[];
     scoreRationale?: string;
     scoreRationaleType?: "VTS";
+    scoring_source?: string;
   };
   trustScoreNum: number;
   summaryToStore: string | undefined;
@@ -579,6 +588,7 @@ export function buildReportPayloadAndSummary(report: VendorAttestationReport): R
   const reportPayload: ReportPayloadAndSummary["reportPayload"] = {
     trustScore: trustScoreForPayload,
     sections: report.sections,
+    scoring_source: String(report.scoring_source ?? report.scoringResult?.scoring_source ?? "formula"),
     ...(scoreRationale
       ? { scoreRationale, scoreRationaleType: "VTS" as const }
       : {}),
@@ -658,10 +668,22 @@ export async function generateVendorAttestationReport(
 
   // Likelihood / impact / severity come from AI Risk Intellect when the Controls API key is set.
   // Best-effort: scoring still runs with formula defaults if RI is unconfigured or unreachable.
-  let scoringPayload: Record<string, unknown> = formulaPayload;
+  let scoringPayload: Record<string, unknown> = {
+    ...formulaPayload,
+    sector: vtsSectorFromPayload(formulaPayload),
+    buyerIndustrySegment:
+      String(formulaPayload.buyerIndustrySegment ?? formulaPayload.buyer_industry_segment ?? "").trim() ||
+      firstIndustrySegmentFromPayload(formulaPayload),
+  };
   try {
-    const top5 = await getTop5RisksWithMitigations(formulaPayload);
-    scoringPayload = applyRiEnrichmentToPayload(formulaPayload, top5);
+    const top5 = await getTop5RisksWithMitigations(scoringPayload);
+    scoringPayload = applyRiEnrichmentToPayload(scoringPayload, top5);
+    const assessmentId = String(scoringPayload.assessment_id ?? scoringPayload.assessmentId ?? "").trim();
+    if (assessmentId) {
+      void persistAssessmentRisks(assessmentId, top5).catch((persistErr) =>
+        console.error("persistAssessmentRisks (type-01 VTS):", persistErr),
+      );
+    }
     const L = scoringPayload.likelihoodScores;
     const I = scoringPayload.impactScores;
     console.log("[type-01 VTS] scoring payload after RI enrichment", {
@@ -757,10 +779,11 @@ export async function generateVendorAttestationReport(
     },
     sections,
     raw: formula.raw || vendorData || "",
+    scoring_source: String(formula.scoring_source ?? "formula"),
     scoringResult: {
       ...formula,
       vendor_trust_score: formulaVts,
-      scoring_source: "formula",
+      scoring_source: String(formula.scoring_source ?? "formula"),
     },
   };
 
@@ -845,6 +868,36 @@ function numericScoreList(raw: unknown, fallback: number[], max = 5): number[] {
   return out.length > 0 ? out : [...fallback];
 }
 
+function bandEmployeeCount(raw: unknown): string {
+  const compact = String(raw ?? "")
+    .replace(/[,\s]/g, "")
+    .replace(/[–—−]/g, "-");
+  const nums = (compact.match(/\d+/g) ?? []).map((n) => Number(n)).filter((n) => Number.isFinite(n));
+  if (nums.length === 0) return "1-10";
+  const lo = Math.min(...nums);
+  if ((compact.includes("+") && lo >= 10000) || lo >= 10000) return "10000+";
+  if (lo >= 5001) return "5001-10000";
+  if (lo >= 1001) return "1001-5000";
+  if (lo >= 201) return "201-1000";
+  if (lo >= 51) return "51-200";
+  if (lo >= 11) return "11-50";
+  return "1-10";
+}
+
+function bandGeographicRegions(regions: unknown): string {
+  const items = Array.isArray(regions)
+    ? regions.map((x) => String(x ?? "").trim()).filter(Boolean)
+    : typeof regions === "string" && regions.trim()
+      ? [regions.trim()]
+      : [];
+  if (items.some((x) => x.toLowerCase().includes("global"))) return "global";
+  const regionCount = items.length;
+  if (regionCount >= 5) return "global";
+  if (regionCount >= 3) return "multi_national";
+  if (regionCount === 2) return "national";
+  return "regional";
+}
+
 function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseInput {
   // Python `build_formula_input_from_payload` owns VTS formula mapping.
   // This Node copy is used only for factor-explanation labels after Python scoring.
@@ -855,46 +908,47 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
   const get = (k: string) => payload[k] ?? cp[k];
   const asStr = (v: unknown) => String(v ?? "").trim();
   const lower = (v: unknown) => asStr(v).toLowerCase();
-  const inSet = (v: string, allowed: string[], fallback: string) =>
-    allowed.includes(v) ? v : fallback;
   const toNum = (v: unknown, fallback: number) => {
     const n = Number(v);
     return Number.isFinite(n) ? n : fallback;
   };
-  const text = [
-    lower(get("decision_autonomy")),
-    lower(get("ai_autonomy_level")),
-    lower(get("assessment_completion_level")),
-    lower(get("pii_handling")),
-    lower(get("incident_response_plan")),
-  ].join(" ");
-  const employeeRaw = lower(get("employeeCount") ?? get("no_of_employees"));
+  const employeeRaw = get("employeeCount") ?? get("no_of_employees");
   const yearFounded = Math.max(1990, Math.min(new Date().getFullYear(), toNum(get("yearFounded") ?? get("year_founded"), 2020)));
-  const regionCount = Array.isArray(get("operatingRegions")) ? (get("operatingRegions") as unknown[]).length : 1;
-  const decisionAutonomyLevel =
-    text.includes("fully") && text.includes("autonom") ? "fully_autonomous" :
-    text.includes("autonom") ? "autonomous" :
-    text.includes("assist") ? "assisted" :
-    text.includes("advis") ? "advisory" : "supervised";
-  const decisionStakeLevel =
-    text.includes("life") ? "Life-Critical" :
-    text.includes("critical") ? "Critical" :
-    text.includes("high") ? "High" :
-    text.includes("moderate") ? "Moderate" : "Low";
-  const devStage = inSet(lower(get("product_stage") ?? get("stage_product")), ["design", "development", "testing", "staging", "production"], "development");
+  // Autonomy and stake each come from their own answer; sharing one text blob let an
+  // unrelated answer containing "critical" or "autonomous" set the multiplier.
+  const decisionAutonomyLevel = answers.decisionAutonomyLevel(
+    get("decision_autonomy") ?? get("ai_autonomy_level"),
+  );
+  const piiAnswer = get("pii_handling") ?? get("pii_information");
+  const decisionStakeLevel = answers.lookup(answers.PII_STAKE_LEVEL, piiAnswer, "Low");
+  const devStage = answers.lookup(
+    answers.PRODUCT_STAGE,
+    get("product_stage") ?? get("stage_product"),
+    "development",
+  );
+  // "No" is an answer, not an absent one — presence of text is not evidence of a policy.
+  const retentionAnswer = get("data_retention_policy");
+  const dataRetentionPolicy = Boolean(answers.yesNo(retentionAnswer, false));
+  const [incidentResponsePlanMaturity, irPlanTesting] = answers.reconcileIrPlan(
+    get("incident_response_plan"),
+    get("ir_plan_test_frequency"),
+  );
+  const [penTestReportAvailable, penTestCadence] = answers.reconcilePenTesting(
+    get("adversarial_security_testing"),
+    get("independent_pen_test_frequency"),
+  );
+  const privacyProgrammeScope = answers.passthrough(
+    get("privacy_programme_scope"),
+    ["comprehensive_gdpr_ccpa", "standard", "basic"],
+    "",
+  );
   const hostingType = lower(get("hosting_deployment") ?? get("solution_hosted")).includes("hybrid")
     ? "hybrid"
     : lower(get("hosting_deployment") ?? get("solution_hosted")).includes("prem")
       ? "on_premise"
       : "cloud_hosted";
-  const employeeCount =
-    employeeRaw.includes("10000") ? "10000+" :
-    employeeRaw.includes("5001") ? "5001-10000" :
-    employeeRaw.includes("1001") ? "1001-5000" :
-    employeeRaw.includes("201") ? "201-1000" :
-    employeeRaw.includes("51") ? "51-200" :
-    employeeRaw.includes("11") ? "11-50" : "1-10";
-  const geographicRegions = regionCount >= 5 ? "global" : regionCount >= 3 ? "multi_national" : regionCount === 2 ? "national" : "regional";
+  const employeeCount = bandEmployeeCount(employeeRaw);
+  const geographicRegions = bandGeographicRegions(get("operatingRegions") ?? get("operate_regions"));
   const complianceUploadNames = collectComplianceUploadFileNames(payload);
   const complianceUploadBlob = complianceUploadNames.join(" ").toLowerCase();
   const certFormBlob = certificationFormTextFromGetter(get).toLowerCase();
@@ -906,9 +960,11 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
         get("industrySegment") ??
         get("industry_segment") ??
         get("buyerSegment") ??
+        firstIndustrySegmentFromPayload(payload) ??
         "",
     ),
   );
+  const vtsSector = vtsSectorFromPayload(payload);
   return {
     likelihoodScores: numericScoreList(payload.likelihoodScores ?? get("likelihoodScores"), [3, 3, 3], 5),
     impactScores: numericScoreList(payload.impactScores ?? get("impactScores"), [3, 3, 3], 5),
@@ -917,12 +973,24 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
     decisionStakeLevel,
     devStage,
     assessmentPhase: "vendor_evaluation",
-    customizationLevel: "lightly_customized",
-    integrationComplexity: "moderate_integration",
+    customizationLevel: answers.lookup(
+      answers.DEPLOYMENT_CUSTOMIZATION,
+      get("deployment_customization"),
+      "lightly_customized",
+    ),
+    integrationComplexity: answers.lookup(
+      answers.INTEGRATION_COMPLEXITY,
+      get("integration_complexity"),
+      "moderate_integration",
+    ),
     hostingType,
     employeeCount,
     geographicRegions,
-    dataVolumeScale: "moderate",
+    dataVolumeScale: answers.passthrough(
+      get("typical_data_volume"),
+      ["minimal", "moderate", "large", "very_large", "petabyte_scale"],
+      "moderate",
+    ),
     aiRiskAppetite: "moderate",
     intentionalRiskCount: toNum(
       payload.intentionalRiskCount ?? get("intentionalRiskCount"),
@@ -937,11 +1005,11 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
       { domain: "AI System Safety", riskCount: 1 },
       { domain: "Accountability & Governance", riskCount: 1 },
     ],
-    sector: asStr(get("sector")) || "Technology",
+    sector: vtsSector,
     aiCapabilityType: "administrative",
-    piiHandling: text.includes("critical") ? "critical" : "moderate",
+    piiHandling: answers.lookup(answers.PII_HANDLING, piiAnswer, "moderate"),
     regulatoryComplexity: [],
-    deploymentScale: lower(get("deployment_scale")) || "mid_market",
+    deploymentScale: answers.lookup(answers.DEPLOYMENT_SCALE, get("deployment_scale"), "mid_market"),
     patientDemographic: "general",
     ...(() => {
       const coverage = resolveCategoryCoverageFromAttestation(payload, get);
@@ -951,8 +1019,12 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
         mitigations: coverage.mitigations,
       };
     })(),
-    assessmentMethod: "internal_audit",
-    complianceDocumentationComplete: true,
+    assessmentMethod: answers.lookup(
+      answers.ASSESSMENT_METHOD,
+      get("assessment_completion_level") ?? get("assessment_feedback"),
+      "self_reported_unverified",
+    ),
+    complianceDocumentationComplete: complianceUploadNames.length > 0,
     encryptionAtRest: asStr(get("encryption_at_rest")),
     encryptionAtRestEvidenceId: asStr(get("encryption_at_rest_evidence_id")),
     tlsInTransit: asStr(get("tls_in_transit")),
@@ -969,11 +1041,9 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
       get("bug_bounty") && typeof get("bug_bounty") === "object" && !Array.isArray(get("bug_bounty"))
         ? get("bug_bounty")
         : {},
-    independentPenTestFrequency: asStr(get("independent_pen_test_frequency")),
+    independentPenTestFrequency: penTestCadence,
     dpaAvailable: asStr(get("dpa_available")),
-    penetrationTestReportAvailable:
-      !!asStr(get("adversarial_security_testing")) ||
-      !["", "none"].includes(asStr(get("independent_pen_test_frequency")).toLowerCase()),
+    penetrationTestReportAvailable: penTestReportAvailable,
     soc2Type2Current:
       /\bsoc\s*2\b|soc2/i.test(certificationsSearchBlob) &&
       /type\s*2|type\s*ii|type2/i.test(certificationsSearchBlob),
@@ -989,35 +1059,91 @@ function buildFormulaInputFromPayload(payload: Record<string, unknown>): LooseIn
     complianceUploadBlob,
     buyerIndustrySegment,
     yearFounded,
-    fundingStatus: "series_a",
+    fundingStatus: answers.passthrough(
+      get("fundingStatus") ?? get("funding_status"),
+      ["publicly_traded", "series_d_plus", "series_b_c", "series_a", "seed_angel", "bootstrapped"],
+      "series_a",
+    ),
     revenueSufficient: true,
-    enterpriseCustomers: 5,
-    auditFrequency: "annual",
-    dataRetentionPolicy: !!asStr(get("data_retention_policy")),
-    dataRetentionPolicyCompleteness: "documented_not_enforced",
-    incidentResponsePlan: !!asStr(get("incident_response_plan")),
-    incidentResponsePlanMaturity: "documented_not_tested",
-    privacyPolicy: true,
-    privacyPolicyScope: "standard",
-    aiEthicsPolicy: true,
-    aiEthicsMaturity: "documented_not_operationalized",
-    rollbackProcedures: "manual_documented",
-    humanOversightCapabilities: "monitoring_with_intervention",
-    continuousMonitoring: "daily_dashboard",
-    modelVersionControl: true,
-    versioningMaturity: "manual_documented",
-    slaUptime: asStr(get("uptime_sla") ?? get("sla_guarantee")) || "99.5-99.9%",
-    criticalIncidentResponse: "< 4 hours",
-    criticalIncidentResolution: "< 24 hours",
-    planTesting: "annual_test",
-    incidentCommunication: "email_notifications",
-    multiTenancySupport: true,
-    isolationMethod: "schema_isolation",
-    financialStatus: "break_even",
-    customerRetentionRate: 85,
-    supportTiers: "business_hours_email",
-    supportsHipaaWorkflows: lower(get("sector")).includes("health"),
-    technicalAccountManager: "standard_support",
+    enterpriseCustomers: answers.toNumber(
+      get("enterpriseCustomers") ?? get("enterprise_customers"),
+      0,
+    ),
+    auditFrequency: answers.lookup(answers.AUDIT_FREQUENCY, get("audit_frequency"), "ad_hoc"),
+    dataRetentionPolicy,
+    dataRetentionPolicyCompleteness: dataRetentionPolicy ? "documented_and_enforced" : "informal",
+    incidentResponsePlan: incidentResponsePlanMaturity !== null,
+    incidentResponsePlanMaturity: incidentResponsePlanMaturity ?? "basic_runbook",
+    privacyPolicy: Boolean(privacyProgrammeScope),
+    privacyPolicyScope: privacyProgrammeScope || "basic",
+    aiEthicsPolicy: answers.yesNo(get("documented_ai_governance_policy"), false),
+    aiEthicsMaturity: answers.passthrough(
+      get("ai_ethics_governance_maturity"),
+      ["board_approved_operationalized", "documented_not_operationalized", "draft"],
+      "draft",
+    ),
+    rollbackProcedures: answers.lookup(
+      answers.ROLLBACK_CAPABILITY,
+      get("rollback_capability") ?? get("rollback_deployment_issues"),
+      "none",
+    ),
+    humanOversightCapabilities: answers.strongestHumanOversight(get("human_oversight")),
+    continuousMonitoring: answers.passthrough(
+      get("production_model_monitoring"),
+      ["real_time_alerting", "daily_dashboard", "weekly_reports", "monthly_reviews", "none"],
+      "none",
+    ),
+    modelVersionControl: answers.yesNo(get("versions_models"), false),
+    versioningMaturity: answers.passthrough(
+      get("model_versioning_method"),
+      ["automated_mlops_pipeline", "manual_documented", "basic_tracking"],
+      "basic_tracking",
+    ),
+    slaUptime: answers.lookup(
+      answers.UPTIME_SLA,
+      get("uptime_sla") ?? get("sla_guarantee"),
+      "< 95%",
+    ),
+    criticalIncidentResponse: asStr(get("critical_incident_response_target")),
+    criticalIncidentResolution: asStr(get("critical_incident_resolution_target")),
+    planTesting: irPlanTesting,
+    incidentCommunication: answers.passthrough(
+      get("incident_customer_communication"),
+      ["proactive_status_page", "email_notifications", "reactive_only", "none"],
+      "none",
+    ),
+    multiTenancySupport: answers.yesNo(get("is_multi_tenant"), false),
+    isolationMethod: answers.passthrough(
+      get("tenant_isolation_model"),
+      ["full_instance_isolation", "schema_isolation", "row_level_security"],
+      "row_level_security",
+    ),
+    financialStatus: answers.passthrough(
+      get("financialPosition") ?? get("financial_position"),
+      [
+        "profitable_3_years",
+        "profitable_1_year",
+        "break_even",
+        "funded_runway_2_years",
+        "funded_runway_1_year",
+        "uncertain",
+      ],
+      "uncertain",
+    ),
+    customerRetentionRate: answers.toNumber(
+      get("customerRetentionRate") ?? get("customer_retention_rate"),
+    ),
+    supportTiers: answers.passthrough(
+      get("support_coverage"),
+      ["24_7_phone_chat_email", "business_hours_phone_chat", "business_hours_email", "email_only"],
+      "email_only",
+    ),
+    supportsHipaaWorkflows: vtsSector.toLowerCase().includes("health"),
+    technicalAccountManager: answers.passthrough(
+      get("account_management"),
+      ["dedicated_tam", "shared_tam", "standard_support"],
+      "standard_support",
+    ),
   };
 }
 
@@ -1075,12 +1201,41 @@ function applyEvidenceTrustFromAttestation(
 }
 
 /** Overlay attested privacy/security facts so LLM sections stay aligned with form answers. */
+/** Attestation-only: the vendor's own incident disclosure, never inferred by the LLM. */
+function securityIncidentsText(answer: unknown, incidents: unknown): string {
+  const rows = Array.isArray(incidents)
+    ? (incidents as Record<string, unknown>[]).filter(
+        (item) => String(item?.summary ?? "").trim() || String(item?.date ?? "").trim(),
+      )
+    : [];
+  if (rows.length === 0) {
+    const said = String(answer ?? "").trim().toLowerCase();
+    return said === "no" ? "No" : said === "yes" ? "Yes" : "Not specified";
+  }
+  const detail = rows
+    .map((item) => {
+      const date = String(item.date ?? "").trim() || "Date not provided";
+      const severity = String(item.severity ?? "").trim() || "unspecified severity";
+      const status = item.resolved ? "resolved" : "open";
+      const summary = String(item.summary ?? "").trim() || "No summary";
+      const source = String(item.sourceUrl ?? item.source_url ?? "").trim();
+      return `${date} — ${severity} — ${status}: ${summary}${source ? ` (${source})` : ""}`;
+    })
+    .join("; ");
+  return `Yes · ${detail}`;
+}
+
 function overlayAttestationPrivacySecurityFields(
   sections: ReportSection[],
   payload: Record<string, unknown>,
 ): ReportSection[] {
   const built = buildSectionsFromPayload(payload);
   const overlay: Array<{ id: number; title: string; keys: string[] }> = [
+    {
+      id: 5,
+      title: "Security Posture",
+      keys: ["Publicly Disclosed Security Incidents (24 months)"],
+    },
     { id: 6, title: "Data Practices", keys: ["Encryption at Rest", "TLS in Transit", "Data Subject Rights"] },
     { id: 7, title: "Compliance & Certifications", keys: ["DPA Available"] },
     { id: 9, title: "Vendor Management", keys: ["Sub-processors"] },
@@ -1104,7 +1259,11 @@ function overlayAttestationPrivacySecurityFields(
     }
     const existing = next.find((section) => section.id === spec.id);
     if (existing) {
+      for (const key of spec.keys) {
+        delete existing.items[key];
+      }
       existing.items = { ...existing.items, ...patch };
+      existing.title = spec.title;
     } else {
       next.push({ id: spec.id, title: spec.title, items: patch });
     }
@@ -1333,6 +1492,10 @@ function buildSectionsFromPayload(payload: Record<string, unknown>): ReportSecti
         "Rollback Capability": text(
           get("rollback_capability") ?? get("rollback_deployment_issues"),
         ),
+        "Publicly Disclosed Security Incidents (24 months)": securityIncidentsText(
+          get("has_public_security_incident"),
+          get("security_incidents"),
+        ),
       },
     },
     {
@@ -1367,7 +1530,12 @@ function buildSectionsFromPayload(payload: Record<string, unknown>): ReportSecti
         ),
         "Audit Frequency": text(get("audit_frequency")),
         "HIPAA Business Associate Agreement": text(get("hipaa_baa")),
-        "DPA Available": text(get("dpa_available")),
+        "DPA Available": (() => {
+          const avail = text(get("dpa_available"));
+          const url = get("dpa_url");
+          const urlText = url == null ? "" : String(url).trim();
+          return urlText ? `${avail} · ${urlText}` : avail;
+        })(),
       },
     },
     {
@@ -2479,6 +2647,9 @@ function calculateVendorTrustScore(userInput: LooseInput) {
 export {
   // calculateVendorTrustScore, // disabled — VTS computed in Python scoring service
 
+  // Exported so parity with Python `build_formula_input_from_payload` can be checked.
+  buildFormulaInputFromPayload,
+
   // Individual calculators (useful for partial assessments / unit tests)
   calculateLikelihood,
   calculateImpact,
@@ -2514,5 +2685,3 @@ export {
   DOMAIN_WEIGHTS,
   MITIGATION_CATEGORIES,
 };
-
-

@@ -45,16 +45,75 @@ def _strip_markdown_bold(value: str) -> str:
     return value.replace("**", "").strip()
 
 
+def _authoritative_score_prefix(
+    *,
+    formula_vts: float | None,
+    formula_label: str = "",
+    formula_grade: str = "",
+    category_scores: dict[str, Any] | None = None,
+) -> str:
+    if formula_vts is None:
+        return ""
+    rounded = int(round(max(0.0, min(100.0, float(formula_vts)))))
+    label = (formula_label or "").strip() or "Not specified"
+    grade = (formula_grade or "").strip()
+    cats = category_scores if isinstance(category_scores, dict) else {}
+    cat_line = ", ".join(
+        f"{name}: {cats[name]}"
+        for name in (
+            "Security",
+            "Compliance",
+            "Data Practices",
+            "AI Governance",
+            "Operations",
+            "Company Maturity",
+        )
+        if name in cats
+    )
+    product = cats.get("Product")
+    governance = cats.get("Governance")
+    operational = cats.get("Operational")
+    if not cat_line and (product is not None or governance is not None or operational is not None):
+        cat_line = (
+            f"Product: {product}, Governance: {governance}, Operational: {operational}"
+        )
+    lines = [
+        "AUTHORITATIVE FORMULA SCORE (copy into section 0; do not invent a different overall score):",
+        f"- **Overall Trust Score:** {rounded} ({label})",
+    ]
+    if grade:
+        lines.append(f"- **Grade:** {grade}")
+    if cat_line:
+        lines.append(f"- **Score by category:** {cat_line}")
+    lines.append(
+        "Write a 2–3 sentence **Summary** and sections 1–11. Keep each item to one sentence."
+    )
+    return "\n".join(lines) + "\n\n"
+
+
 def invoke_vendor_attestation_llm(
     vendor_data: str,
     *,
     formula_context: str = "",
+    formula_vts: float | None = None,
+    formula_label: str = "",
+    formula_grade: str = "",
+    category_scores: dict[str, Any] | None = None,
 ) -> str:
     """Invoke Bedrock with attestation prompt + optional pgvector formula context.
 
     Large vendor_data is chunked for every model (same path as assessment LLM).
     """
-    prefix = ((formula_context or "") + VENDOR_ATTESTATION_PROMPT).strip()
+    prefix = (
+        _authoritative_score_prefix(
+            formula_vts=formula_vts,
+            formula_label=formula_label,
+            formula_grade=formula_grade,
+            category_scores=category_scores,
+        )
+        + (formula_context or "")
+        + VENDOR_ATTESTATION_PROMPT
+    ).strip()
     return invoke_bedrock_with_chunking(
         stable_prefix=prefix,
         payload=(vendor_data or "").strip(),
@@ -327,6 +386,10 @@ def generate_llm_trust_report(
     *,
     formula_context: str = "",
     vector_meta: dict[str, Any] | None = None,
+    formula_vts: float | None = None,
+    formula_label: str = "",
+    formula_grade: str = "",
+    category_scores: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Call Bedrock (with optional pgvector formula context) and return:
@@ -335,6 +398,10 @@ def generate_llm_trust_report(
     raw = invoke_vendor_attestation_llm(
         vendor_data,
         formula_context=formula_context or "",
+        formula_vts=formula_vts,
+        formula_label=formula_label,
+        formula_grade=formula_grade,
+        category_scores=category_scores,
     )
     if not (raw or "").strip():
         raise RuntimeError("LLM returned empty trust-score response")
@@ -354,6 +421,14 @@ def generate_llm_trust_report(
             if 0 <= n <= 100:
                 overall = n
                 trust = {**trust, "overallScore": n}
+
+    if overall <= 0 and formula_vts is not None:
+        overall = int(round(max(0.0, min(100.0, float(formula_vts)))))
+        trust = {
+            **trust,
+            "overallScore": overall,
+            "label": (formula_label or trust.get("label") or "Not specified"),
+        }
 
     if overall <= 0:
         raise RuntimeError("LLM response did not include a parseable Overall Trust Score")

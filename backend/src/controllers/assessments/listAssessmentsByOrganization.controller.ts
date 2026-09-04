@@ -224,7 +224,7 @@ const listAssessmentsByOrganization = async (req: Request, res: Response) => {
       ) vcr ON TRUE
       LEFT JOIN users u ON b.user_id = u.id
       LEFT JOIN users u2 ON v.user_id = u2.id
-      WHERE ${whereClause}
+      WHERE ${whereClause} AND a.type <> 'vendor_self_attestation'
       ORDER BY a.created_at DESC`,
       queryParams
     );

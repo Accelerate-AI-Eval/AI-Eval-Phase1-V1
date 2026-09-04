@@ -23,7 +23,7 @@ export const vendorOnboarding = pgTable("vendor_onboarding", {
   vendorMaturity: varchar("vendor_maturity", { length: 100 }),
   companyWebsite: text("company_website").notNull(),
   companyDescription: text("company_description").notNull(),
-  primaryContactName: varchar("primary_contact_name", { length: 100 }).notNull(),
+  primaryContactName: varchar("primary_contact_name", { length: 200 }).notNull(),
   primaryContactEmail: varchar("primary_contact_email", { length: 255 }).notNull(),
   primaryContactRole: varchar("primary_contact_role", { length: 100 }),
   employeeCount: varchar("employee_count", { length: 50 }).notNull(),

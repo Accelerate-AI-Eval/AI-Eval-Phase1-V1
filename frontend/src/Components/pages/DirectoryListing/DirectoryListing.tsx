@@ -190,6 +190,7 @@ export const DirectoryListing = () => {
       const productList: ProductProfileProduct[] = sorted
         .filter((a): a is typeof a & { id: string } => !!a?.id)
         .map((a) => {
+          const rec = a as Record<string, unknown>;
           const apiStatus = (a.status ?? "").toUpperCase();
           const status: ProductProfileProduct["status"] =
             apiStatus === "COMPLETED" || apiStatus === "EXPIRED"
@@ -229,13 +230,15 @@ export const DirectoryListing = () => {
             visibleToBuyer: a.visible_to_buyer === true,
             attestationExpiryAt: a.expiry_at ?? null,
             userArchivedAt:
-              a.userArchivedAt != null && String(a.userArchivedAt).trim() !== ""
-                ? String(a.userArchivedAt)
-                : null,
+              rec.userArchivedAt != null && String(rec.userArchivedAt).trim() !== ""
+                ? String(rec.userArchivedAt)
+                : rec.user_archived_at != null && String(rec.user_archived_at).trim() !== ""
+                  ? String(rec.user_archived_at)
+                  : null,
             generated_profile_report: report as ProductProfileProduct["generated_profile_report"],
             latest_trust_score: latestTrust,
             sector: a.sector ?? undefined,
-          };
+          } as ProductProfileProduct;
         })
         .filter((p) => p.status !== "Draft");
       setProducts(productList);

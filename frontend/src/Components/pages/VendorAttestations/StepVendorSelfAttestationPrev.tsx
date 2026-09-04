@@ -3,10 +3,11 @@
  * Uses the same UI as Vendor Onboarding preview (vendor_preview cards). Document rows keep View/Edit actions.
  */
 import React from "react";
-import { Eye, ShieldCheck, CircleArrowUp } from "lucide-react";
+import { Eye, ShieldCheck, CircleArrowUp, ExternalLink } from "lucide-react";
 import type { VendorSelfAttestationFormState } from "../../../types/vendorSelfAttestation";
 import { VENDOR_SELF_ATTESTATION } from "../../../constants/vendorAttestionData";
 import { ATTESTATION_SECTION_FIELDS } from "../../../constants/vendorAttestationFields";
+import { DOCUMENT_CATEGORIES } from "../../../constants/vendorAttestationDocumentConstants";
 import {
   BUG_BOUNTY_STATUS_OPTIONS,
   VDP_STATUS_OPTIONS,
@@ -33,6 +34,13 @@ export type ComplianceDocumentExpiryMeta = {
   category?: string;
   expiryAt?: string | null;
   error?: string;
+  documentClass?: string;
+  validation?: {
+    isValid?: boolean;
+    reason?: string;
+    mismatch?: boolean;
+    expired?: boolean;
+  };
 };
 
 interface StepVendorSelfAttestationPrevProps {
@@ -150,6 +158,14 @@ function VendorAttestationPreviewDocumentRowActions({
 
 /** User-friendly preview: multi-select/industry/dependent dropdown as readable text, never raw array or JSON. */
 function formatValue(val: unknown, fieldKey?: string): string {
+  if (fieldKey && Array.isArray(val)) {
+    const options = getAttestationFieldOptions(fieldKey);
+    const labels = val.map((item) => {
+      const s = String(item);
+      return options?.find((option) => option.value === s)?.label ?? s;
+    });
+    return formatPreviewValueAsString(labels);
+  }
   if (fieldKey && typeof val === "string") {
     const match = getAttestationFieldOptions(fieldKey)?.find((option) => option.value === val)
     if (match) return match.label
@@ -193,14 +209,87 @@ function formatDataSubjectRights(
   return `${rightsText} · ${roleText}`;
 }
 
-function formatSubProcessors(value: VendorSelfAttestationFormState["attestation"]["sub_processors"]): string {
-  const rows = (value ?? []).filter((item) => item?.name?.trim());
-  if (!rows.length) return "N/A";
-  return rows
-    .map((item) =>
-      [item.name, item.purpose, item.region, item.source_url].filter(Boolean).join(" — "),
-    )
+function formatSecurityIncidents(
+  answer: VendorSelfAttestationFormState["attestation"]["has_public_security_incident"],
+  incidents: VendorSelfAttestationFormState["attestation"]["security_incidents"],
+): string {
+  const rows = (incidents ?? []).filter((item) => item?.summary?.trim() || item?.date?.trim());
+  if (!rows.length) return answer === "no" ? "No" : answer === "yes" ? "Yes" : "N/A";
+  const detail = rows
+    .map((item) => {
+      const date = item.date?.trim() || "Date not provided";
+      const severity = item.severity?.trim() || "unspecified severity";
+      const status = item.resolved ? "resolved" : "open";
+      const summary = item.summary?.trim() || "No summary";
+      const source = (item.sourceUrl ?? item.source_url ?? "").trim();
+      return `${date} — ${severity} — ${status}: ${summary}${source ? ` (${source})` : ""}`;
+    })
     .join("; ");
+  return `Yes · ${detail}`;
+}
+
+function subProcessorHref(raw: string): string {
+  const url = raw.trim();
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  if (/^[\w.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(url)) return `https://${url}`;
+  return "";
+}
+
+function SubProcessorsPreview({
+  value,
+}: {
+  value: VendorSelfAttestationFormState["attestation"]["sub_processors"];
+}) {
+  const rows = (value ?? []).filter((item) => item?.name?.trim());
+  if (!rows.length) {
+    return <span className="vendor_preview_na">No sub-processors listed</span>;
+  }
+  return (
+    <div className="preview_subprocessor_table_wrap">
+      <table className="preview_subprocessor_table">
+        <thead>
+          <tr>
+            <th scope="col" className="preview_subprocessor_col_name">Name</th>
+            <th scope="col" className="preview_subprocessor_col_purpose">Purpose</th>
+            <th scope="col" className="preview_subprocessor_col_region">Region</th>
+            <th scope="col" className="preview_subprocessor_col_source">Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((item, index) => {
+            const name = item.name.trim();
+            const purpose = item.purpose?.trim() ?? "";
+            const region = item.region?.trim() ?? "";
+            const source = item.source_url?.trim() ?? "";
+            const href = subProcessorHref(source);
+            return (
+              <tr key={`${name}-${index}`}>
+                <td className="preview_subprocessor_col_name">{name}</td>
+                <td className="preview_subprocessor_col_purpose">{purpose || "—"}</td>
+                <td className="preview_subprocessor_col_region">{region || "—"}</td>
+                <td className="preview_subprocessor_col_source">
+                  {href ? (
+                    <a
+                      className="preview_subprocessor_link"
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink size={12} aria-hidden />
+                      <span>{source}</span>
+                    </a>
+                  ) : (
+                    source || "—"
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function StepVendorSelfAttestationPrev({
@@ -282,16 +371,17 @@ function StepVendorSelfAttestationPrev({
   ];
 
   /** Compliance certifications evidence — one heading, then list: "1. SOC2 Type 2 document uploaded  verified view update" */
-  const categoriesWithDocs =
+  const allowedCertificationValues = new Set<string>(DOCUMENT_CATEGORIES.map((c) => c.value));
+  const selectedCertCategories =
     documentUpload?.["2"]?.categories?.filter(
-      (category) => (documentUpload["2"]?.byCategory?.[category] ?? []).length > 0
+      (category) => allowedCertificationValues.has(category) && category !== "None",
     ) ?? [];
   const regulatoryRows = (
     <div className="vendor_preview_row vendor_preview_row_regulatory">
       <dt className="vendor_preview_label">
         <span className="vendor_preview_doc_label">
           <span>Which compliance certifications do you hold? (attach evidence for each)</span>
-          {categoriesWithDocs.length === 0 && onNavigateToStep && (
+          {selectedCertCategories.length === 0 && onNavigateToStep && (
             <span className="preview-doc-actions">
               <button
                 type="button"
@@ -307,21 +397,42 @@ function StepVendorSelfAttestationPrev({
         </span>
       </dt>
       <dd className="vendor_preview_value vendor_preview_value_regulatory_list">
-        {categoriesWithDocs.length > 0 ? (
+        {selectedCertCategories.length > 0 ? (
           <ol className="preview_regulatory_doc_list">
-            {categoriesWithDocs.map((category) => {
+            {selectedCertCategories.map((category) => {
               const names = documentUpload!["2"]!.byCategory![category] ?? [];
               const fileName = names[0];
+              const meta = fileName
+                ? lookupComplianceExpiry(fileName, complianceDocumentExpiries)
+                : null;
+              const expired =
+                meta?.validation?.expired === true ||
+                Boolean(
+                  meta?.expiryAt &&
+                    !Number.isNaN(new Date(meta.expiryAt).getTime()) &&
+                    new Date(meta.expiryAt).getTime() < Date.now(),
+                );
+              const mismatch = meta?.validation?.mismatch === true;
+              const verified = Boolean(fileName) && meta?.validation?.isValid === true && !expired && !mismatch;
+              const badgeLabel = !fileName
+                ? "Pending evidence"
+                : mismatch
+                  ? "Mismatch"
+                  : expired
+                    ? "Expired"
+                    : verified
+                      ? "Verified"
+                      : "Unverified";
               return (
                 <li key={category} className="preview_regulatory_doc_item">
                   <span className="preview_regulatory_doc_line">
                     <span className="preview_regulatory_doc_category">{category}</span>
-                    <span className="preview_regulatory_doc_uploaded"> {fileName}</span>
+                    <span className="preview_regulatory_doc_uploaded"> {fileName ?? ""}</span>
                   </span>
                   <span className="preview-doc-actions">
-                    <span className="preview-regulatory-verified" title="Verified">
+                    <span className="preview-regulatory-verified" title={meta?.validation?.reason || badgeLabel}>
                       <ShieldCheck size={14} aria-hidden />
-                      <span>Verified</span>
+                      <span>{badgeLabel}</span>
                     </span>
                     {fileName ? (
                       <ComplianceExpiryBesideView fileName={fileName} expiries={complianceDocumentExpiries} />
@@ -571,11 +682,24 @@ function StepVendorSelfAttestationPrev({
                     </div>
                   </>
                 )}
-                {sectionKey === "vendor_management" && (
-                  <div key="sub_processors" className="vendor_preview_row">
-                    <dt className="vendor_preview_label">List your sub-processors</dt>
+                {sectionKey === "operations_reliability" && (
+                  <div key="security_incidents" className="vendor_preview_row">
+                    <dt className="vendor_preview_label">
+                      Have you had a publicly disclosed security incident in the last 24 months?
+                    </dt>
                     <dd className="vendor_preview_value">
-                      {formatSubProcessors(attestation.sub_processors)}
+                      {formatSecurityIncidents(
+                        attestation.has_public_security_incident,
+                        attestation.security_incidents,
+                      )}
+                    </dd>
+                  </div>
+                )}
+                {sectionKey === "vendor_management" && (
+                  <div key="sub_processors" className="vendor_preview_row vendor_preview_row_stack">
+                    <dt className="vendor_preview_label">List your sub-processors</dt>
+                    <dd className="vendor_preview_value preview_subprocessor_value">
+                      <SubProcessorsPreview value={attestation.sub_processors} />
                     </dd>
                   </div>
                 )}

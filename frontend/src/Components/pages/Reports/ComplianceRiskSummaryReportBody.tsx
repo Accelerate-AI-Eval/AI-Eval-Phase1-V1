@@ -54,15 +54,23 @@ export function parseComplianceRiskSummaryJson(
   return j;
 }
 
+function riskLevelFromRag(level: string): { label: string; cls: string } {
+  const n = (level ?? "").trim().toLowerCase();
+  if (n === "red" || n === "high" || n === "critical") {
+    return { label: "High", cls: "crs_rag_red" };
+  }
+  if (n === "green" || n === "low") {
+    return { label: "Low", cls: "crs_rag_green" };
+  }
+  if (n === "amber" || n === "yellow" || n === "medium" || n === "moderate") {
+    return { label: "Medium", cls: "crs_rag_amber" };
+  }
+  return { label: level.trim() || "—", cls: "crs_rag_amber" };
+}
+
 function RagBadge({ level }: { level: string }) {
-  const l = (level ?? "").trim();
-  const cls =
-    l === "Red"
-      ? "crs_rag_red"
-      : l === "Green"
-        ? "crs_rag_green"
-        : "crs_rag_amber";
-  return <span className={`crs_rag_badge ${cls}`}>{l || "—"}</span>;
+  const { label, cls } = riskLevelFromRag(level);
+  return <span className={`crs_rag_badge ${cls}`}>{label}</span>;
 }
 
 function toPoints(text: string): string[] {

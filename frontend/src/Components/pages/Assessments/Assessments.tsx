@@ -27,10 +27,6 @@ import Button from "../../UI/Button";
 import Modal from "../../UI/Modal";
 import LoadingMessage from "../../UI/LoadingMessage";
 import ClickTooltip from "../../UI/ClickTooltip";
-import PreviewTable from "../../preview/PreviewTable";
-import type { PreviewField } from "../../../types/preview";
-import { BUYER_COTS_FIELD_KEYS } from "../../../constants/buyerCotsAssessmentKeys";
-import { formatPreviewValue } from "../../../utils/formatPreviewValue";
 import { formatDateDDMMMYYYY } from "../../../utils/formatDate.js";
 import "../../../styles/page_tabs.css";
 import "../../../styles/popovers.css";
@@ -40,7 +36,6 @@ import "../UserProfile/user_profile.css";
 import "../VendorDirectory/VendorDirectory.css";
 import { premiumDataTableStyles } from "../../../styles/dataTableStyles";
 import "../Reports/general_reports.css";
-import "../../preview/preview_table.css";
 import "./assessments.css";
 import { toast } from "react-toastify";
 import { ReportsPagination } from "../Reports/ReportsPagination";
@@ -312,8 +307,12 @@ function mapRowToLedgerVM(
     progressPct = isBuyerRow ? getBuyerAssessmentProgress(row) : 40;
   }
   const leadName = getCompletedByDisplay(row) || "—";
-  const reportScore = getReportRiskScoreFromRow(row);
-  const hasReport = reportScore != null;
+  const storedScore = getReportRiskScoreFromRow(row);
+  // Type 2 stores sales risk → show readiness (100 − SRS).
+  // Type 3 stores IRS readiness → show implementation risk (100 − IRS).
+  const reportScore =
+    storedScore == null ? null : Math.round(Math.max(0, Math.min(100, 100 - storedScore)));
+  const hasReport = storedScore != null;
   const riskDisplay =
     reportScore != null
       ? `${reportScore} /100`
@@ -352,7 +351,8 @@ function mapRowToLedgerVM(
     statusKind,
     progressPct,
     leadName,
-    riskScore: reportScore,
+    riskScore: storedScore,
+    displayScore: reportScore,
     riskDisplay,
     riskGradeProfile: isBuyerRow ? "buyer" : "vendor",
     dateLine1,
@@ -369,130 +369,6 @@ function mapRowToLedgerVM(
     hasReport,
   };
 }
-
-/** Get display value from assessment row (API shape: camelCase, arrays for jsonb) */
-function getRowPreviewValue(row, key) {
-  if (row == null) return undefined;
-  const v = row[key];
-  if (v == null || (typeof v === "string" && v.trim() === "")) return undefined;
-  if (key === "createdAt" || key === "cotsUpdatedAt" || key === "expiryAt")
-    return formatDateDDMMMYYYY(v);
-  return v;
-}
-
-/** Format sector for preview: object -> readable string; "[object Object]" -> N/A */
-function formatSectorForPreview(value) {
-  if (value == null || value === "") return undefined;
-  if (typeof value === "string") {
-    if (value === "[object Object]") return "N/A";
-    return value;
-  }
-  if (typeof value !== "object" || Array.isArray(value)) return value;
-  const sectorMap = {
-    "Public Sector": value.public_sector,
-    "Private Sector": value.private_sector,
-    "Non-Profit Sector": value.non_profit_sector,
-  };
-  const parts = [];
-  Object.entries(sectorMap).forEach(([label, values]) => {
-    if (Array.isArray(values) && values.length > 0) {
-      parts.push(`${label}: ${values.join(", ")}`);
-    }
-  });
-  return parts.length > 0 ? parts.join("; ") : "N/A";
-}
-
-/** Sectioned preview config for assessment row - same structure as COTS form preview */
-const ASSESSMENT_PREVIEW_SECTIONS = [
-  {
-    title: "Assessment",
-    fields: [
-      {
-        label: "Type",
-        value: (r) =>
-          r.type === "cots_buyer"
-            ? "COTS Assessment"
-            : r.type === "cots_vendor"
-              ? "COTS Vendor"
-              : (r.type ?? undefined),
-      },
-      { label: "Status", value: (r) => getAssessmentStatusLabel(r) },
-      {
-        label: "Created on",
-        value: (r) =>
-          formatDateDDMMMYYYY(
-            (r?.status ?? "").toLowerCase() === "draft"
-              ? (r.updatedAt ?? r.createdAt)
-              : r.createdAt,
-          ),
-      },
-      { label: "Expires on", value: (r) => formatDateDDMMMYYYY(r.expiryAt) },
-    ],
-  },
-  {
-    title: "Use Case",
-    fields: BUYER_COTS_FIELD_KEYS.useCase.map((key) => ({
-      label: key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (s) => s.toUpperCase()),
-      value: (r) => getRowPreviewValue(r, key),
-    })),
-  },
-  {
-    title: "Vendor Evaluation",
-    fields: BUYER_COTS_FIELD_KEYS.vendorEvaluation.map((key) => ({
-      label: key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (s) => s.toUpperCase()),
-      value: (r) => getRowPreviewValue(r, key),
-    })),
-  },
-  {
-    title: "Readiness",
-    fields: BUYER_COTS_FIELD_KEYS.readiness.map((key) => ({
-      label: key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (s) => s.toUpperCase()),
-      value: (r) => getRowPreviewValue(r, key),
-    })),
-  },
-  {
-    title: "Risk Profile",
-    fields: BUYER_COTS_FIELD_KEYS.riskProfile.map((key) => ({
-      label: key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (s) => s.toUpperCase()),
-      value: (r) => getRowPreviewValue(r, key),
-    })),
-  },
-  {
-    title: "Vendor Risk",
-    fields: BUYER_COTS_FIELD_KEYS.vendorRisk.map((key) => ({
-      label: key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (s) => s.toUpperCase()),
-      value: (r) => getRowPreviewValue(r, key),
-    })),
-  },
-  {
-    title: "Implementation",
-    fields: BUYER_COTS_FIELD_KEYS.implementation.map((key) => ({
-      label: key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (s) => s.toUpperCase()),
-      value: (r) => getRowPreviewValue(r, key),
-    })),
-  },
-  {
-    title: "Evidence",
-    fields: BUYER_COTS_FIELD_KEYS.evidence.map((key) => ({
-      label: key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (s) => s.toUpperCase()),
-      value: (r) => getRowPreviewValue(r, key),
-    })),
-  },
-];
 
 const SYSTEM_ROLES = [
   "system admin",
@@ -1531,6 +1407,7 @@ const Assessments = () => {
                 showNewAssessment={!isAssessmentViewOnly}
                 onNewAssessment={handleNewAssessment}
                 newAssessmentLabel="Assessment"
+                scoreColumnLabel="Implementation risk"
               />
             );
           })()}

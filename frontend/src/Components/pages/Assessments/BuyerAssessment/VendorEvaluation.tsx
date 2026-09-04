@@ -69,7 +69,14 @@ const VendorEvaluation = ({
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
   const [products, setProducts] = useState<DirectoryProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [selectedProductId, setSelectedProductId] = useState<string>(
+    () => String(formData.vendorAttestationId ?? formData.selectedProductId ?? ""),
+  );
+
+  useEffect(() => {
+    const id = String(formData.vendorAttestationId ?? formData.selectedProductId ?? "").trim();
+    if (id && id !== selectedProductId) setSelectedProductId(id);
+  }, [formData.vendorAttestationId, formData.selectedProductId, selectedProductId]);
 
   const fetchDirectoryVendors = useCallback(async () => {
     const token = sessionStorage.getItem("bearerToken");
@@ -235,6 +242,8 @@ const VendorEvaluation = ({
     setFormData((prev) => ({
       ...prev,
       productName: p ? p.productName : "",
+      vendorAttestationId: attestationId,
+      selectedProductId: attestationId,
     }));
   };
 

@@ -2,7 +2,7 @@ import "dotenv/config";
 import { invokeBedrockAnthropicText } from "../../utils/invokeBedrockWithUsage.js";
 import { isTokenQuotaExceededError } from "../../services/admin/featureTokenQuota.service.js";
 
-export type RagLevel = "Red" | "Amber" | "Green";
+export type RagLevel = "High" | "Medium" | "Low";
 
 export type ComplianceRiskExecutiveSummary = {
   inherentRag: RagLevel;
@@ -44,8 +44,8 @@ Output ONLY valid JSON (no markdown, no code fences) with exactly these keys:
 
 {
   "executiveRiskSummary": {
-    "inherentRag": "Red" | "Amber" | "Green",
-    "residualRag": "Red" | "Amber" | "Green",
+    "inherentRag": "High" | "Medium" | "Low",
+    "residualRag": "High" | "Medium" | "Low",
     "summary": "<3-6 sentences: inherent risk posture → treatment → residual; reference buyer context and vendor evidence>"
   },
   "topRisks": [
@@ -59,7 +59,7 @@ Output ONLY valid JSON (no markdown, no code fences) with exactly these keys:
 }
 
 Rules:
-- RAG: Red = unacceptable / high exposure without strong mitigation; Amber = manageable with conditions; Green = aligned / low residual concern for stated use.
+- Risk level: High = unacceptable / high exposure without strong mitigation; Medium = manageable with conditions; Low = aligned / low residual concern for stated use. Do not use Red/Amber/Green labels.
 - topRisks: 5–8 rows, ranked 1..n by L×I descending; likelihood and impact must be integers 1–5; lxi must align (likelihood * impact unless you justify a different composite in methodology).
 - complianceMapping: at least 4 rows mapping frameworks relevant to regulatory/sensitivity in the assessment to vendor-side controls or gaps.
 - If database-matched risks are provided, align topRisks and executive narrative with those catalog items where applicable.
@@ -79,9 +79,11 @@ function extractJsonObject(text: string): Record<string, unknown> | null {
 }
 
 function parseRag(v: unknown): RagLevel {
-  const s = String(v ?? "").trim();
-  if (s === "Red" || s === "Amber" || s === "Green") return s;
-  return "Amber";
+  const s = String(v ?? "").trim().toLowerCase();
+  if (s === "high" || s === "red" || s === "critical") return "High";
+  if (s === "low" || s === "green") return "Low";
+  if (s === "medium" || s === "moderate" || s === "amber" || s === "yellow") return "Medium";
+  return "Medium";
 }
 
 function normalizePayload(raw: Record<string, unknown>, fb: ComplianceRiskSummaryPayload): ComplianceRiskSummaryPayload {
@@ -148,11 +150,11 @@ function normalizePayload(raw: Record<string, unknown>, fb: ComplianceRiskSummar
 function fallbackPayload(completeReport: Record<string, unknown>, validationNotes: string): ComplianceRiskSummaryPayload {
   const overall = Number(completeReport.overallRiskScore);
   const inherentRag: RagLevel =
-    Number.isFinite(overall) && overall >= 70 ? "Green" : Number.isFinite(overall) && overall >= 45 ? "Amber" : "Red";
+    Number.isFinite(overall) && overall >= 70 ? "Low" : Number.isFinite(overall) && overall >= 45 ? "Medium" : "High";
   return {
     executiveRiskSummary: {
       inherentRag,
-      residualRag: inherentRag === "Green" ? "Green" : "Amber",
+      residualRag: inherentRag === "Low" ? "Low" : "Medium",
       summary: String(completeReport.executiveSummary ?? "").slice(0, 2000) || "See complete vendor risk assessment for context.",
     },
     topRisks: [

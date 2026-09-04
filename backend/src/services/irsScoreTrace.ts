@@ -89,6 +89,15 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function toIsoTimestamp(value: string | Date | null | undefined): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  if (typeof value === "string" && value.trim()) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  return null;
+}
+
 function component(
   label: string,
   category: string,
@@ -565,6 +574,8 @@ export type IrsTraceInput = {
   usedAttestation: boolean;
   vendorName: string;
   productName: string;
+  /** When the stored IRS was calculated (report generatedAt / irsRescoredAt / row timestamps). */
+  generatedAt?: string | Date | null;
 };
 
 export function buildIrsScoreTrace(input: IrsTraceInput): ScoreTrace {
@@ -676,8 +687,8 @@ export function buildIrsScoreTrace(input: IrsTraceInput): ScoreTrace {
   );
   if (Math.abs(canonicalIrs - storedScore) >= 1) {
     warnings.push(
-      `Final score was ${storedScore} in storage; canonical formula from breakdown is ${canonicalIrs}. ` +
-        `Using ${canonicalIrs} so Explainability matches the buyer readiness score.`,
+      `Stored score is ${storedScore}; canonical formula from breakdown is ${canonicalIrs}. ` +
+        `Explainability headline uses the stored score so it matches the assessment card.`,
     );
   }
 
@@ -689,7 +700,7 @@ export function buildIrsScoreTrace(input: IrsTraceInput): ScoreTrace {
 
   return {
     scoreType: "buyer_implementation_risk",
-    finalScore: canonicalIrs,
+    finalScore: Math.round(Math.max(0, Math.min(100, storedScore))),
     formula: "",
     scoringVersion: SCORING_VERSION,
     rawSubScores: {
@@ -702,7 +713,7 @@ export function buildIrsScoreTrace(input: IrsTraceInput): ScoreTrace {
     components: allComponents,
     warnings,
     missingEvidence,
-    generatedAt: new Date().toISOString(),
+    generatedAt: toIsoTimestamp(input.generatedAt) ?? new Date().toISOString(),
     internalOnly: true,
   };
 }

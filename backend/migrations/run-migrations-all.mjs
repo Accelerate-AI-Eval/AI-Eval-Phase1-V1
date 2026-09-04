@@ -56,6 +56,11 @@ const sqlFiles = [
   "20260818_add_attestation_privacy_security_fields.sql",
   "20260820_attestation_privacy_security_checks.sql",
   "20260827_org_user_token_allocation_history.sql",
+  "20260903_cots_buyer_archived_vendor_risk_report.sql",
+  "20260903_contact_name_and_buyer_sector.sql",
+  "20260903_assessment_risks.sql",
+  "20260903_dpa_url.sql",
+  "20260904_cots_vendor_desk_research_fields.sql",
 ];
 
 const pool = new pg.Pool({ connectionString });

@@ -333,9 +333,13 @@ export default function BuyerVendorRiskReport() {
 
   const implementationRiskScore = Number(report?.implementationRiskScore ?? NaN);
   const hasImplementationScore = Number.isFinite(implementationRiskScore);
-  const score = hasImplementationScore
+  const storedScore = hasImplementationScore
     ? implementationRiskScore
     : report?.overallRiskScore ?? 0;
+  // Stored IRS is readiness (higher = better). Show residual implementation risk for buyers.
+  const score = hasImplementationScore
+    ? Math.round(Math.max(0, Math.min(100, 100 - implementationRiskScore)))
+    : storedScore;
 
   if (loading && !report && !error) {
     return (
@@ -379,9 +383,9 @@ export default function BuyerVendorRiskReport() {
 
   /** Circle color: IRS lower is better; vendor trust score higher is better. */
   const scoreClass = hasImplementationScore
-    ? score < 50
+    ? implementationRiskScore < 50
       ? "bvr_score_high"
-      : score < 75
+      : implementationRiskScore < 75
         ? "bvr_score_mid"
         : "bvr_score_low"
     : score >= 80
@@ -426,7 +430,7 @@ export default function BuyerVendorRiskReport() {
     : "default";
   const recommendationAccentColor = completeReportRiskMeterColor(
     { source: hasImplementationScore ? "buyer_vendor_risk" : "customer" },
-    Math.round(score),
+    Math.round(hasImplementationScore ? implementationRiskScore : storedScore),
     recommendationGrading,
   );
   const recommendationAccentStyle = {

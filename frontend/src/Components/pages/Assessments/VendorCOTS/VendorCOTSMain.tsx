@@ -17,18 +17,23 @@ import {
   AlertTriangle,
   BarChart2,
   Shield,
-  Sparkles,
   FileCheck,
+  Building2,
+  BadgeCheck,
+  Cloud,
+  Brain,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import SubmitProgressOverlay from "../../../UI/SubmitProgressOverlay";
 import { apiErrorMessage, errorToUserMessage } from "../../../../utils/tokenQuotaError";
-import { VENDOR_COTS_DATA } from "../../../../constants/vendorCotsData";
 import {
   VENDOR_COTS_INITIAL_STATE,
-  VENDOR_COTS_FIELD_KEYS,
+  VENDOR_COTS_FORM_KEYS,
+  VENDOR_COTS_MULTISELECT_KEYS,
 } from "../../../../constants/vendorCotsAssessmentKeys";
 import { VENDOR_COTS_FORM_SECTIONS } from "../../../../constants/vendorCotsFormSchema";
+import type { VendorCotsFieldConfig } from "../../../../constants/vendorCotsFormSchema";
 import { VENDOR_COTS_TAB_STEPS } from "./vendorCotsTabs";
 import "../../../../styles/card.css";
 import "../../VendorOnboarding/vendor_onboarding.css";
@@ -38,7 +43,7 @@ import "../../VendorAttestations/vendor_attestation_preview.css";
 const BASE_URL =
   import.meta.env.VITE_BASE_URL ?? "http://localhost:5003/api/v1";
 // After step 5 (Customer Risk Mitigation) go to preview; Auto-Generated step commented out
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = VENDOR_COTS_TAB_STEPS.length;
 
 const REPORT_POLL_INTERVAL_MS = 4_000;
 const REPORT_POLL_TIMEOUT_MS = 360_000;
@@ -76,13 +81,61 @@ async function waitForCustomerRiskReport(
 /** Explicit icon elements for each step so icons always render in header_title_vendor */
 const VENDOR_COTS_STEP_ICONS: React.ReactNode[] = [
   <Search key="customer-discovery" size={18} />,
+  <Building2 key="customer-profile" size={18} />,
   <Puzzle key="solution-fit" size={18} />,
   <AlertTriangle key="customer-risk-context" size={18} />,
+  <BadgeCheck key="compliance-posture" size={18} />,
+  <Cloud key="technology-signals" size={18} />,
+  <Brain key="ai-maturity" size={18} />,
   <BarChart2 key="competitive-analysis" size={18} />,
   <Shield key="customer-risk-mitigation" size={18} />,
-  // <Sparkles key="auto-generated" size={18} />,
+  <ClipboardList key="provenance" size={18} />,
   <FileCheck key="review" size={18} />,
 ];
+
+function parseJsonArray(value: string | undefined): unknown[] {
+  if (value == null || value === "") return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function isFieldVisible(
+  field: VendorCotsFieldConfig,
+  formData: Record<string, string>,
+): boolean {
+  if (!field.showWhen) return true;
+  const selected = parseJsonArray(formData[field.showWhen.key]).map(String);
+  return selected.includes(field.showWhen.includes);
+}
+
+function repeaterError(
+  field: VendorCotsFieldConfig,
+  formData: Record<string, string>,
+): string | null {
+  const cfg = field.repeater;
+  if (!cfg) return null;
+  const rows = parseJsonArray(formData[field.key]) as Record<string, unknown>[];
+  const named = rows.filter((row) =>
+    cfg.columns.some((col) => String(row?.[col.key] ?? "").trim() !== ""),
+  );
+  if (named.length < cfg.minRows) {
+    return `Add at least ${cfg.minRows} ${cfg.itemLabel.toLowerCase()}${cfg.minRows === 1 ? "" : "s"}`;
+  }
+  for (const row of named) {
+    for (const col of cfg.columns) {
+      const v = String(row?.[col.key] ?? "").trim();
+      if (col.required && !v) return `${cfg.itemLabel} ${col.label.toLowerCase()} is required`;
+      if (col.minLength != null && v && v.length < col.minLength) {
+        return `${col.label} must be at least ${col.minLength} characters`;
+      }
+    }
+  }
+  return null;
+}
 
 function hasValue(
   formData: Record<string, string>,
@@ -92,12 +145,7 @@ function hasValue(
   const v = formData[key];
   if (v == null || v === "") return false;
   if (isMultiselect) {
-    try {
-      const parsed = JSON.parse(v);
-      return Array.isArray(parsed) && parsed.length > 0;
-    } catch {
-      return false;
-    }
+    return parseJsonArray(v).length > 0;
   }
   return String(v).trim().length > 0;
 }
@@ -109,6 +157,15 @@ function isVendorCotsStepValid(
   if (stepIndex >= VENDOR_COTS_FORM_SECTIONS.length) return true;
   const section = VENDOR_COTS_FORM_SECTIONS[stepIndex];
   for (const field of section.fields) {
+    if (!isFieldVisible(field, formData)) continue;
+    if (field.inputType === "repeater") {
+      if (field.required && repeaterError(field, formData)) return false;
+      continue;
+    }
+    if (field.inputType === "date" && formData[field.key]) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (formData[field.key] > today) return false;
+    }
     if (!field.required) continue;
     const isMultiselect = field.inputType === "multiselect";
     if (!hasValue(formData, field.key, isMultiselect)) return false;
@@ -124,6 +181,16 @@ function getVendorCotsStepFieldErrors(
   if (stepIndex >= VENDOR_COTS_FORM_SECTIONS.length) return errors;
   const section = VENDOR_COTS_FORM_SECTIONS[stepIndex];
   for (const field of section.fields) {
+    if (!isFieldVisible(field, formData)) continue;
+    if (field.inputType === "repeater") {
+      const err = repeaterError(field, formData);
+      if (err) errors[field.key] = err;
+      continue;
+    }
+    if (field.inputType === "date" && formData[field.key]) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (formData[field.key] > today) errors[field.key] = "Date cannot be in the future";
+    }
     if (!field.required) continue;
     const isMultiselect = field.inputType === "multiselect";
     if (!hasValue(formData, field.key, isMultiselect))
@@ -175,9 +242,12 @@ const VendorCOTSMain = () => {
       .then((res) => res.json())
       .then((result: { success?: boolean; attestations?: Array<{ id?: string; status?: string; product_name?: string | null }> }) => {
         if (!result?.success || !Array.isArray(result.attestations)) return;
-        const completed = result.attestations.filter(
-          (a) => String(a.status ?? "").toUpperCase() === "COMPLETED" && a.id
-        );
+        const completed = result.attestations.filter((a) => {
+          const status = String(a.status ?? "").toUpperCase();
+          const archived = (a as { user_archived_at?: string | null }).user_archived_at;
+          const visible = (a as { visible_to_buyer?: boolean }).visible_to_buyer;
+          return status === "COMPLETED" && a.id && !archived && visible !== false;
+        });
         const opts = completed.map((a) => ({
           value: String(a.id),
           label: (a.product_name ?? "").trim() || `Product ${a.id}`,
@@ -251,14 +321,7 @@ const VendorCOTSMain = () => {
           navigate("/assessments", { replace: true });
           return;
         }
-        const draftKeys = [
-          ...VENDOR_COTS_FIELD_KEYS.customerDiscovery,
-          ...VENDOR_COTS_FIELD_KEYS.solutionFit,
-          ...VENDOR_COTS_FIELD_KEYS.customerRiskContext,
-          ...VENDOR_COTS_FIELD_KEYS.competitiveAnalysis,
-          ...VENDOR_COTS_FIELD_KEYS.customerRiskMitigation,
-          ...VENDOR_COTS_FIELD_KEYS.autoGenerated,
-        ];
+        const draftKeys = VENDOR_COTS_FORM_KEYS;
         const patch: Record<string, string> = { ...VENDOR_COTS_INITIAL_STATE };
         draftKeys.forEach((key) => {
           const v = d[key];
@@ -319,12 +382,7 @@ const VendorCOTSMain = () => {
     try {
       const payload: Record<string, unknown> = { organizationId, ...formData };
       if (draftAssessmentId) payload.assessmentId = draftAssessmentId;
-      const multiselectKeys = [
-        "productFeatures",
-        "regulatoryRequirements",
-        "customerSpecificRisks",
-      ];
-      multiselectKeys.forEach((k) => {
+      VENDOR_COTS_MULTISELECT_KEYS.forEach((k) => {
         if (payload[k] === "" || payload[k] == null) payload[k] = "[]";
       });
       const response = await fetch(`${BASE_URL}/vendorCotsAssessment`, {
@@ -412,12 +470,7 @@ const VendorCOTSMain = () => {
     try {
       const payload: Record<string, unknown> = { organizationId, ...formData };
       if (draftAssessmentId) payload.assessmentId = draftAssessmentId;
-      const multiselectKeys = [
-        "productFeatures",
-        "regulatoryRequirements",
-        "customerSpecificRisks",
-      ];
-      multiselectKeys.forEach((k) => {
+      VENDOR_COTS_MULTISELECT_KEYS.forEach((k) => {
         if (payload[k] === "" || payload[k] == null) payload[k] = "[]";
       });
       const response = await fetch(

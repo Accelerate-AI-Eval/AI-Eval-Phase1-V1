@@ -549,7 +549,10 @@ export function buildFactorExplanations(
     false,
   ));
 
-  const autoLabels: Record<number, string> = { 10: "Fully automated", 7: "Semi-automated", 3: "Manual", 0: "None" };
+  const autoLabels: Record<number, string> = {
+    10: "Fully automated", 7: "Semi-automated", 3: "Manual (documented)",
+    1: "Manual (undocumented)", 0: "None",
+  };
   explanations.push(mkFactor("Operational", "Incident Response Automation", 10, incident.automation_points,
     autoLabels[incident.automation_points] ?? strGet(input, "rollbackProcedures"),
     incident.automation_points === 10 ? "Fully automated incident response — maximum points."

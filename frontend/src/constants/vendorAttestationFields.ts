@@ -34,7 +34,7 @@ export const ATTESTATION_SECTION_FIELDS: Record<string, (AttestationFieldMapping
     null, // security_certifications — section commented out
     { key: "assessment_completion_level", type: "string" },
     { key: "audit_frequency", type: "string" },
-    { key: "hipaa_baa", type: "string" },
+    { key: "hipaa_baa", type: "array" },
     null, // trust_centre_url — commented out
     { key: "dpa_available", type: "string" },
   ],

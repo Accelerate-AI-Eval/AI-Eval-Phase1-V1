@@ -12,6 +12,7 @@ export interface VendorSecurityIncident {
 
 export interface VendorDataInterface {
   organization_Id?: string;
+  vendorId?: string;
   vendorType: string;
   vendorName: string;
   sector: {

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import concurrent.futures
+import asyncio
 import contextvars
 import json
 import logging
 import traceback
+from functools import partial
 
 from fastapi import APIRouter
 
@@ -150,36 +151,47 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
         scoring_source = "formula"
         scoring_version = "vts-1.1"
         llm_error: str | None = None
-        # size constraint handled in assessment_llm_service (LLM_PROMPT_CHUNK_THRESHOLD)
-        vector_meta: dict = {"used": False, "chunks": []} 
-
-        # Retrieve formula / scoring rubric chunks from pgvector for the LLM
-        retrieved = retrieve_vts_formula_context(vendor_data)
-        formula_context = format_formula_context_for_prompt(
-            str(retrieved.get("context_text") or ""),
-            "vendor_self_attestation",
-        )
-        vector_meta = {
-            "used": bool(retrieved.get("used")),
-            "chunks": list(retrieved.get("chunks") or []),
-            "error": retrieved.get("error"),
+        vector_meta: dict = {"used": False, "chunks": []}
+        formula_context = ""
+        interpretation_preview = interpret_trust_score(formula_vts)
+        formula_categories = {
+            "Product": round(max(0.0, min(100.0, 100.0 - float(formula.get("product_risk") or 0))), 2),
+            "Governance": round(max(0.0, min(100.0, 100.0 - float(formula.get("governance_risk") or 0))), 2),
+            "Operational": round(max(0.0, min(100.0, 100.0 - float(formula.get("operational_risk") or 0))), 2),
         }
 
+        include_formula_ctx = bool(
+            getattr(settings, "VTS_LLM_INCLUDE_FORMULA_CONTEXT", False)
+        )
+        if include_formula_ctx:
+            retrieved = retrieve_vts_formula_context(vendor_data)
+            formula_context = format_formula_context_for_prompt(
+                str(retrieved.get("context_text") or ""),
+                "vendor_self_attestation",
+            )
+            vector_meta = {
+                "used": bool(retrieved.get("used")),
+                "chunks": list(retrieved.get("chunks") or []),
+                "error": retrieved.get("error"),
+            }
+
         # Cap LLM wait so formula VTS still returns before Node's scoring timeout.
-        # Chunked multi-invoke runs need more headroom than a single call.
-        # copy_context keeps usage actor available inside the worker thread.
         _LLM_TIMEOUT_SEC = int(getattr(settings, "BEDROCK_READ_TIMEOUT", 300) or 300)
         try:
-            ctx = contextvars.copy_context()
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                fut = pool.submit(
-                    ctx.run,
-                    generate_llm_trust_report,
-                    vendor_data,
-                    formula_context=formula_context,
-                    vector_meta=vector_meta,
-                )
-                llm = fut.result(timeout=_LLM_TIMEOUT_SEC)
+            bound = partial(
+                generate_llm_trust_report,
+                vendor_data,
+                formula_context=formula_context,
+                vector_meta=vector_meta,
+                formula_vts=formula_vts,
+                formula_label=str(interpretation_preview.get("classification") or ""),
+                formula_grade=str(interpretation_preview.get("grade") or ""),
+                category_scores=formula_categories,
+            )
+            llm = await asyncio.wait_for(
+                asyncio.to_thread(contextvars.copy_context().run, bound),
+                timeout=_LLM_TIMEOUT_SEC,
+            )
             llm_score = float(llm["overall_score"])
             trust_block = dict(llm.get("trustScore") or {})
             sections = list(llm.get("sections") or [])
@@ -188,7 +200,7 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
             scoring_version = "vts-llm-vector-1.0" if vector_meta.get("used") else "vts-llm-1.0"
         except TokenQuotaExceededError:
             raise
-        except concurrent.futures.TimeoutError:
+        except asyncio.TimeoutError:
             llm_error = f"LLM trust score timed out after {_LLM_TIMEOUT_SEC}s"
             logger.warning("%s; using formula VTS fallback", llm_error)
         except Exception as exc:
@@ -214,7 +226,7 @@ async def score_assessment(body: ScoreRequest) -> ScoreResponse:
             scoring_source = "formula+llm-narrative"
             scoring_version = "vts-formula-1.1"
 
-        interpretation = interpret_trust_score(final_score)
+        interpretation = interpretation_preview
 
         label = str(trust_block.get("label") or "").strip()
         if not label or label == "Not specified":

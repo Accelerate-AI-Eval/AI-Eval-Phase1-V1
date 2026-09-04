@@ -42,8 +42,10 @@ export type LedgerRowVM = {
   statusKind: "completed" | "draft" | "expired" | "archived";
   progressPct: number | null;
   leadName: string;
-  /** Numeric risk score 0–100 when a report exists; null otherwise. */
+  /** Stored formula score used for letter grade (type 2 SRS / type 3 IRS). */
   riskScore: number | null;
+  /** Score shown in the ledger: type 2 readiness, type 3 implementation risk. */
+  displayScore: number | null;
   /** Fallback label when no numeric score (Pending / Generate report / —). */
   riskDisplay: string;
   /** Buyer vs vendor grading profile for letter grade. */
@@ -88,6 +90,8 @@ export type AssessmentsLedgerPanelProps = {
   showNewAssessment?: boolean;
   onNewAssessment?: () => void;
   newAssessmentLabel?: string;
+  /** Column header for the score badge (vendor: Readiness, buyer: Implementation risk). */
+  scoreColumnLabel?: string;
 };
 
 function initialsFromName(name: string): string {
@@ -110,14 +114,17 @@ function riskGradeBadgeClass(letter: string): string {
 
 function RiskScoreGradeBadge({
   riskScore,
+  displayScore,
   riskDisplay,
   riskGradeProfile,
 }: {
   riskScore: number | null;
+  displayScore: number | null;
   riskDisplay: string;
   riskGradeProfile: "buyer" | "vendor";
 }) {
-  if (riskScore == null || !Number.isFinite(riskScore)) {
+  const shown = displayScore ?? (riskScore != null ? Math.round(Math.max(0, Math.min(100, 100 - riskScore))) : null);
+  if (shown == null || !Number.isFinite(shown)) {
     return (
       <span
         className="vd_list_grade_badge vd_premium_grade_na"
@@ -131,14 +138,15 @@ function RiskScoreGradeBadge({
     );
   }
   const letter = normalizeDisplayLetterGrade(
-    gradeFromOverallRiskScore(riskScore, riskGradeProfile),
+    gradeFromOverallRiskScore(riskScore ?? shown, riskGradeProfile),
   );
   const gradeClass = riskGradeBadgeClass(letter);
-  const scoreText = String(Math.round(riskScore));
+  const scoreText = String(Math.round(shown));
+  const titlePrefix = riskGradeProfile === "buyer" ? "Implementation risk" : "Readiness";
   return (
     <span
       className={`vd_list_grade_badge ${gradeClass}`}
-      title={`Risk score ${scoreText}`}
+      title={`${titlePrefix} ${scoreText}`}
     >
       <Award size={12} className="vd_list_grade_badge_icon" aria-hidden />
       <span className="vd_list_grade_badge_score">{scoreText}</span>
@@ -179,6 +187,7 @@ export default function AssessmentsLedgerPanel({
   showNewAssessment,
   onNewAssessment,
   newAssessmentLabel = "New assessment",
+  scoreColumnLabel = "Readiness",
 }: AssessmentsLedgerPanelProps) {
   const [listingExpanded, setListingExpanded] = useState(true);
   const [statusExpanded, setStatusExpanded] = useState(true);
@@ -584,7 +593,13 @@ export default function AssessmentsLedgerPanel({
                 </div>
               ) : (
                 <>
-                  <div className="vd_list_ledger assessments_vd_ledger">
+                  <div
+                    className={`vd_list_ledger assessments_vd_ledger${
+                      String(scoreColumnLabel).length > 12
+                        ? " assessments_vd_ledger--wide-score"
+                        : ""
+                    }`}
+                  >
                     <div
                       className="vd_list_colhead assessments_vd_colhead"
                       aria-hidden
@@ -592,7 +607,9 @@ export default function AssessmentsLedgerPanel({
                       <span className="vd_list_colhead_cell">Assessment</span>
                       <span className="vd_list_colhead_cell">Status</span>
                       <span className="vd_list_colhead_cell">Assigned lead</span>
-                      <span className="vd_list_colhead_cell">Risk score</span>
+                      <span className="vd_list_colhead_cell assessments_vd_colhead_score">
+                        {scoreColumnLabel}
+                      </span>
                       <span className="vd_list_colhead_cell">
                         {showArchived ? "Expired date" : "Completion date"}
                       </span>
@@ -658,6 +675,7 @@ export default function AssessmentsLedgerPanel({
                             <span className="vd_list_cell assessments_vd_cell--risk">
                               <RiskScoreGradeBadge
                                 riskScore={row.riskScore}
+                                displayScore={row.displayScore}
                                 riskDisplay={row.riskDisplay}
                                 riskGradeProfile={row.riskGradeProfile}
                               />

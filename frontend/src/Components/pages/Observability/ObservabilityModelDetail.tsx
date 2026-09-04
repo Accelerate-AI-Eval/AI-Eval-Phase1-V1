@@ -76,7 +76,7 @@ function ObservabilityModelDetail() {
       ]);
       if (cancelled) return;
 
-      if (!usageResult.ok) {
+      if (usageResult.ok === false) {
         setRow(null);
         setEvents([]);
         setError(usageResult.message);
@@ -85,11 +85,11 @@ function ObservabilityModelDetail() {
       }
 
       setRow(usageResult.data);
-      if (eventsResult.ok) {
-        setEvents(eventsResult.data);
-      } else {
+      if (eventsResult.ok === false) {
         setEvents([]);
         setError(eventsResult.message);
+      } else {
+        setEvents(eventsResult.data);
       }
       setLoading(false);
     })();

@@ -112,6 +112,11 @@ interface ScoreTracePanelProps {
   vendorAttestationId?: string;
   /** Stored LLM model id for System Admin header (types 1–3). Ids only — not display names. */
   llmModelName?: string | null;
+  /**
+   * Score already shown on the parent card. When set, the headline uses this
+   * so explainability matches the card instead of a recomputed canonical value.
+   */
+  cardScore?: number | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -159,9 +164,9 @@ const SCS_CATEGORY_DISPLAY: Record<string, string> = {
 
 // IRS-specific constants
 const IRS_CATEGORY_DISPLAY: Record<string, string> = {
-  OrgReadiness: "Organizational Readiness",
+  OrgReadiness: "Org Readiness Gap",
   Integration:  "Integration Risk",
-  VendorRisk:   "Vendor Trust",
+  VendorRisk:   "Vendor Risk",
 };
 
 /** Buyer COTS assessment field keys → display names (not DB / camelCase schema keys). */
@@ -187,12 +192,6 @@ const IRS_CATEGORY_TO_SUBSCORE_KEY: Record<string, string> = {
   Integration:  "integrationRisk",
   VendorRisk:   "vendorTrustScore",
 };
-
-// orgReadinessGap and integrationRisk are risk values (0-100, higher=worse).
-// vendorTrustScore is already a readiness score (higher=better).
-function irsSubScoreToReadiness(subKey: string, rawVal: number): number {
-  return subKey === "vendorTrustScore" ? rawVal : 100 - rawVal;
-}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -376,15 +375,16 @@ function buildIrsInsight(trace: ScoreTrace): string {
   return text;
 }
 
-/** Deterministic SCS insight — no LLM, derived from sales-confidence category scores */
+/** Deterministic SCS insight — no LLM, derived from type 2 readiness (100 − sales risk) */
 function buildScsInsight(trace: ScoreTrace): string {
   const { rawSubScores, finalScore } = trace;
+  const readiness = Math.round(finalScore);
   const cfr = rawSubScores.customerFrictionScore;
   const impl = rawSubScores.implementationScore;
   const comp = rawSubScores.competitiveScore;
 
   if (cfr === undefined && impl === undefined && comp === undefined) {
-    return "Category-level sales confidence breakdown is unavailable. Re-submitting the Vendor COTS assessment will refresh scoring detail.";
+    return "Category-level readiness breakdown is unavailable. Re-submitting the Vendor COTS assessment will refresh scoring detail.";
   }
 
   const scored: { name: string; score: number }[] = [];
@@ -395,10 +395,10 @@ function buildScsInsight(trace: ScoreTrace): string {
   const strongest = scored[0];
   const weakest = scored[scored.length - 1];
 
-  let text = `Overall sales confidence is ${finalScore}/100`;
-  if (finalScore >= 80) text += " — this deal presents a strong confidence profile";
-  else if (finalScore >= 65) text += " — the deal can proceed with targeted risk mitigations";
-  else if (finalScore >= 50) text += " — material sales risks should be addressed before close";
+  let text = `Overall readiness is ${readiness}/100`;
+  if (readiness >= 80) text += " — this deal presents a strong confidence profile";
+  else if (readiness >= 65) text += " — the deal can proceed with targeted risk mitigations";
+  else if (readiness >= 50) text += " — material sales risks should be addressed before close";
   else text += " — multiple sales-risk drivers create substantial deal friction";
   text += ".";
 
@@ -570,6 +570,7 @@ export default function ScoreTracePanel({
   mode = "internal",
   vendorAttestationId,
   llmModelName = null,
+  cardScore = null,
 }: ScoreTracePanelProps) {
   const [trace, setTrace]   = useState<ScoreTrace | null>(null);
   const [loading, setLoading] = useState(false);
@@ -626,12 +627,18 @@ export default function ScoreTracePanel({
         (typeof raw.llmModelId === "string" && raw.llmModelId.trim()) ||
         (typeof raw.llm_model_id === "string" && raw.llm_model_id.trim()) ||
         null;
+      const rawSubScores = {
+        ...(typeof raw.raw_sub_scores === "object" && raw.raw_sub_scores != null && !Array.isArray(raw.raw_sub_scores)
+          ? (raw.raw_sub_scores as Record<string, number | undefined>)
+          : {}),
+        ...(d.rawSubScores ?? {}),
+      };
       const coerced: ScoreTrace = {
         scoreType:         d.scoreType         ?? "vendor_trust",
         finalScore:        d.finalScore        ?? 0,
         formula:           d.formula           ?? "",
         scoringVersion:    d.scoringVersion    ?? "",
-        rawSubScores:      d.rawSubScores      ?? {},
+        rawSubScores,
         components:        d.components        ?? [],
         warnings:          d.warnings          ?? [],
         missingEvidence:   d.missingEvidence   ?? [],
@@ -645,7 +652,10 @@ export default function ScoreTracePanel({
           ? (raw.scsFactorExplanations as ScsFactorExplanation[])
           : undefined,
         llmModelId:        apiLlmModelId,
-        generatedAt:       d.generatedAt       ?? new Date().toISOString(),
+        generatedAt:
+          (typeof d.generatedAt === "string" && d.generatedAt.trim()) ||
+          (typeof raw.generated_at === "string" && raw.generated_at.trim()) ||
+          "",
       };
       setTrace(coerced);
 
@@ -693,13 +703,13 @@ export default function ScoreTracePanel({
     : isVts
       ? "Vendor Trust Score Explainability"
       : isScs
-        ? "Sales Confidence Explainability"
+        ? "Readiness Explainability"
         : "Implementation Risk Explainability";
   const scoreTypeLabel = isVts
     ? "Vendor Trust Score"
     : isScs
-      ? "Sales Confidence Score"
-      : "Implementation Readiness Score";
+      ? "Readiness Score"
+      : "Implementation Risk Score";
 
   const subScoreEntries = trace
     ? (Object.entries(trace.rawSubScores).filter(([, v]) => v !== undefined) as [string, number][])
@@ -768,11 +778,38 @@ export default function ScoreTracePanel({
     : factorImprovements.length > 0
       ? factorImprovements.reduce((s, f) => s + f.estimatedLift, 0)
       : improvements.reduce((s, o) => s + (o.lift ?? 0), 0);
-  const projectedScore = trace ? Math.min(trace.finalScore + totalLift, 100) : null;
 
-  const generatedAt = trace
-    ? new Date(trace.generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
-    : "";
+  const cardHeadline =
+    typeof cardScore === "number" && Number.isFinite(cardScore)
+      ? Math.round(Math.max(0, Math.min(100, cardScore)))
+      : null;
+  const scsReadiness = trace
+    ? Math.round(
+        Number.isFinite(trace.finalScore)
+          ? trace.finalScore
+          : Math.max(0, Math.min(100, 100 - Number(trace.rawSubScores.salesRiskScore ?? 0))),
+      )
+    : 0;
+  const irsImplementationRisk = trace
+    ? Math.round(Math.max(0, Math.min(100, 100 - trace.finalScore)))
+    : 0;
+  const headlineScore =
+    cardHeadline ??
+    (trace ? (isScs ? scsReadiness : isIrs ? irsImplementationRisk : Math.round(trace.finalScore)) : 0);
+  // Type 2 readiness and type 1 VTS: higher is better. Type 3 implementation risk: higher is worse.
+  const ratingScore = isIrs ? Math.max(0, Math.min(100, 100 - headlineScore)) : headlineScore;
+  const projectedScore = trace
+    ? isIrs
+      ? Math.max(0, headlineScore - totalLift)
+      : Math.min(headlineScore + totalLift, 100)
+    : null;
+
+  const generatedAt = (() => {
+    if (!trace?.generatedAt) return "";
+    const d = new Date(trace.generatedAt);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  })();
 
   return (
     <div className="stp_overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label={drawerTitle}>
@@ -819,14 +856,14 @@ export default function ScoreTracePanel({
               <section className="stp_exec_summary">
                 {/* Score row */}
                 <div className="stp_exec_score_row">
-                  <div className={`stp_score_circle ${scoreCircleClass(trace.finalScore)}`}>
-                    <span className="stp_score_number">{trace.finalScore}</span>
+                  <div className={`stp_score_circle ${scoreCircleClass(ratingScore)}`}>
+                    <span className="stp_score_number">{headlineScore}</span>
                     <span className="stp_score_denom">/ 100</span>
                   </div>
                   <div className="stp_exec_score_meta">
                     <p className="stp_score_type_label">{scoreTypeLabel}</p>
-                    <span className={`stp_risk_rating_pill stp_risk_${riskRatingKey(trace.finalScore)}`}>
-                      {riskRatingLabel(trace.finalScore)}
+                    <span className={`stp_risk_rating_pill stp_risk_${riskRatingKey(ratingScore)}`}>
+                      {riskRatingLabel(ratingScore)}
                     </span>
                     <div className="stp_exec_meta_row">
                       {coverageLabel && (
@@ -839,10 +876,12 @@ export default function ScoreTracePanel({
                         <span className="stp_exec_meta_label">Version</span>
                         <span className="stp_exec_meta_value">v{trace.scoringVersion}</span>
                       </span>
-                      <span className="stp_exec_meta_item">
-                        <span className="stp_exec_meta_label">Calculated</span>
-                        <span className="stp_exec_meta_value">{generatedAt}</span>
-                      </span>
+                      {generatedAt && (
+                        <span className="stp_exec_meta_item">
+                          <span className="stp_exec_meta_label">Calculated</span>
+                          <span className="stp_exec_meta_value">{generatedAt}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -923,7 +962,7 @@ export default function ScoreTracePanel({
                           </div>
                           <span className={`stp_cat_rating_label stp_cat_rating_${rKey}`}>{rLabel}</span>
                           <span className="stp_cat_readiness_note">
-                            Confidence {pct}/100 · risk gap {100 - pct}
+                            Readiness {pct}/100
                           </span>
                         </div>
                       );
@@ -931,7 +970,7 @@ export default function ScoreTracePanel({
                   </div>
                 </section>
               ) : isIrs && (
-                // IRS: category cards with readiness values (higher = more ready)
+                // IRS: category cards with risk-driver values (higher = more risk)
                 <section className="stp_section">
                   <h3 className="stp_section_title">Category Breakdown</h3>
                   <div className="stp_cat_cards_grid">
@@ -939,9 +978,9 @@ export default function ScoreTracePanel({
                       const subKey   = IRS_CATEGORY_TO_SUBSCORE_KEY[cat];
                       const rawVal   = subKey ? trace.rawSubScores[subKey] : undefined;
                       if (rawVal === undefined) return null;
-                      const readiness = Math.round(irsSubScoreToReadiness(subKey, rawVal));
-                      const rKey      = categoryRatingKey(readiness);
-                      const rLabel    = categoryRatingLabel(readiness);
+                      const risk = Math.round(subKey === "vendorTrustScore" ? 100 - rawVal : rawVal);
+                      const rKey      = categoryRatingKey(Math.max(0, 100 - risk));
+                      const rLabel    = categoryRatingLabel(Math.max(0, 100 - risk));
                       // Hide VendorRisk card in vendor mode (internalOnly)
                       if (cat === "VendorRisk" && isVendorMode) return null;
                       const catHints = trace.irsFactorExplanations
@@ -955,20 +994,20 @@ export default function ScoreTracePanel({
                           <div className="stp_cat_card_header">
                             <span className="stp_cat_name">{IRS_CATEGORY_DISPLAY[cat]}</span>
                             <span className="stp_cat_score">
-                              {readiness}<span className="stp_cat_score_denom">/100</span>
+                              {risk}<span className="stp_cat_score_denom">/100</span>
                             </span>
                           </div>
                           <div className="stp_cat_progress">
-                            <div className="stp_cat_progress_fill" style={{ width: `${readiness}%` }} />
+                            <div className="stp_cat_progress_fill" style={{ width: `${Math.max(0, 100 - risk)}%` }} />
                           </div>
                           <span className={`stp_cat_rating_label stp_cat_rating_${rKey}`}>{rLabel}</span>
                           {cat !== "VendorRisk" && (
                             <span className="stp_cat_readiness_note">
-                              Readiness {readiness}/100 · risk gap {Math.round(rawVal)}
+                              Risk {risk}/100
                             </span>
                           )}
                           {cat === "VendorRisk" && (
-                            <span className="stp_cat_readiness_note">Vendor Trust Score</span>
+                            <span className="stp_cat_readiness_note">Vendor risk {risk}/100</span>
                           )}
                           {catHints.length > 0 && (
                             <div className="stp_cat_factor_hints">
@@ -1164,7 +1203,7 @@ export default function ScoreTracePanel({
                     {isIrs
                       ? "Estimated risk reduction — not applied until buyer data is updated and scoring reruns."
                       : isScs
-                        ? "Estimated sales-confidence lift — not applied until deal inputs are updated and scoring reruns."
+                        ? "Estimated readiness lift — not applied until deal inputs are updated and scoring reruns."
                         : "Estimated score lift — not applied until evidence is submitted and scoring reruns."}
                   </p>
                   <div className="stp_cards_list">
@@ -1398,29 +1437,43 @@ export default function ScoreTracePanel({
                     <div className="stp_projected_row">
                       <div className="stp_projected_item">
                         <span className="stp_projected_label">Current Score</span>
-                        <span className={`stp_projected_value stp_projected_current stp_risk_${riskRatingKey(trace.finalScore)}`}>{trace.finalScore}</span>
+                        <span className={`stp_projected_value stp_projected_current stp_risk_${riskRatingKey(ratingScore)}`}>{headlineScore}</span>
                       </div>
                       <div className="stp_projected_arrow">→</div>
                       <div className="stp_projected_item">
-                        <span className="stp_projected_label">Potential Lift</span>
-                        <span className="stp_projected_value stp_projected_lift">+{Math.min(Math.round(totalLift), 100 - trace.finalScore)}</span>
+                        <span className="stp_projected_label">{isIrs ? "Potential Reduction" : "Potential Lift"}</span>
+                        <span className="stp_projected_value stp_projected_lift">
+                          {isIrs ? "−" : "+"}
+                          {Math.min(
+                            Math.round(totalLift),
+                            isIrs ? headlineScore : 100 - headlineScore,
+                          )}
+                        </span>
                       </div>
                       <div className="stp_projected_arrow">→</div>
                       <div className="stp_projected_item">
                         <span className="stp_projected_label">
-                          Projected Score{projectedScore >= 100 ? " (capped)" : ""}
-                          {isIrs && ` · ${riskRatingLabel(projectedScore)}`}
+                          Projected Score{(!isIrs && projectedScore >= 100) || (isIrs && projectedScore <= 0) ? " (capped)" : ""}
+                          {isIrs && ` · ${riskRatingLabel(Math.max(0, Math.min(100, 100 - projectedScore)))}`}
                         </span>
                         <span className="stp_projected_value stp_projected_final">{projectedScore}</span>
                       </div>
                     </div>
                     <div className="stp_projected_bar_track">
-                      <div className="stp_projected_bar_current" style={{ width: `${trace.finalScore}%` }} />
-                      <div className="stp_projected_bar_lift" style={{ width: `${projectedScore - trace.finalScore}%`, left: `${trace.finalScore}%` }} />
+                      <div className="stp_projected_bar_current" style={{ width: `${ratingScore}%` }} />
+                      <div
+                        className="stp_projected_bar_lift"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, ratingScore + totalLift) - ratingScore)}%`,
+                          left: `${ratingScore}%`,
+                        }}
+                      />
                     </div>
                     <p className="stp_projected_disclaimer">
                       {isIrs
-                        ? "Projected score shows the estimated outcome if identified gaps are remediated. Higher score = lower implementation risk. Actual score may differ after reassessment."
+                        ? "Projected implementation risk if identified gaps are remediated. Lower score = lower implementation risk. Actual score may differ after reassessment."
+                        : isScs
+                          ? "Projected readiness if deal risks are reduced. Higher score = higher readiness. Actual score may differ after rescoring."
                         : "Projected score is an estimate based on missing evidence hints. Actual score may differ after rescoring."}
                     </p>
                   </div>
@@ -1452,8 +1505,12 @@ export default function ScoreTracePanel({
         {/* ── Footer ── */}
         {trace && (
           <div className="stp_footer">
-            <span>Generated: {generatedAt}</span>
-            <span className="stp_footer_dot">·</span>
+            {generatedAt && (
+              <>
+                <span>Generated: {generatedAt}</span>
+                <span className="stp_footer_dot">·</span>
+              </>
+            )}
             <span>v{trace.scoringVersion}</span>
             <span className="stp_footer_dot">·</span>
             {!isVendorMode && <span className="stp_internal_footer_badge">INTERNAL ONLY</span>}

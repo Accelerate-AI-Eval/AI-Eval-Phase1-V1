@@ -40,7 +40,10 @@ class Settings(BaseSettings):
     # Partials do not need a full report; keeps each map call shorter.
     LLM_CHUNK_MAP_MAX_TOKENS: int = 2048
     # How many pgvector formula/scoring chunks to inject into VTS LLM prompt
-    VTS_VECTOR_TOP_K: int = 6
+    VTS_VECTOR_TOP_K: int = 4
+    # Formula VTS is authoritative. Skip Titan+pgvector on /assessment/score so
+    # generation is one Bedrock call (set true only if narrative must cite rubric).
+    VTS_LLM_INCLUDE_FORMULA_CONTEXT: bool = False
 
     # Same discrete vars as backend/src/database/db.ts
     DATABASE_USER: str = "postgres"
@@ -116,15 +119,21 @@ def aws_credentials_configured() -> bool:
     )
 
 
+_logged_bedrock_model_id: str | None = None
+
+
 def get_bedrock_model_id() -> str:
     """Active Bedrock chat model (Controls Apply updates this at runtime)."""
+    global _logged_bedrock_model_id
     model_id = (
         (os.environ.get("BEDROCK_MODEL_ID") or "").strip()
         or (os.environ.get("BEDROCK_MODEL") or "").strip()
         or (settings.BEDROCK_MODEL_ID or "").strip()
         or "anthropic.claude-3-sonnet-20240229-v1:0"
     )
-    print(f"[LLM] taking model from BEDROCK_MODEL_ID: {model_id}")
+    if _logged_bedrock_model_id != model_id:
+        print(f"[LLM] taking model from BEDROCK_MODEL_ID: {model_id}", flush=True)
+        _logged_bedrock_model_id = model_id
     return model_id
 
 

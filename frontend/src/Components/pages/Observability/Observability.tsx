@@ -46,7 +46,7 @@ function Observability() {
     setLoading(true);
     setError("");
     const result = await fetchLlmModelUsage();
-    if (!result.ok) {
+    if (result.ok === false) {
       setRows([]);
       setError(result.message);
       setLoading(false);

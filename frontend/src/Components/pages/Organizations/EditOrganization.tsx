@@ -1,6 +1,6 @@
 import { Ban, CircleX, Landmark, CircleArrowUp, Shield, FileText } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useAppDispatch } from "../../../Context/hooks";
 import { getOrganizations } from "../../../Context/OrganizationsData";
 import { toast } from "react-toastify";
 import "../UserProfile/user_profile.css";
@@ -11,7 +11,7 @@ const EditOrganization = ({ setIsEdit, id, orgData, allOrganizations = [] }) => 
 
   const [isError, setIsError] = useState("");
   const [isUpdateLoading, setIsUpdateLoading] = useState(false);
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const [isOrganizationName, setIsOrganizationName] = useState("");
   const [isStatus, setIsStatus] = useState("");
   const [isReason, setIsReason] = useState("");

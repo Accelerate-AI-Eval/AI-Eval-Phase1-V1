@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { Eye, EyeOff, CheckCircle, Loader2, LogIn, User, Lock, MoveRightIcon } from "lucide-react";
+import { Eye, EyeOff, CheckCircle, Loader2, User, Lock, MoveRightIcon } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { AuthShell } from "../AuthShell";
 
@@ -16,7 +16,6 @@ const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isVisible, setIsVisible] = useState(false);
-  const [isUser, setIsUser] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
 
@@ -41,9 +40,10 @@ const Login = () => {
       const text = await response.text();
       let result: {
         token?: string;
-        userDetails?: unknown[];
-        message?: string;
-      } = {};
+          userDetails?: Record<string, unknown>[];
+          message?: string;
+          code?: string;
+        } = {};
       try {
         result = text ? JSON.parse(text) : {};
       } catch {
@@ -64,9 +64,8 @@ const Login = () => {
           setIsLoading(false);
           return;
         }
-        setIsUser(userDetails);
         sessionStorage.setItem("bearerToken", bearerToken);
-        sessionStorage.setItem("userEmail", userDetails.email ?? "");
+        sessionStorage.setItem("userEmail", String(userDetails.email ?? ""));
         sessionStorage.setItem(
           "userRole",
           userDetails.role != null ? String(userDetails.role).trim() : "",

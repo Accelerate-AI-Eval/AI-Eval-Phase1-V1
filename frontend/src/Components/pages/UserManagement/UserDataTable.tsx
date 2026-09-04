@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
-import { useDispatch, useSelector } from "react-redux";
+import { useAppDispatch, useAppSelector } from "../../../Context/hooks";
 import { getOrganizations } from "../../../Context/OrganizationsData";
 import EditUsers from "./EditUsers";
 import LoadingMessage from "../../UI/LoadingMessage";
@@ -39,8 +39,8 @@ const UserDataTable = ({ refreshKey = 0, viewOnly = false }: { refreshKey?: numb
     React.useState(false);
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const dispatch = useDispatch();
-  const { data } = useSelector((state) => state.organizations);
+  const dispatch = useAppDispatch();
+  const { data } = useAppSelector((state) => state.organizations);
   const [isUserId, setUserId] = useState("");
   const [isEdit, setIsEdit] = useState(false);
   const [isSelectedUser, selectedIsUser] = useState(null);

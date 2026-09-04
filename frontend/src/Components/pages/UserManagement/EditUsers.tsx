@@ -1,6 +1,6 @@
 import { Ban, CircleArrowUp, Mail, Landmark, UserStar, CircleX, Shield, FileText } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useAppDispatch, useAppSelector } from "../../../Context/hooks";
 import { getOrganizations } from "../../../Context/OrganizationsData";
 import { toast } from "react-toastify";
 import Button from "../../UI/Button";
@@ -33,8 +33,8 @@ const EditUsers = ({ isUserId, setIsEdit, isEdit, isSelectedUser, onUpdated }) =
     setIsError("");
   };
 
-  const dispatch = useDispatch();
-  const { data } = useSelector((state) => state.organizations);
+  const dispatch = useAppDispatch();
+  const { data } = useAppSelector((state) => state.organizations);
 
   useEffect(() => {
     setIsModalOpen(isEdit);
@@ -88,7 +88,7 @@ const EditUsers = ({ isUserId, setIsEdit, isEdit, isSelectedUser, onUpdated }) =
   }, [dispatch]);
 
   const systemRole = (sessionStorage.getItem("systemRole") ?? "").toLowerCase().trim();
-  const isSystemOrg = organization === "1" || organization === 1;
+  const isSystemOrg = String(organization) === "1";
 
   const baseRoleOptions = [
     { value: "admin", label: "Admin" },

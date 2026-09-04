@@ -29,7 +29,7 @@ const SECTION_ID_TO_VIS_KEY: Record<number, keyof SectionVisibility> = {
   2: "companyIdentity",
   3: "dataPrivacy",
   4: "compliance",
-  5: "modelRisk",
+  5: "securityPosture",
   6: "dataPractices",
   7: "complianceCertifications",
   8: "operationsSupport",
@@ -53,6 +53,9 @@ function parseGeneratedReport(raw: unknown): GeneratedProductProfileReport | nul
       scoreByCategory: ts.scoreByCategory as Record<string, string | number> | undefined,
     },
     sections: obj.sections as GeneratedProductProfileReport["sections"],
+    scoringSource: String(
+      obj.scoring_source ?? obj.scoringSource ?? (obj.scoringResult as { scoring_source?: string } | undefined)?.scoring_source ?? "",
+    ) || undefined,
   };
 }
 
@@ -240,6 +243,11 @@ const VendorDirectoryIntelligence = () => {
                 <span className="vendor_intel_hero_score_value">{visibleReport.trustScore.overallScore}</span>
                 <span className="vendor_intel_hero_score_scale">/100</span>
               </div>
+              {visibleReport.scoringSource ? (
+                <span className="vendor_intel_score_source_chip" title="How this score was produced">
+                  {visibleReport.scoringSource}
+                </span>
+              ) : null}
             </div>
           </section>
 

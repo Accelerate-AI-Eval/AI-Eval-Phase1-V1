@@ -1,7 +1,7 @@
 import { Eye, SquarePen, Search } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import DataTable from "react-data-table-component";
-import { useDispatch, useSelector } from "react-redux";
+import { useAppDispatch, useAppSelector } from "../../../Context/hooks";
 import { getOrganizations } from "../../../Context/OrganizationsData";
 import LoadingMessage from "../../UI/LoadingMessage";
 import OrgNameWithLogo from "../../UI/OrgNameWithLogo";
@@ -20,8 +20,8 @@ const OrganizationDataTable = ({ openPreview, viewOnly = false }) => {
   const [loading, setLoading] = useState(true);
   const startTimeRef = useRef(null);
 
-  const dispatch = useDispatch();
-  const { data, status } = useSelector((state) => state.organizations);
+  const dispatch = useAppDispatch();
+  const { data, status } = useAppSelector((state) => state.organizations);
   const [isEdit, setIsEdit] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState(null);
 

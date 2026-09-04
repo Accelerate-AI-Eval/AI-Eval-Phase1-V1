@@ -22,6 +22,8 @@ import {
   mapExtendedFieldsToApi,
   parseAttestationExtendedFields,
 } from "../../utils/attestationExtendedFields.js";
+import { ensureVendorAttestationAssessment } from "../../services/ensureVendorAttestationAssessment.js";
+import { assessments } from "../../schema/assessments/assessments.js";
 
 const UPLOADS_DIR = path.resolve(process.cwd(), "public", "uploads_vendor_attestations");
 
@@ -152,6 +154,11 @@ function isQuotaFailure(error: unknown): boolean {
 
 /** Keep a submit that failed mid-generation as DRAFT so it can be retried. */
 async function keepAttestationAsDraft(attestationId: string): Promise<void> {
+  const [row] = await db
+    .select({ assessment_id: vendorSelfAttestations.assessment_id })
+    .from(vendorSelfAttestations)
+    .where(eq(vendorSelfAttestations.id, attestationId))
+    .limit(1);
   await db
     .update(vendorSelfAttestations)
     .set({
@@ -160,9 +167,21 @@ async function keepAttestationAsDraft(attestationId: string): Promise<void> {
       updated_at: sql`now()`,
     })
     .where(eq(vendorSelfAttestations.id, attestationId));
+  const linked = row?.assessment_id ? String(row.assessment_id) : "";
+  if (linked) {
+    await db
+      .update(assessments)
+      .set({ status: "draft", updated_at: new Date() })
+      .where(eq(assessments.id, linked));
+  }
 }
 
 async function markAttestationCompleted(attestationId: string): Promise<void> {
+  const [row] = await db
+    .select({ assessment_id: vendorSelfAttestations.assessment_id })
+    .from(vendorSelfAttestations)
+    .where(eq(vendorSelfAttestations.id, attestationId))
+    .limit(1);
   await db
     .update(vendorSelfAttestations)
     .set({
@@ -171,6 +190,13 @@ async function markAttestationCompleted(attestationId: string): Promise<void> {
       updated_at: sql`now()`,
     })
     .where(eq(vendorSelfAttestations.id, attestationId));
+  const linked = row?.assessment_id ? String(row.assessment_id) : "";
+  if (linked) {
+    await db
+      .update(assessments)
+      .set({ status: "submitted", updated_at: new Date() })
+      .where(eq(assessments.id, linked));
+  }
 }
 
 function sendQuotaExceededKeepingDraft(
@@ -397,7 +423,13 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
     const security_compliance_certificates = asJson(get("security_certifications"));
     const assessment_feedback = get("assessment_completion_level") != null ? String(get("assessment_completion_level")).slice(0, 100) : null;
     const audit_frequency = get("audit_frequency") != null ? String(get("audit_frequency")).slice(0, 100) : null;
-    const hipaa_baa = get("hipaa_baa") != null ? String(get("hipaa_baa")).slice(0, 100) : null;
+    const hipaaRaw = get("hipaa_baa");
+    const hipaa_baa =
+      hipaaRaw == null
+        ? null
+        : Array.isArray(hipaaRaw)
+          ? hipaaRaw.map((x) => String(x).trim()).filter(Boolean).join(",").slice(0, 100) || null
+          : String(hipaaRaw).slice(0, 100);
     const fedramp_authorization = normalizeFedrampAuthorization(get("fedramp_authorization"));
     const pii_information = get("pii_handling") != null ? String(get("pii_handling")).slice(0, 100) : null;
     const data_residency_options = asJson(get("data_residency_options"));
@@ -595,9 +627,17 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
 
     // --- New Attestation: always INSERT (never reuse or overwrite existing). No attestationId = create new. ---
     if (newAttestation || !attestationId) {
+      const linkedAssessmentId = await ensureVendorAttestationAssessment({
+        organizationId: organizationIdStr,
+        status: "draft",
+      });
+      const insertValues = {
+        ...values,
+        ...(linkedAssessmentId ? { assessment_id: linkedAssessmentId } : {}),
+      };
       const [inserted] = await db
         .insert(vendorSelfAttestations)
-        .values(values)
+        .values(insertValues)
         .returning({
           id: vendorSelfAttestations.id,
           status: vendorSelfAttestations.status,
@@ -650,9 +690,13 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       let finalStatus: "DRAFT" | "COMPLETED" = "DRAFT";
       if (wantsComplete && insertedId) {
         const vendorData = buildVendorDataFromPayload(b);
+        const scoringPayload = {
+          ...(b as Record<string, unknown>),
+          ...(linkedAssessmentId ? { assessment_id: linkedAssessmentId, assessmentId: linkedAssessmentId } : {}),
+        };
         reportPayload = await generateProfileAndCompleteIfSuccessful(
           vendorData,
-          b as Record<string, unknown>,
+          scoringPayload,
           userId,
           organizationIdStr ?? null,
           insertedId,
@@ -754,6 +798,7 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
           id: vendorSelfAttestations.id,
           status: vendorSelfAttestations.status,
           document_uploads: vendorSelfAttestations.document_uploads,
+          assessment_id: vendorSelfAttestations.assessment_id,
         })
         .from(vendorSelfAttestations)
         .where(updateWhere)
@@ -778,10 +823,19 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       deleteRemovedDocumentFiles(attestationId, removed);
 
       persistedAttestationId = attestationId;
+      const linkedAssessmentId = await ensureVendorAttestationAssessment({
+        organizationId: organizationIdStr,
+        existingAssessmentId:
+          (existingById as { assessment_id?: string | null }).assessment_id != null
+            ? String((existingById as { assessment_id?: string | null }).assessment_id)
+            : null,
+        status: "draft",
+      });
       await db
         .update(vendorSelfAttestations)
         .set({
           ...values,
+          ...(linkedAssessmentId ? { assessment_id: linkedAssessmentId } : {}),
           updated_at: sql`now()`,
         })
         .where(updateWhere);
@@ -789,9 +843,13 @@ const submitVendorSelfAttestation = async (req: Request, res: Response): Promise
       let finalStatus: "DRAFT" | "COMPLETED" = "DRAFT";
       if (wantsComplete) {
         const vendorData = buildVendorDataFromPayload(b);
+        const scoringPayload = {
+          ...(b as Record<string, unknown>),
+          ...(linkedAssessmentId ? { assessment_id: linkedAssessmentId, assessmentId: linkedAssessmentId } : {}),
+        };
         reportPayload = await generateProfileAndCompleteIfSuccessful(
           vendorData,
-          b as Record<string, unknown>,
+          scoringPayload,
           userId,
           organizationIdStr ?? null,
           attestationId,

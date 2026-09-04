@@ -117,6 +117,29 @@ function normalizeToStringArray(raw: unknown): string[] {
   return [];
 }
 
+/** Buyer onboarding bands are finer than COTS dropdowns; map onto the COTS option values. */
+export function mapOnboardingEmployeeCountToCots(raw: string): string {
+  const s = raw.trim();
+  const exact = new Set([
+    "1-50",
+    "51-200",
+    "201-500",
+    "501-1,000",
+    "1,001-5,000",
+    "5,001-10,000",
+    "10,001-50,000",
+    "50,000+",
+  ]);
+  if (exact.has(s)) return s;
+  const map: Record<string, string> = {
+    "1,001-2,500": "1,001-5,000",
+    "2,501-5,000": "1,001-5,000",
+    "10,001-25,000": "10,001-50,000",
+    "25,001-50,000": "10,001-50,000",
+  };
+  return map[s] ?? s;
+}
+
 /**
  * Build form patch from buyer onboarding API response (data.buyer).
  * Handles jsonb/array fields by stringifying for display.
@@ -140,6 +163,12 @@ export function mapOnboardingToAssessmentForm(buyer: Record<string, unknown> | n
       const arr = normalizeToStringArray(raw);
       if (arr.length === 0) continue;
       out[formKey] = JSON.stringify(arr);
+      continue;
+    }
+
+    if (formKey === "employeeCount") {
+      const mapped = mapOnboardingEmployeeCountToCots(String(raw));
+      if (mapped) out[formKey] = mapped;
       continue;
     }
 

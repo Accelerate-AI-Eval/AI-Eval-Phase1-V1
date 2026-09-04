@@ -3,7 +3,29 @@
 from __future__ import annotations
 
 import json
+import re
+from datetime import datetime
 from typing import Any
+
+
+def _note_degraded(p: dict[str, Any], field: str) -> None:
+    notes = p.setdefault("_degraded_fields", [])
+    if isinstance(notes, list) and field not in notes:
+        notes.append(field)
+
+
+def _mapped(
+    p: dict[str, Any],
+    key: str,
+    mapping: dict[str, float],
+    default: float,
+    field: str,
+) -> float:
+    value = p.get(key)
+    if value in mapping:
+        return mapping[value]
+    _note_degraded(p, field)
+    return default
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -19,6 +41,7 @@ def calc_regulatory_complexity(p: dict[str, Any]) -> dict[str, Any]:
         "Autonomous_Systems": 7,
         "E_Commerce": 3,
         "Technology": 2,
+        "Other": 3,
     }
 
     multiplier = sector_multiplier_map.get(p.get("sector"), 2)
@@ -42,11 +65,9 @@ def calc_data_sensitivity_friction(p: dict[str, Any]) -> dict[str, Any]:
         "Low (Public or anonymized)": 5,
     }
 
-    base_points = sensitivity_map.get(p.get("customerDataSensitivity"))
-    if base_points is None:
-        raise ValueError(
-            f"Unknown customerDataSensitivity: {p.get('customerDataSensitivity')}"
-        )
+    base_points = _mapped(
+        p, "customerDataSensitivity", sensitivity_map, 5, "customerDataSensitivity"
+    )
 
     regs = p.get("customerRegulatoryRequirements")
     reg_count = len(regs) if isinstance(regs, list) else 0
@@ -70,11 +91,7 @@ def calc_risk_tolerance_friction(p: dict[str, Any]) -> dict[str, Any]:
         "Risk_averse": 20,
     }
 
-    base = tolerance_map.get(p.get("customerRiskTolerance"))
-    if base is None:
-        raise ValueError(
-            f"Unknown customerRiskTolerance: {p.get('customerRiskTolerance')}"
-        )
+    base = _mapped(p, "customerRiskTolerance", tolerance_map, 8, "customerRiskTolerance")
 
     regs = p.get("customerRegulatoryRequirements")
     reg_count = len(regs) if isinstance(regs, list) else 0
@@ -102,9 +119,7 @@ def calc_customer_specific_risk_friction(p: dict[str, Any]) -> dict[str, Any]:
         "SMB": 7,
     }
 
-    risk_weight = risk_weight_map.get(p.get("customerType"))
-    if risk_weight is None:
-        raise ValueError(f"Unknown customerType: {p.get('customerType')}")
+    risk_weight = _mapped(p, "customerType", risk_weight_map, 7, "customerType")
 
     customer_specific_risk_count = p.get("customerSpecificRiskCount", 0)
     base_contribution = customer_specific_risk_count * risk_weight
@@ -180,7 +195,8 @@ def calc_integration_complexity(p: dict[str, Any]) -> dict[str, Any]:
         system_type = pt.get("systemType") if isinstance(pt, dict) else None
         score = complexity_map.get(system_type)
         if score is None:
-            raise ValueError(f"Unknown systemType: {system_type}")
+            _note_degraded(p, "systemType")
+            score = 8
         per_point_scores.append(
             {"system_type": system_type, "complexity_score": score}
         )
@@ -204,6 +220,7 @@ def calc_customization_required(p: dict[str, Any]) -> dict[str, Any]:
         "None (use as-is)": 0,
         "Minimal (configuration only)": 5,
         "Moderate (config + light dev)": 15,
+        "Significant (custom model training)": 20,
         "Extensive (significant dev)": 25,
         "Custom_build": 40,
     }
@@ -211,12 +228,11 @@ def calc_customization_required(p: dict[str, Any]) -> dict[str, Any]:
         "Healthcare": 12,
         "Financial_Services": 10,
         "Government": 8,
+        "Autonomous_Systems": 10,
         "Other": 5,
     }
 
-    base = cust_map.get(p.get("customizationLevel"))
-    if base is None:
-        raise ValueError(f"Unknown customizationLevel: {p.get('customizationLevel')}")
+    base = _mapped(p, "customizationLevel", cust_map, 12, "customizationLevel")
 
     if p.get("customerRequiresIndustryWorkflows"):
         industry_penalty = industry_penalty_map.get(
@@ -296,6 +312,9 @@ def calc_mitigation_gap(p: dict[str, Any]) -> dict[str, Any]:
     gap = max(0, required_mit - proposed_mit)
     gap_ratio = gap / required_mit if required_mit > 0 else 0
     value = float(f"{gap_ratio * max_penalty:.4f}")
+    default_no_mitigation = proposed_mit == 0 and required_mit > 0
+    if default_no_mitigation:
+        value = min(value, 20.0)
 
     return {
         "customer_specific_risk_count": p.get("customerSpecificRiskCount"),
@@ -305,6 +324,8 @@ def calc_mitigation_gap(p: dict[str, Any]) -> dict[str, Any]:
         "mitigation_gap_count": gap,
         "gap_ratio": float(f"{gap_ratio:.4f}"),
         "max_penalty": max_penalty,
+        "default_no_mitigation_data": default_no_mitigation,
+        "note": "default — no mitigation data" if default_no_mitigation else None,
         "value": value,
     }
 
@@ -350,9 +371,7 @@ def calc_competitive_alternatives(p: dict[str, Any]) -> dict[str, Any]:
         "4+ competitors": 25,
     }
 
-    base_competition = competitor_map.get(p.get("competitorCount"))
-    if base_competition is None:
-        raise ValueError(f"Unknown competitorCount: {p.get('competitorCount')}")
+    base_competition = _mapped(p, "competitorCount", competitor_map, 10, "competitorCount")
 
     build_capability_map: dict[str, float] = {
         "Strong (can build)": 20,
@@ -362,11 +381,13 @@ def calc_competitive_alternatives(p: dict[str, Any]) -> dict[str, Any]:
 
     build_penalty = 0
     if p.get("customerConsideringBuildVsBuy"):
-        cap = build_capability_map.get(p.get("customerTechnicalCapability"))
-        if cap is None:
-            raise ValueError(
-                f"Unknown customerTechnicalCapability: {p.get('customerTechnicalCapability')}"
-            )
+        cap = _mapped(
+            p,
+            "customerTechnicalCapability",
+            build_capability_map,
+            10,
+            "customerTechnicalCapability",
+        )
         build_penalty = cap
 
     return {
@@ -395,12 +416,8 @@ def calc_budget_constraint(p: dict[str, Any]) -> dict[str, Any]:
         "Board_approval": 15,
     }
 
-    budget_pts = budget_map.get(p.get("budgetMidpoint"))
-    if budget_pts is None:
-        raise ValueError(f"Unknown budgetMidpoint: {p.get('budgetMidpoint')}")
-    approval_pts = approval_map.get(p.get("approvalLevels"))
-    if approval_pts is None:
-        raise ValueError(f"Unknown approvalLevels: {p.get('approvalLevels')}")
+    budget_pts = _mapped(p, "budgetMidpoint", budget_map, 25, "budgetMidpoint")
+    approval_pts = _mapped(p, "approvalLevels", approval_map, 3, "approvalLevels")
 
     return {
         "budget_midpoint": p.get("budgetMidpoint"),
@@ -428,7 +445,8 @@ def calc_competitive_advantage(p: dict[str, Any]) -> dict[str, Any]:
         advantage_type = d.get("advantageType") if isinstance(d, dict) else None
         val = differentiator_value_map.get(advantage_type)
         if val is None:
-            raise ValueError(f"Unknown advantageType: {advantage_type}")
+            _note_degraded(p, "advantageType")
+            continue
         differentiator_breakdown.append(
             {"advantage_type": advantage_type, "value": val}
         )
@@ -461,7 +479,8 @@ def calc_vendor_buyer_maturity_gap(p: dict[str, Any]) -> dict[str, Any]:
 
     stage_row = gap_table.get(p.get("vendorStage"))
     if not stage_row:
-        raise ValueError(f"Unknown vendorStage: {p.get('vendorStage')}")
+        _note_degraded(p, "vendorStage")
+        stage_row = gap_table["established"]
     base_gap = stage_row.get(p.get("customerType"), 0)
 
     mismatch_penalty = 0.0
@@ -626,6 +645,7 @@ def calculate_sales_risk_score(user_input: dict[str, Any]) -> dict[str, Any]:
     deal_probability = float(f"{max(0, 100 - srs):.2f}")
     deal_probability_rounded = max(0, min(100, round(deal_probability)))
     interpretation = interpret_sales_risk_score(deal_probability_rounded)
+    degraded = user_input.get("_degraded_fields") if isinstance(user_input.get("_degraded_fields"), list) else []
 
     return {
         "sales_risk_score": srs,
@@ -637,6 +657,8 @@ def calculate_sales_risk_score(user_input: dict[str, Any]) -> dict[str, Any]:
         "classification": interpretation["classification"],
         "deal_characteristics": interpretation["deal_characteristics"],
         "recommended_actions": interpretation["recommended_actions"],
+        "scoring_source": "degraded" if degraded else "formula",
+        "degraded_fields": degraded,
         "detail": {
             "customer_friction_risk": cfr,
             "implementation_risk": ir,
@@ -667,6 +689,85 @@ def to_string_value(v: Any) -> str:
     return str(v if v is not None else "").strip()
 
 
+def _vendor_stage_for_formula(payload: dict[str, Any]) -> str:
+    raw = to_string_value(
+        payload.get("vendorStage")
+        or payload.get("vendor_stage")
+        or payload.get("vendorMaturity")
+        or payload.get("vendor_maturity")
+        or payload.get("company_stage")
+    ).lower()
+    if any(t in raw for t in ("startup", "early-stage", "early stage", "seed")):
+        return "startup"
+    if any(t in raw for t in ("mature", "publicly", "profitable")):
+        return "mature"
+    if any(t in raw for t in ("established", "late")):
+        return "established"
+    if any(t in raw for t in ("growth", "scaling")):
+        return "growth"
+    return "established"
+
+
+def _years_in_customer_sector(payload: dict[str, Any]) -> int:
+    explicit = payload.get("yearsInCustomerSector") or payload.get("years_in_customer_sector")
+    n = _safe_int(explicit, -1)
+    if n >= 0:
+        return n
+    founded = payload.get("yearFounded") or payload.get("year_founded")
+    year = _safe_int(founded, 0)
+    if 1900 <= year <= datetime.now().year:
+        return max(0, datetime.now().year - year)
+    return 0
+
+
+def _vendor_employee_count(payload: dict[str, Any]) -> int:
+    raw = (
+        payload.get("vendorEmployeeCount")
+        or payload.get("vendor_employee_count")
+        or payload.get("employeeCount")
+        or payload.get("no_of_employees")
+        or payload.get("employee_count")
+    )
+    if isinstance(raw, (int, float)) and raw > 0:
+        return int(raw)
+    from services.scoring_service import band_employee_count
+
+    band = band_employee_count(raw)
+    return {
+        "1-10": 5,
+        "11-50": 30,
+        "51-200": 125,
+        "201-1000": 500,
+        "1001-5000": 3000,
+        "5001-10000": 7500,
+        "10000+": 15000,
+    }.get(band, 50)
+
+
+def _product_feature_match_pct(payload: dict[str, Any]) -> int:
+    explicit = payload.get("productFeatureMatchPct") or payload.get("product_feature_match_pct")
+    n = _safe_int(explicit, -1)
+    if 0 <= n <= 100:
+        return n
+    features = to_string_list(
+        payload.get("product_features")
+        if payload.get("product_features") is not None
+        else payload.get("productFeatures")
+    )
+    if not features:
+        return 50
+    return min(100, 40 + 8 * min(len(features), 7))
+
+
+def _safe_normalize(fn, raw: str, fallback: str, payload: dict[str, Any] | None = None, field: str = "") -> str:
+    try:
+        return fn(raw)
+    except Exception:
+        if payload is not None and field:
+            _note_degraded(payload, field)
+        return fallback
+
+
 def _safe_int(v: Any, default: int = 0) -> int:
     try:
         if v is None or v is False:
@@ -676,13 +777,53 @@ def _safe_int(v: Any, default: int = 0) -> int:
         return default
 
 
+_NONE_SELECTION = re.compile(r"^none(\b|/|-)", re.I)
+
+
+def _is_none_selection(s: str) -> bool:
+    return bool(_NONE_SELECTION.match(s.strip()))
+
+
 def to_string_list(v: Any) -> list[str]:
     if isinstance(v, list):
-        return [str(x if x is not None else "").strip() for x in v if str(x if x is not None else "").strip()]
+        return [
+            str(x if x is not None else "").strip()
+            for x in v
+            if str(x if x is not None else "").strip()
+            and not _is_none_selection(str(x))
+        ]
     s = to_string_value(v)
     if not s:
         return []
-    return [x.strip() for x in s.split(",") if x.strip()]
+    if s[0] in ("[", "{"):
+        try:
+            parsed = json.loads(s)
+            if isinstance(parsed, list):
+                return to_string_list(parsed)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+    return [x.strip() for x in s.split(",") if x.strip() and not _is_none_selection(x)]
+
+
+def structured_option_list(v: Any) -> list[str]:
+    """Structured chip values only — do not score comma frequency in prose."""
+    if isinstance(v, list):
+        return [
+            str(x).strip()
+            for x in v
+            if str(x or "").strip() and not _is_none_selection(str(x))
+        ]
+    s = to_string_value(v)
+    if not s or _is_none_selection(s):
+        return []
+    if s[0] in ("[", "{"):
+        try:
+            parsed = json.loads(s)
+            if isinstance(parsed, list):
+                return structured_option_list(parsed)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+    return [s]
 
 
 def regulatory_requirements_to_string_list(v: Any) -> list[str]:
@@ -712,40 +853,43 @@ def regulatory_requirements_to_string_list(v: Any) -> list[str]:
 
 def normalize_sector_for_formula(raw: str) -> str:
     s = raw.lower()
-    if (
-        "healthcare" in s
-        or "hospital" in s
-        or "medical" in s
-        or "pharma" in s
-    ):
+    if "autonomous" in s:
+        return "Autonomous_Systems"
+    healthcare = any(t in s for t in ("healthcare", "hospital", "medical", "pharma"))
+    financial = "financial" in s or "bank" in s or ("insurance" in s and "health" not in s)
+    government = "government" in s or "federal" in s
+    ecommerce = "retail" in s or "e-commerce" in s or "ecommerce" in s
+    technology = "technology" in s or "software" in s
+    if healthcare:
         return "Healthcare"
-    if "financial" in s or "bank" in s or "insurance" in s:
+    if financial:
         return "Financial_Services"
-    if (
-        "government" in s
-        or "federal" in s
-        or "state" in s
-        or "local" in s
-    ):
+    if government:
         return "Government"
-    if "retail" in s or "e-commerce" in s or "ecommerce" in s:
+    if ecommerce:
         return "E_Commerce"
-    return "Technology"
+    if technology:
+        return "Technology"
+    return "Other"
 
 
 def normalize_risk_tolerance_for_formula(raw: str) -> str:
-    s = raw.lower()
-    if "very low" in s or "risk-averse" in s or "zero tolerance" in s:
+    s = raw.lower().strip()
+    if s.startswith("very low") or "zero tolerance" in s:
         return "Risk_averse"
-    if "low" in s:
+    if s.startswith("low"):
         return "Conservative"
-    if "high" in s or "very high" in s:
+    if s.startswith("very high") or s.startswith("high"):
         return "Aggressive"
+    if s.startswith("moderate"):
+        return "Moderate"
     return "Moderate"
 
 
 def normalize_data_sensitivity_for_formula(raw: str) -> str:
     s = raw.lower()
+    if s.startswith("public") or "no sensitive" in s:
+        return "Low (Public or anonymized)"
     if (
         "extremely sensitive" in s
         or "national security" in s
@@ -753,13 +897,9 @@ def normalize_data_sensitivity_for_formula(raw: str) -> str:
         or "cui" in s
     ):
         return "Critical (Life-safety, National security)"
-    if (
-        "highly sensitive" in s
-        or "sensitive" in s
-        or "phi" in s
-        or "financial" in s
-        or "pii" in s
-    ):
+    if "highly sensitive" in s or "phi" in s or "pci" in s:
+        return "High (PHI, Financial data, PII)"
+    if s.startswith("sensitive") or "pii" in s or "business critical" in s:
         return "High (PHI, Financial data, PII)"
     if "internal" in s or "business confidential" in s:
         return "Medium (Business confidential)"
@@ -768,15 +908,19 @@ def normalize_data_sensitivity_for_formula(raw: str) -> str:
 
 def normalize_customization_for_formula(raw: str) -> str:
     s = raw.lower()
-    if "none" in s or "as-is" in s:
+    if "none" in s or "as-is" in s or "as is" in s:
         return "None (use as-is)"
     if "minimal" in s or "no code" in s:
         return "Minimal (configuration only)"
-    if "moderate" in s or "workflow" in s or "integration" in s:
+    if "moderate" in s:
         return "Moderate (config + light dev)"
-    if "significant" in s or "extensive" in s or "major" in s:
+    if "significant" in s:
+        return "Significant (custom model training)"
+    if "extensive" in s or "major" in s:
         return "Extensive (significant dev)"
-    return "Custom_build"
+    if "custom" in s:
+        return "Custom_build"
+    return "Moderate (config + light dev)"
 
 
 def build_integration_points_for_formula(raw: str) -> list[dict[str, str]]:
@@ -808,6 +952,8 @@ def build_integration_points_for_formula(raw: str) -> list[dict[str, str]]:
 
 def timeline_months_for_formula(raw: str) -> int:
     s = raw.lower()
+    if "exploratory" in s or "no specific" in s:
+        return 30
     if "immediate" in s:
         return 1
     if "1-3" in s:
@@ -820,11 +966,13 @@ def timeline_months_for_formula(raw: str) -> int:
         return 15
     if "18+" in s:
         return 20
-    return 6
+    return 8
 
 
 def budget_for_formula(raw: str) -> str:
     s = raw.lower()
+    if not s.strip() or "not yet determined" in s or "undetermined" in s or "not known" in s:
+        return "< $100K"
     if "under $50" in s or "$50k - $100k" in s or "$50k-$100k" in s:
         return "< $100K"
     if "$100k - $250k" in s or "$100k-$250k" in s:
@@ -835,7 +983,232 @@ def budget_for_formula(raw: str) -> str:
         return "$500K-$1M"
     if "$1m - $5m" in s or "$1m-$5m" in s:
         return "$1M-$5M"
-    return "> $5M"
+    if "$5m - $10m" in s or "$5m-$10m" in s or "over $10" in s or "> $10" in s:
+        return "> $5M"
+    return "< $100K"
+
+
+def competitor_label_and_build(raw: str) -> tuple[str, bool]:
+    s = (raw or "").strip()
+    sl = s.lower()
+    considering_build = bool(re.search(r"(?<![a-z])build(?![a-z])", sl))
+    if not s:
+        return "1 competitor", False
+    if "sole" in sl or "no alternative" in sl:
+        return "0 (sole source)", considering_build
+    parts = [p.strip() for p in re.split(r"[,;\n]| and ", s) if p.strip()]
+    n = len(parts)
+    if n >= 4:
+        return "4+ competitors", considering_build
+    if n >= 2:
+        return "2-3 competitors", considering_build
+    return "1 competitor", considering_build
+
+
+def _first_present(payload: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key not in payload:
+            continue
+        v = payload.get(key)
+        if v is None:
+            continue
+        if isinstance(v, str) and not v.strip():
+            continue
+        if isinstance(v, (list, dict)) and len(v) == 0:
+            continue
+        return v
+    return None
+
+
+def _parse_jsonish(v: Any) -> Any:
+    if v is None:
+        return None
+    if isinstance(v, (list, dict)):
+        return v
+    if isinstance(v, str):
+        s = v.strip()
+        if s[:1] in ("[", "{"):
+            try:
+                return json.loads(s)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                return v
+    return v
+
+
+def _competitor_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    parsed = _parse_jsonish(_first_present(payload, "competitors"))
+    if not isinstance(parsed, list):
+        return []
+    rows: list[dict[str, Any]] = []
+    for item in parsed:
+        if isinstance(item, dict):
+            name = str(item.get("name") or "").strip()
+            if name:
+                rows.append(item)
+        else:
+            name = str(item or "").strip()
+            if name:
+                rows.append({"name": name})
+    return rows
+
+
+def _competitor_label_from_count(n: int) -> str:
+    if n <= 0:
+        return "0 (sole source)"
+    if n == 1:
+        return "1 competitor"
+    if n <= 3:
+        return "2-3 competitors"
+    return "4+ competitors"
+
+
+def _advantage_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    parsed = _parse_jsonish(
+        _first_present(payload, "key_advantages_rows", "keyAdvantagesRows")
+    )
+    if not isinstance(parsed, list):
+        return []
+    rows: list[dict[str, Any]] = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("advantage") or item.get("text") or "").strip()
+        if not text:
+            continue
+        rows.append(item)
+    return rows
+
+
+_ADVANTAGE_CATEGORY_MAP = {
+    "product": "Superior_feature_set",
+    "security": "Technology_leadership",
+    "compliance": "Regulatory_certification",
+    "price": "Lower_TCO",
+    "support": "Faster_deployment",
+    "ecosystem": "Proven_customer_in_sector",
+}
+
+
+def _differentiators_from_advantage_rows(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    for row in rows[:3]:
+        cat = str(row.get("category") or "").strip().lower()
+        mapped = _ADVANTAGE_CATEGORY_MAP.get(cat, "Domain_expertise")
+        out.append({"advantageType": mapped})
+    return out
+
+
+def _headcount_midpoint(raw: Any) -> int | None:
+    if raw is None or raw is False:
+        return None
+    if isinstance(raw, (int, float)) and raw > 0:
+        return int(raw)
+    compact = re.sub(r"[,\s]", "", str(raw)).replace("–", "-").replace("—", "-").lower()
+    if not compact or compact.startswith("not"):
+        return None
+    table = (
+        ("50000+", 75000),
+        ("10001-50000", 30000),
+        ("5001-10000", 7500),
+        ("1001-5000", 3000),
+        ("501-1000", 750),
+        ("201-500", 350),
+        ("51-200", 125),
+        ("1-50", 25),
+    )
+    for key, mid in table:
+        if key in compact:
+            return mid
+    return None
+
+
+def _customer_type_from_headcount(mid: int) -> str:
+    if mid >= 5001:
+        return "Enterprise"
+    if mid >= 501:
+        return "Mid_market"
+    return "SMB"
+
+
+def _years_from_opportunity_type(raw: str) -> int | None:
+    s = raw.lower()
+    if not s.strip():
+        return None
+    if "renewal" in s:
+        return 5
+    if "expansion" in s:
+        return 3
+    if "new logo" in s or "speculative" in s or "displacement" in s:
+        return 0
+    return None
+
+
+def _build_vs_buy_from_signal(raw: str) -> tuple[bool, str] | None:
+    s = raw.lower().strip()
+    if not s:
+        return None
+    if s.startswith("yes"):
+        return True, "Strong (can build)"
+    if s.startswith("possible"):
+        return True, "Moderate (difficult build)"
+    if s.startswith("no signal"):
+        return False, "Weak (unlikely to build)"
+    if "not known" in s:
+        return False, "Weak (unlikely to build)"
+    return None
+
+
+def _capability_from_eng_headcount(raw: str) -> str | None:
+    s = raw.lower()
+    if not s.strip() or "not known" in s:
+        return None
+    if "under 50" in s:
+        return "Weak (unlikely to build)"
+    if s.startswith("50-") or "50-250" in s:
+        return "Moderate (difficult build)"
+    return "Strong (can build)"
+
+
+def _approval_from_ownership(raw: str) -> str | None:
+    s = raw.lower()
+    if not s.strip() or "not known" in s:
+        return None
+    if "government" in s or "publicly" in s:
+        return "Board_approval"
+    if "pe owned" in s or "pe-owned" in s:
+        return "C_suite_multiple"
+    if "founder" in s or "family" in s:
+        return "VP_and_below"
+    if "vc" in s or "non-profit" in s or "ngo" in s:
+        return "C_suite_single"
+    return None
+
+
+def _integration_band_from_systems(raw: Any) -> str | None:
+    systems = to_string_list(raw)
+    if raw is None or raw == "":
+        return None
+    named = [s for s in systems if s]
+    n = len(named)
+    if n == 0:
+        return "Standalone - No Integrations Required"
+    if n == 1:
+        return "Simple - Single System Integration (e.g., SSO only)"
+    if n <= 3:
+        return "Moderate - 2-3 System Integrations"
+    if n <= 6:
+        return "Complex - 4-6 System Integrations"
+    return "Very Complex - 7+ System Integrations or Legacy Systems"
+
+
+def _ai_maturity_evidence_count(payload: dict[str, Any]) -> int | None:
+    raw = _first_present(
+        payload, "customer_ai_maturity_evidence", "customerAiMaturityEvidence"
+    )
+    if raw is None:
+        return None
+    items = to_string_list(raw)
+    return len(items)
 
 
 def customer_type_for_formula(budget_midpoint: str) -> str:
@@ -847,19 +1220,26 @@ def customer_type_for_formula(budget_midpoint: str) -> str:
 
 
 def build_sales_risk_formula_input(payload: dict[str, Any]) -> dict[str, Any]:
-    sector = normalize_sector_for_formula(
-        to_string_value(payload.get("customer_sector") or payload.get("customerSector"))
-    )
-    regulatory = regulatory_requirements_to_string_list(
-        payload.get("regulatory_requirements")
-        if payload.get("regulatory_requirements") is not None
-        else payload.get("regulatoryRequirements")
+    sector = _safe_normalize(
+        normalize_sector_for_formula,
+        to_string_value(payload.get("customer_sector") or payload.get("customerSector")),
+        "Other",
+        payload,
+        "sector",
     )
     customer_specific_risks = to_string_list(
         payload.get("customer_specific_risks")
         if payload.get("customer_specific_risks") is not None
         else payload.get("customerSpecificRisks")
     )
+    regulatory = [
+        r for r in regulatory_requirements_to_string_list(
+            payload.get("regulatory_requirements")
+            if payload.get("regulatory_requirements") is not None
+            else payload.get("regulatoryRequirements")
+        )
+        if not _is_none_selection(r)
+    ]
     risk_mitigations = to_string_list(
         payload.get("risk_mitigation")
         if payload.get("risk_mitigation") is not None
@@ -870,15 +1250,95 @@ def build_sales_risk_formula_input(payload: dict[str, Any]) -> dict[str, Any]:
             payload.get("customer_budget_range") or payload.get("customerBudgetRange")
         )
     )
-    customer_type = customer_type_for_formula(budget_midpoint)
+    customer_emp = _headcount_midpoint(
+        _first_present(payload, "customer_employee_count", "customerEmployeeCount")
+    )
+    if customer_emp is not None:
+        customer_type = _customer_type_from_headcount(customer_emp)
+        customer_employee_count = customer_emp
+    else:
+        customer_type = customer_type_for_formula(budget_midpoint)
+        if customer_type == "Enterprise":
+            customer_employee_count = 2000
+        elif customer_type == "Mid_market":
+            customer_employee_count = 500
+        else:
+            customer_employee_count = 100
+
+    competitor_rows = _competitor_rows(payload)
     alternatives = to_string_value(
         payload.get("alternatives_considered") or payload.get("alternativesConsidered")
     )
-    key_advantages = to_string_list(
+    if competitor_rows:
+        competitor_count = _competitor_label_from_count(len(competitor_rows))
+        considering_build = False
+    else:
+        competitor_count, considering_build = competitor_label_and_build(alternatives)
+
+    build_signal = _build_vs_buy_from_signal(
+        to_string_value(
+            _first_present(payload, "build_vs_buy_signal", "buildVsBuySignal") or ""
+        )
+    )
+    eng_cap = _capability_from_eng_headcount(
+        to_string_value(
+            _first_present(payload, "customer_eng_headcount", "customerEngHeadcount") or ""
+        )
+    )
+    if build_signal:
+        considering_build, signal_cap = build_signal
+        customer_technical_capability = eng_cap or signal_cap
+    elif eng_cap:
+        customer_technical_capability = eng_cap
+    else:
+        customer_technical_capability = "Moderate (difficult build)"
+
+    adv_rows = _advantage_rows(payload)
+    key_advantages = structured_option_list(
         payload.get("key_advantages")
         if payload.get("key_advantages") is not None
         else payload.get("keyAdvantages")
     )
+    if adv_rows:
+        unique_differentiators = _differentiators_from_advantage_rows(adv_rows)
+    elif key_advantages:
+        unique_differentiators = [
+            {"advantageType": "Domain_expertise"} for _ in key_advantages[:3]
+        ]
+    else:
+        unique_differentiators = []
+
+    opp_years = _years_from_opportunity_type(
+        to_string_value(
+            _first_present(payload, "opportunity_type", "opportunityType") or ""
+        )
+    )
+    years_in_sector = (
+        opp_years if opp_years is not None else _years_in_customer_sector(payload)
+    )
+
+    approval = _approval_from_ownership(
+        to_string_value(
+            _first_present(payload, "customer_ownership", "customerOwnership") or ""
+        )
+    )
+
+    systems_raw = _first_present(
+        payload, "likely_integration_systems", "likelyIntegrationSystems"
+    )
+    integration_band = _integration_band_from_systems(systems_raw)
+    if integration_band is None:
+        integration_band = to_string_value(
+            payload.get("integration_complexity") or payload.get("integrationComplexity")
+        )
+
+    vendor_emp = _vendor_employee_count(payload)
+    expects_larger = customer_employee_count > vendor_emp * 2
+
+    evidence_count = _ai_maturity_evidence_count(payload)
+    vendor_stage = _vendor_stage_for_formula(payload)
+    if evidence_count is not None and evidence_count >= 3:
+        vendor_stage = "mature"
 
     other_risks = (
         payload.get("customer_specific_risks_other")
@@ -886,41 +1346,41 @@ def build_sales_risk_formula_input(payload: dict[str, Any]) -> dict[str, Any]:
         else payload.get("customerSpecificRisksOther")
     )
 
-    if customer_type == "Enterprise":
-        customer_employee_count = 2000
-    elif customer_type == "Mid_market":
-        customer_employee_count = 500
-    else:
-        customer_employee_count = 100
-
     return {
         "customerRegulatoryRequirements": regulatory,
         "sector": sector,
-        "customerDataSensitivity": normalize_data_sensitivity_for_formula(
+        "customerDataSensitivity": _safe_normalize(
+            normalize_data_sensitivity_for_formula,
             to_string_value(
                 payload.get("data_sensitivity") or payload.get("dataSensitivity")
-            )
+            ),
+            "Low (Public or anonymized)",
+            payload,
+            "customerDataSensitivity",
         ),
-        "customerRiskTolerance": normalize_risk_tolerance_for_formula(
+        "customerRiskTolerance": _safe_normalize(
+            normalize_risk_tolerance_for_formula,
             to_string_value(
                 payload.get("customer_risk_tolerance")
                 or payload.get("customerRiskTolerance")
-            )
+            ),
+            "Moderate",
+            payload,
+            "customerRiskTolerance",
         ),
         "customerSpecificRiskCount": len(customer_specific_risks),
         "customerType": customer_type,
-        "customerHasUniqueRequirements": bool(to_string_value(other_risks)),
+        "customerHasUniqueRequirements": False,
         "uniqueRequirementsList": to_string_list(other_risks),
-        "integrationPoints": build_integration_points_for_formula(
-            to_string_value(
-                payload.get("integration_complexity")
-                or payload.get("integrationComplexity")
-            )
-        ),
-        "customizationLevel": normalize_customization_for_formula(
+        "integrationPoints": build_integration_points_for_formula(integration_band),
+        "customizationLevel": _safe_normalize(
+            normalize_customization_for_formula,
             to_string_value(
                 payload.get("customization_level") or payload.get("customizationLevel")
-            )
+            ),
+            "Moderate (config + light dev)",
+            payload,
+            "customizationLevel",
         ),
         "customerRequiresIndustryWorkflows": customer_type != "SMB",
         "businessProcessChangesRequired": min(4, max(0, len(customer_specific_risks))),
@@ -932,26 +1392,21 @@ def build_sales_risk_formula_input(payload: dict[str, Any]) -> dict[str, Any]:
         ),
         "regulatoryDeadlineExists": False,
         "monthsUntilDeadline": None,
-        "productFeatureMatchPct": 80,
+        "productFeatureMatchPct": _product_feature_match_pct(payload),
         "missingCriticalFeatures": [],
         "proposedMitigationsCount": len(risk_mitigations),
-        "avgMitigationsPerRisk": 4,
-        "competitorCount": "2-3 competitors" if alternatives else "1 competitor",
-        "customerConsideringBuildVsBuy": "build" in alternatives.lower(),
-        "customerTechnicalCapability": "Moderate (difficult build)",
+        "avgMitigationsPerRisk": 4 if risk_mitigations else 0,
+        "competitorCount": competitor_count,
+        "customerConsideringBuildVsBuy": considering_build,
+        "customerTechnicalCapability": customer_technical_capability,
         "budgetMidpoint": budget_midpoint,
-        "approvalLevels": "C_suite_single",
-        "uniqueDifferentiators": (
-            [{"advantageType": "Domain_expertise"} for _ in key_advantages[:3]]
-            if key_advantages
-            else [{"advantageType": "Faster_deployment"}]
-        ),
-        "yearsInCustomerSector": 5,
-        "vendorStage": "growth",
-        "customerExpectsLargerVendorFeatures": customer_type == "Enterprise",
+        "approvalLevels": approval or "C_suite_single",
+        "uniqueDifferentiators": unique_differentiators,
+        "yearsInCustomerSector": years_in_sector,
+        "vendorStage": vendor_stage,
+        "customerExpectsLargerVendorFeatures": expects_larger,
         "customerEmployeeCount": customer_employee_count,
-        "vendorEmployeeCount": 250,
-        # AI Risk Intellect intent enrichment (types 2) — optional; defaults to Mixed 1.0
+        "vendorEmployeeCount": vendor_emp,
         "intentionalRiskCount": _safe_int(payload.get("intentionalRiskCount"), 0),
         "unintentionalRiskCount": _safe_int(payload.get("unintentionalRiskCount"), 0),
         "intent_multiplier_value": payload.get("intent_multiplier_value")
@@ -960,6 +1415,7 @@ def build_sales_risk_formula_input(payload: dict[str, Any]) -> dict[str, Any]:
         "intent_profile": payload.get("intent_profile")
         if payload.get("intent_profile") is not None
         else payload.get("intentProfile"),
+        "_degraded_fields": list(payload.get("_degraded_fields") or []),
     }
 
 

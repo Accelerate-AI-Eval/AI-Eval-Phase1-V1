@@ -131,6 +131,32 @@ export async function persistVendorOnboardingBusinessFields(
   body: Record<string, unknown>,
 ): Promise<void> {
   const fields = normalizeVendorOnboardingBusinessFields(body);
+  const vendorType = asTrimmedString(body.vendorType ?? body.vendor_type).slice(0, 100) || null;
+  const vendorMaturity = asTrimmedString(body.vendorMaturity ?? body.vendor_maturity).slice(0, 100) || null;
+  const companyWebsite = asTrimmedString(body.companyWebsite ?? body.company_website).slice(0, 2000) || null;
+  const companyDescription = asTrimmedString(body.companyDescription ?? body.company_description) || null;
+  const employeeCount = asTrimmedString(body.employeeCount ?? body.employee_count).slice(0, 50) || null;
+  const headquartersLocation = asTrimmedString(
+    body.headquartersLocation ?? body.headquarters_location,
+  ).slice(0, 100) || null;
+  const yearFoundedRaw = body.yearFounded ?? body.year_founded;
+  const yearFounded =
+    yearFoundedRaw == null || String(yearFoundedRaw).trim() === ""
+      ? null
+      : Number.parseInt(String(yearFoundedRaw), 10);
+  const sectorVal = body.sector ?? body.target_industries;
+  const sectorJson =
+    sectorVal != null && typeof sectorVal === "object"
+      ? JSON.stringify(sectorVal)
+      : typeof sectorVal === "string" && sectorVal.trim()
+        ? sectorVal
+        : null;
+  const operatingRegions = body.operatingRegions ?? body.operating_regions ?? body.operate_regions;
+  const operatingJson =
+    operatingRegions == null
+      ? null
+      : JSON.stringify(operatingRegions);
+
   await db.execute(sql`
     UPDATE public.vendor_onboarding
     SET
@@ -140,6 +166,15 @@ export async function persistVendorOnboardingBusinessFields(
       customer_retention_rate = ${fields.customerRetentionRate},
       trust_centre_url = ${fields.trustCentreUrl},
       security_incidents = ${JSON.stringify(fields.securityIncidents)}::jsonb,
+      vendor_type = COALESCE(${vendorType}, vendor_type),
+      vendor_maturity = COALESCE(${vendorMaturity}, vendor_maturity),
+      company_website = COALESCE(${companyWebsite}, company_website),
+      company_description = COALESCE(${companyDescription}, company_description),
+      employee_count = COALESCE(${employeeCount}, employee_count),
+      headquarters_location = COALESCE(${headquartersLocation}, headquarters_location),
+      year_founded = COALESCE(${Number.isInteger(yearFounded) ? yearFounded : null}, year_founded),
+      sector = COALESCE(${sectorJson}, sector),
+      operating_regions = COALESCE(${operatingJson}::jsonb, operating_regions),
       updated_at = now()
     WHERE organization_id = ${organizationId}
   `);

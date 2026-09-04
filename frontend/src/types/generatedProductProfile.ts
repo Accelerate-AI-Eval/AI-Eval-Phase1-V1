@@ -22,6 +22,7 @@ export interface GeneratedProductProfileReport {
   /** Stamped when report is generated (Controls LLM). */
   modelId?: string;
   modelLabel?: string;
+  scoringSource?: string;
 }
 
 export interface GenerateProductProfileResponse {

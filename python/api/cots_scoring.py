@@ -62,9 +62,10 @@ async def score_cots_vendor(body: CotsVendorScoreRequest) -> dict[str, Any]:
             formula_input=formula_input,
             payload=body.payload if isinstance(body.payload, dict) else None,
         )
+        scoring_source = str(result.get("scoring_source") or "formula")
         return {
             **result,
-            "scoring_source": "formula",
+            "scoring_source": scoring_source,
             "scoring_version": "srs-1.1",
             "rationale": rationale,
         }

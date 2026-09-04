@@ -11,6 +11,22 @@ from services.pgvector_store import PgVectorStore
 
 logger = logging.getLogger(__name__)
 
+_store: PgVectorStore | None = None
+_embedder: EmbeddingService | None = None
+_schema_ready = False
+
+
+def _vector_clients() -> tuple[PgVectorStore, EmbeddingService]:
+    global _store, _embedder, _schema_ready
+    if _store is None:
+        _store = PgVectorStore()
+    if _embedder is None:
+        _embedder = EmbeddingService()
+    if not _schema_ready:
+        _store.ensure_schema()
+        _schema_ready = True
+    return _store, _embedder
+
 AssessmentType = Literal[
     "vendor_self_attestation",
     "cots_vendor",
@@ -64,13 +80,11 @@ def retrieve_formula_context(
     top_k = max(1, min(top_k, 12))
 
     try:
-        store = PgVectorStore()
-        store.ensure_schema()
-        embedder = EmbeddingService()
+        store, embedder = _vector_clients()
 
         default_queries = FORMULA_QUERIES.get(atype, FORMULA_QUERIES["vendor_self_attestation"])
-        # One Titan embed first; extra queries only if the first search is thin.
-        queries = [_build_context_query(atype, query_text), *default_queries[:2]]
+        # Prefer one Titan embed. Extra canned queries only if that search is empty.
+        queries = [_build_context_query(atype, query_text), *default_queries[:1]]
         seen: set[str] = set()
         merged: list[dict[str, Any]] = []
 

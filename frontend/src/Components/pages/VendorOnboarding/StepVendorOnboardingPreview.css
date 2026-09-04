@@ -7,7 +7,6 @@
   font-size: 0.9rem;
   color: var(--text-muted, #64748b);
   line-height: 1.5;
-  text-transform: capitalize;
 }
 
 .vendor_preview_sections {
@@ -57,7 +56,6 @@
   font-size: 0.875rem;
   color: var(--text-primary, #1e293b);
   line-height: 1.4;
-  text-transform: capitalize;
 }
 
 .vendor_preview_na {

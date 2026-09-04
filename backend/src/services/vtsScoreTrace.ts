@@ -27,6 +27,15 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function toIsoTimestamp(value: string | Date | null | undefined): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  if (typeof value === "string" && value.trim()) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  return null;
+}
+
 function component(
   label: string,
   category: string,
@@ -64,6 +73,8 @@ export type VtsTraceInput = {
    * Factor-level explanations from stored report (or rebuilt from formula_detail).
    */
   factorExplanations?: FactorExplanation[];
+  /** When the stored VTS was calculated (profile report created_at). */
+  generatedAt?: string | Date | null;
 };
 
 export function buildVtsScoreTrace(input: VtsTraceInput): ScoreTrace {
@@ -181,7 +192,7 @@ export function buildVtsScoreTrace(input: VtsTraceInput): ScoreTrace {
     warnings,
     missingEvidence,
     factorExplanations: hasFactorDetail ? factorExplanations : undefined,
-    generatedAt: new Date().toISOString(),
+    generatedAt: toIsoTimestamp(input.generatedAt) ?? new Date().toISOString(),
     internalOnly: true,
   };
 }

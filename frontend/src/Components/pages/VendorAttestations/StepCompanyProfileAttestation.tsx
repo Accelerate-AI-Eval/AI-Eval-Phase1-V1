@@ -4,7 +4,7 @@ import HeaderForVendor from "../VendorOnboarding/HeaderForVendor";
 import FormField from "../../UI/FormField";
 import Select from "../../UI/Select";
 import Input from "../../UI/Input";
-import IndustrySectorDependency from "../../UI/IndustrySectorDependency";
+import IndustrySectorDependency, { type SectorValue } from "../../UI/IndustrySectorDependency";
 import ChipMultiSelect from "../../UI/ChipMultiSelect";
 import YearPicker from "../../UI/YearPicker";
 import {
@@ -42,10 +42,12 @@ const StepCompanyProfileAttestation = ({
     setCompanyProfile((prev) => ({ ...prev, [name]: value }));
   };
 
-  const sectorValue = {
-    public_sector: companyProfile.sector?.public_sector ?? [],
-    private_sector: companyProfile.sector?.private_sector ?? [],
-    non_profit_sector: companyProfile.sector?.non_profit_sector ?? [],
+  const asStringList = (value: unknown): string[] =>
+    Array.isArray(value) ? value.map((item) => String(item)) : [];
+  const sectorValue: SectorValue = {
+    public_sector: asStringList(companyProfile.sector?.public_sector),
+    private_sector: asStringList(companyProfile.sector?.private_sector),
+    non_profit_sector: asStringList(companyProfile.sector?.non_profit_sector),
   };
 
   const currentYear = new Date().getFullYear();
@@ -91,7 +93,7 @@ const StepCompanyProfileAttestation = ({
                 id="industry_sec"
                 sector={sectorValue}
                 onChange={(sector) =>
-                  setCompanyProfile((prev) => ({ ...prev, sector }))
+                  setCompanyProfile((prev) => ({ ...prev, sector: sector as unknown as AttestationCompanyProfile["sector"] }))
                 }
                 defaultCategoryOption="Select sector category"
                 required

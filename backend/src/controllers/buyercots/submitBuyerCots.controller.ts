@@ -71,6 +71,9 @@ function buildBuyerContextForReport(body: Record<string, unknown>): Record<strin
     riskDomainScores: g("riskDomainScores"),
     riskMitigation: g("riskMitigation"),
     riskMitigationMappingIds: g("riskMitigationMappingIds"),
+    monitoringDataAvailable: g("monitoringDataAvailable"),
+    auditLogsAvailable: g("auditLogsAvailable"),
+    testingResultsAvailable: g("testingResultsAvailable"),
   };
 }
 
@@ -79,7 +82,7 @@ async function persistVendorRiskReport(
   body: Record<string, unknown>,
   vendorName: string,
   productName: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const attestation = await findAttestationForBuyerAssessment({
       attestationId: readBuyerAttestationIdFromBody(body),
@@ -111,9 +114,11 @@ async function persistVendorRiskReport(
         updated_at: new Date(),
       })
       .where(eq(cotsBuyerAssessments.assessment_id, assessmentId));
+    return true;
   } catch (e) {
     if (isTokenQuotaExceededError(e)) throw e;
     console.error("persistVendorRiskReport:", e);
+    return false;
   }
 }
 
@@ -183,7 +188,10 @@ function buildPayloadCots(body: Record<string, unknown>) {
     phased_rollout_plan: get("pilotRolloutPlan") != null ? String(get("pilotRolloutPlan")).slice(0, 100) : null,
     rollback_capability: get("rollbackCapability") != null ? String(get("rollbackCapability")).slice(0, 100) : null,
     management_plan: get("changeManagementPlan") != null ? String(get("changeManagementPlan")).slice(0, 100) : null,
-    compliance_document: get("complianceDocument") != null ? String(get("complianceDocument")) : null,
+    compliance_document: (() => {
+      const raw = get("vendorComplianceDocumentation") ?? get("complianceDocument");
+      return raw != null ? String(raw) : null;
+    })(),
     vendor_usage_data: get("monitoringDataAvailable") != null ? String(get("monitoringDataAvailable")).slice(0, 100) : null,
     audit_logs: get("auditLogsAvailable") != null ? String(get("auditLogsAvailable")).slice(0, 100) : null,
     testing_results: get("testingResultsAvailable") != null ? String(get("testingResultsAvailable")).slice(0, 100) : null,
@@ -240,7 +248,7 @@ const submitBuyerCotsAssessment = async (req: Request, res: Response) => {
           .set({ ...payloadCots, updated_at: new Date() })
           .where(eq(cotsBuyerAssessments.assessment_id, assessmentId));
       });
-      await persistVendorRiskReport(
+      const vendorRiskReportAvailable = await persistVendorRiskReport(
         assessmentId,
         body as Record<string, unknown>,
         String(payloadCots.vendor_name ?? ""),
@@ -249,7 +257,7 @@ const submitBuyerCotsAssessment = async (req: Request, res: Response) => {
       return res.status(200).json({
         message: "Buyer COTS assessment submitted successfully",
         assessmentId,
-        vendorRiskReportAvailable: true,
+        vendorRiskReportAvailable,
       });
     }
 
@@ -266,7 +274,7 @@ const submitBuyerCotsAssessment = async (req: Request, res: Response) => {
       await tx.insert(cotsBuyerAssessments).values({ assessment_id: a.id, ...payloadCots });
       return [a];
     });
-    await persistVendorRiskReport(
+    const vendorRiskReportAvailable = await persistVendorRiskReport(
       assessment.id,
       body as Record<string, unknown>,
       String(payloadCots.vendor_name ?? ""),
@@ -275,7 +283,7 @@ const submitBuyerCotsAssessment = async (req: Request, res: Response) => {
     return res.status(201).json({
       message: "Buyer COTS assessment submitted successfully",
       assessmentId: assessment.id,
-      vendorRiskReportAvailable: true,
+      vendorRiskReportAvailable,
     });
   } catch (error) {
     if (sendIfTokenQuotaExceeded(res, error)) return;

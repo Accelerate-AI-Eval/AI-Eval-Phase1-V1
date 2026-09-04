@@ -68,20 +68,33 @@ const generateProductProfile = async (req: Request, res: Response): Promise<void
       .limit(1);
     const organizationIdStr = userRow?.organization_id != null ? String(userRow.organization_id) : null;
 
+    const attestationIdRaw = req.body?.attestationId ?? req.body?.attestation_id;
+    const attestationId =
+      typeof attestationIdRaw === "string" && attestationIdRaw.trim() ? attestationIdRaw.trim() : null;
+
+    let scoringPayload: Record<string, unknown> = { ...formulaPayload };
+    if (attestationId) {
+      const [attest] = await db
+        .select({ assessment_id: vendorSelfAttestations.assessment_id })
+        .from(vendorSelfAttestations)
+        .where(eq(vendorSelfAttestations.id, attestationId))
+        .limit(1);
+      const linked = attest?.assessment_id ? String(attest.assessment_id) : "";
+      if (linked) {
+        scoringPayload = { ...scoringPayload, assessment_id: linked, assessmentId: linked };
+      }
+    }
+
     await assertFeatureTokenQuota("attestation");
 
     // Python calculates VTS; Node persists trust_score + report
-    const report = await generateVendorAttestationReport(vendorData, formulaPayload);
+    const report = await generateVendorAttestationReport(vendorData, scoringPayload);
     const built = buildReportPayloadAndSummary(report);
     const reportPayload = stampActiveLlmModel(
       built.reportPayload as unknown as Record<string, unknown>,
     );
     const llmMeta = getActiveLlmModelMeta();
     const { trustScoreNum, summaryToStore } = built;
-
-    const attestationIdRaw = req.body?.attestationId ?? req.body?.attestation_id;
-    const attestationId =
-      typeof attestationIdRaw === "string" && attestationIdRaw.trim() ? attestationIdRaw.trim() : null;
 
     const summaryForDb = summaryToStore && summaryToStore.length > 0 ? summaryToStore : null;
 

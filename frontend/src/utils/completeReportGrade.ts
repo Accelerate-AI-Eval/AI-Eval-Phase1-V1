@@ -103,9 +103,14 @@ export function customerRiskReportApprovalHeading(
   return "Conditional Approval";
 }
 
+/** Invert a 0–100 score (readiness ↔ residual risk). */
+export function invertScore100(score: number): number {
+  return Math.round(Math.max(0, Math.min(100, 100 - score)));
+}
+
 /** Readiness / alignment score shown on the complete report (100 − risk). */
 export function alignmentScoreFromRiskScore(riskScore: number): number {
-  return Math.round(Math.max(0, Math.min(100, 100 - riskScore)));
+  return invertScore100(riskScore);
 }
 
 /** Card/list payload: alignment score for customer reports; IRS (0–100) for buyer vendor risk rows. */

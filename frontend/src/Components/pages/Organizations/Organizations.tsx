@@ -135,6 +135,7 @@ const Organizations = () => {
     reportId?: string | null;
     traceType: "vts" | "scs" | "irs";
     llmModelName?: string | null;
+    cardScore?: number | null;
   } | null>(null);
   const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5003/api/v1";
 
@@ -792,6 +793,7 @@ const Organizations = () => {
                                                 title,
                                                 reportId: profileReportId,
                                                 traceType: "vts",
+                                                cardScore: trustScore,
                                                 llmModelName: resolveStoredLlmModelId({
                                                   llmModelId:
                                                     (typeof a.llm_model_id === "string" &&
@@ -989,22 +991,26 @@ const Organizations = () => {
                                   const reportScore =
                                     rawScore == null
                                       ? null
-                                      : isVendorCots
-                                        ? Math.round(
-                                            Math.max(0, Math.min(100, 100 - rawScore)),
-                                          )
-                                        : Math.round(
-                                            Math.max(0, Math.min(100, rawScore)),
-                                          );
+                                      : Math.round(
+                                          Math.max(
+                                            0,
+                                            Math.min(
+                                              100,
+                                              // Type 2 stores sales risk; readiness = 100 − SRS.
+                                              // Type 3 stores IRS readiness; implementation risk = 100 − IRS.
+                                              100 - rawScore,
+                                            ),
+                                          ),
+                                        );
                                   const scoreRationale =
                                     typeof row.scoreRationale === "string" &&
                                     row.scoreRationale.trim()
                                       ? row.scoreRationale.trim()
                                       : null;
                                   const scoreLabel = isVendorCots
-                                    ? "Sales Confidence"
+                                    ? "Readiness"
                                     : isBuyerCots
-                                      ? "Readiness"
+                                      ? "Implementation Risk"
                                       : "Score";
                                   const showAdminScoreBlock =
                                     isSystemAdmin &&
@@ -1069,6 +1075,7 @@ const Organizations = () => {
                                                   id: String(row.assessmentId ?? ""),
                                                   title,
                                                   traceType: isBuyerCots ? "irs" : "scs",
+                                                  cardScore: reportScore,
                                                   llmModelName: resolveStoredLlmModelId({
                                                     llmModelId:
                                                       (typeof row.llmModelId === "string" &&
@@ -1084,11 +1091,11 @@ const Organizations = () => {
                                                 });
                                                 setScoreTraceOpen(true);
                                               }}
-                                              aria-label={`${isBuyerCots ? "Implementation readiness" : "Sales confidence"} explainability for ${title}`}
+                                              aria-label={`${isBuyerCots ? "Implementation risk" : "Readiness"} explainability for ${title}`}
                                               title={
                                                 isBuyerCots
                                                   ? "Implementation Risk Explainability"
-                                                  : "Sales Confidence Explainability"
+                                                  : "Readiness Explainability"
                                               }
                                             >
                                               <Info size={14} aria-hidden />
@@ -1237,6 +1244,7 @@ const Organizations = () => {
                 undefined
               }
               llmModelName={scoreTraceTarget?.llmModelName}
+              cardScore={scoreTraceTarget?.cardScore ?? null}
             />
           )}
           

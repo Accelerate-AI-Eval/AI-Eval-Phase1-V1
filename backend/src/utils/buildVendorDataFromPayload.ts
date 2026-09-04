@@ -76,6 +76,11 @@ export function buildVendorDataFromPayload(body: Record<string, unknown>): strin
   lines.push("Support SLAs by severity: " + asStr(get("support_slas")));
   lines.push("Change management / release cadence: " + asStr(get("change_management")));
   lines.push("Incident response plan: " + asStr(get("incident_response_plan")));
+  lines.push(
+    "Publicly disclosed security incident in the last 24 months: " +
+      asStr(get("has_public_security_incident")),
+  );
+  lines.push("Disclosed security incidents: " + formatVal(get("security_incidents")));
   lines.push("Production model monitoring: " + asStr(get("production_model_monitoring")));
   lines.push("Critical incident response target: " + asStr(get("critical_incident_response_target")));
   lines.push("Critical incident resolution target: " + asStr(get("critical_incident_resolution_target")));

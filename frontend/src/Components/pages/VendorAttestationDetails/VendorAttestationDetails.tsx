@@ -32,14 +32,14 @@ import { ReportsPagination } from "../Reports/ReportsPagination";
 import type {
   VendorSelfAttestationPayload,
   VendorSelfAttestationFormState,
-} from "../../types/vendorSelfAttestation";
+} from "../../../types/vendorSelfAttestation";
 import {
   buildFormStateFromApi,
   defaultDocumentUpload,
   mapApiCompanyProfile,
 } from "../../../utils/vendorAttestationState";
-import type { DocumentUploadState } from "../../types/vendorSelfAttestation";
-import type { AttestationCompanyProfile } from "../../types/vendorSelfAttestation";
+import type { DocumentUploadState } from "../../../types/vendorSelfAttestation";
+import type { AttestationCompanyProfile } from "../../../types/vendorSelfAttestation";
 import "../UserManagement/user_management.css";
 import "../VendorDirectory/VendorDirectory.css";
 import "../Reports/general_reports.css";

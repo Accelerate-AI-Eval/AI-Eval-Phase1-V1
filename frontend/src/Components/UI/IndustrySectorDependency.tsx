@@ -15,6 +15,8 @@ const SECTOR_KEY_MAP: Record<string, keyof SectorValue> = {
   "Non-Profit": "non_profit_sector",
 };
 
+const CATEGORY_ORDER = ["Public Sector", "Private Sector", "Non-Profit"] as const;
+
 export type SectorOptionNode = {
   label: string;
   options: { label: string; value: string }[];
@@ -45,7 +47,6 @@ function IndustrySectorDependency({
 
   const sectorsSource = sectorOptions ?? INDUSTRY_SECTORS;
 
-  // When sector is prefilled from DB (e.g. Vendor Self Attestation), show first category that has data so user sees selected industries
   useEffect(() => {
     if (hasInitializedFromSector.current) return;
     const hasData =
@@ -77,16 +78,39 @@ function IndustrySectorDependency({
     });
   }
 
+  const selectedAcrossCategories = CATEGORY_ORDER.map((label) => {
+    const key = SECTOR_KEY_MAP[label];
+    const values = key ? sector[key] ?? [] : [];
+    return { label, values };
+  }).filter((row) => row.values.length > 0);
+
   return (
     <div className="industry-sector-dependency" id={id}>
       {labelName != null && <label>{labelName}</label>}
+
+      {selectedAcrossCategories.length > 0 && (
+        <div className="industry-sector-selected-summary" aria-live="polite">
+          {selectedAcrossCategories.map((row) => (
+            <div key={row.label} className="industry-sector-selected-group">
+              <span className="industry-sector-selected-group-label">{row.label}</span>
+              <ul className="industry-sector-selected-chips">
+                {row.values.map((value) => (
+                  <li key={`${row.label}-${value}`} className="industry-sector-selected-chip">
+                    {value}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
 
       <select
         className={`industry-sector-category-select select_input ${!selectedCategory ? "select_input--placeholder" : ""}`}
         value={selectedCategory}
         onChange={(e) => setSelectedCategory(e.target.value)}
         aria-label="Sector category"
-        required={required}
+        required={required && selectedAcrossCategories.length === 0}
       >
         <option value="">{defaultCategoryOption}</option>
         {categoryOptions.map((label) => (
