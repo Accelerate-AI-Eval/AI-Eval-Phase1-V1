@@ -27,6 +27,7 @@
 
 .chip-multi-select-chip {
   appearance: none;
+  font-family: "Sora", sans-serif;
   padding: 0.5rem 0.875rem;
   font-size: 0.9375rem;
   font-weight: 500;

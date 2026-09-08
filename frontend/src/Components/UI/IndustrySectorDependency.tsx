@@ -31,6 +31,7 @@ interface IndustrySectorDependencyProps {
   required?: boolean;
   /** When provided (e.g. BUYER_INDUSTRY_SECTORS), use instead of default vendor INDUSTRY_SECTORS */
   sectorOptions?: SectorOptionNode[];
+  readOnly?: boolean;
 }
 
 function IndustrySectorDependency({
@@ -41,6 +42,7 @@ function IndustrySectorDependency({
   defaultCategoryOption = "Select sector category",
   required,
   sectorOptions,
+  readOnly = false,
 }: IndustrySectorDependencyProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const hasInitializedFromSector = useRef(false);
@@ -84,13 +86,20 @@ function IndustrySectorDependency({
     return { label, values };
   }).filter((row) => row.values.length > 0);
 
+  const otherSelectedCategories = selectedAcrossCategories.filter(
+    (row) => row.label !== selectedCategory,
+  );
+
   return (
-    <div className="industry-sector-dependency" id={id}>
+    <div
+      className={`industry-sector-dependency${readOnly ? " industry-sector-dependency--readonly" : ""}`}
+      id={id}
+    >
       {labelName != null && <label>{labelName}</label>}
 
-      {selectedAcrossCategories.length > 0 && (
+      {otherSelectedCategories.length > 0 && (
         <div className="industry-sector-selected-summary" aria-live="polite">
-          {selectedAcrossCategories.map((row) => (
+          {otherSelectedCategories.map((row) => (
             <div key={row.label} className="industry-sector-selected-group">
               <span className="industry-sector-selected-group-label">{row.label}</span>
               <ul className="industry-sector-selected-chips">
@@ -125,6 +134,7 @@ function IndustrySectorDependency({
           options={activeSectorNode.options}
           value={selectedValues}
           onChange={handleSectorOptionsChange}
+          disabled={readOnly}
         />
       ) : null}
     </div>

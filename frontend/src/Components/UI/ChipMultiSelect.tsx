@@ -19,6 +19,7 @@ interface ChipMultiSelectProps {
    * Selecting this option replaces the current selection with only this value.
    */
   globalExclusiveValue?: string;
+  disabled?: boolean;
 }
 
 function ChipMultiSelect({
@@ -29,11 +30,13 @@ function ChipMultiSelect({
   value,
   onChange,
   globalExclusiveValue,
+  disabled = false,
 }: ChipMultiSelectProps) {
   const valueRef = useRef(value);
   valueRef.current = value;
 
   function isChipDisabled(optionValue: string): boolean {
+    if (disabled) return true;
     if (!globalExclusiveValue) return false;
     const current = valueRef.current;
     const hasGlobal = current.includes(globalExclusiveValue);

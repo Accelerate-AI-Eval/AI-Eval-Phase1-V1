@@ -2030,6 +2030,9 @@ export async function generateVendorCotsReport(
       try {
         const formulaResult = await scoreCotsVendorWithPython(scoringPayload);
         console.log("srs", formulaResult.sales_risk_score);
+        if (formulaResult.formula_console?.trim()) {
+          console.log(formulaResult.formula_console);
+        }
         if (formulaResult.rationale?.trim()) {
           console.log(formulaResult.rationale);
         } else {
@@ -2100,6 +2103,38 @@ export async function generateVendorCotsReport(
             scoring_version: "srs-node-1.0",
           };
           console.log("srs", formulaResult.sales_risk_score, "(node fallback)");
+          console.log(
+            "SRS FORMULA CALCULATION (console)  [Vendor COTS / Type 2] (node fallback)",
+          );
+          console.log(
+            JSON.stringify(
+              {
+                hardcoded: {
+                  expression:
+                    "SRS = min(100, max(0, ((CFR x 0.35) + (IR x 0.35) + (CR x 0.30)) x Intent))",
+                  CFR_WEIGHT: 0.35,
+                  IR_WEIGHT: 0.35,
+                  CR_WEIGHT: 0.3,
+                  SCORE_CAP: 100,
+                  SCORE_FLOOR: 0,
+                  intent,
+                },
+                formula_input: formulaInput,
+                result: {
+                  sales_risk_score: srs,
+                  deal_probability_pct: deal,
+                  customer_friction_risk: local.customer_friction_risk,
+                  implementation_risk: local.implementation_risk,
+                  competitive_risk: local.competitive_risk,
+                  grade: interpretation.grade,
+                  classification: interpretation.classification,
+                },
+                detail: formulaResult.detail,
+              },
+              null,
+              2,
+            ),
+          );
           return formulaResult;
         } catch (localErr) {
           console.error("Local Node SRS fallback also failed:", localErr);

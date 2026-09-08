@@ -13,6 +13,8 @@ import {
   isTokenQuotaExceededError,
   sendIfTokenQuotaExceeded,
 } from "../../services/admin/featureTokenQuota.service.js";
+import { buildPayloadCots } from "../../services/cotsBuyerPayload.js";
+import { enrichBuyerCotsScoringPayload } from "../../services/enrichBuyerCotsScoringPayload.js";
 
 function readBuyerAttestationIdFromBody(body: Record<string, unknown>): string | null {
   const keys = [
@@ -74,6 +76,33 @@ function buildBuyerContextForReport(body: Record<string, unknown>): Record<strin
     monitoringDataAvailable: g("monitoringDataAvailable"),
     auditLogsAvailable: g("auditLogsAvailable"),
     testingResultsAvailable: g("testingResultsAvailable"),
+    useCaseTypes: g("useCaseTypes"),
+    usersInScope: g("usersInScope"),
+    currentUsageState: g("currentUsageState"),
+    pilotStatus: g("pilotStatus"),
+    dataClasses: g("dataClasses"),
+    dataSubjectJurisdictions: g("dataSubjectJurisdictions"),
+    decisionDomains: g("decisionDomains"),
+    outputExposure: g("outputExposure"),
+    humanReviewLevel: g("humanReviewLevel"),
+    aiDisclosure: g("aiDisclosure"),
+    deploymentModel: g("deploymentModel"),
+    cloudProvider: g("cloudProvider"),
+    integrationAccessLevels: g("integrationAccessLevels"),
+    implementationCapacity: g("implementationCapacity"),
+    trainingEffort: g("trainingEffort"),
+    vendorEvidenceReceived: g("vendorEvidenceReceived"),
+    unavailabilityImpact: g("unavailabilityImpact"),
+    dataExportCapability: g("dataExportCapability"),
+    contractsInPlace: g("contractsInPlace"),
+    answerConfidence: g("answerConfidence"),
+    trainingUseOfData: g("trainingUseOfData"),
+    trainingUseOfDataStance: g("trainingUseOfDataStance"),
+    monitoringDataStance: g("monitoringDataStance"),
+    auditLogsStance: g("auditLogsStance"),
+    dataExportStance: g("dataExportStance"),
+    accountableOwnerName: g("accountableOwnerName"),
+    organizationId: g("organizationId"),
   };
 }
 
@@ -90,7 +119,13 @@ async function persistVendorRiskReport(
       productName,
     });
     const report = await generateBuyerVendorRiskReport(
-      buildBuyerContextForReport(body),
+      await enrichBuyerCotsScoringPayload(
+        {
+          ...buildBuyerContextForReport(body),
+          organizationId: body.organizationId ?? body.organization_id,
+        },
+        String(body.organizationId ?? body.organization_id ?? ""),
+      ),
       attestation,
       vendorName || "Vendor",
       productName || "Product",
@@ -120,87 +155,6 @@ async function persistVendorRiskReport(
     console.error("persistVendorRiskReport:", e);
     return false;
   }
-}
-
-/** Map API (camelCase) to DB columns (Excel buyer_cots sheet names). */
-function buildPayloadCots(body: Record<string, unknown>) {
-  const get = (k: string) => body[k] ?? body[k.replace(/_([a-z])/g, (_, c) => c.toUpperCase())];
-  const parseJson = (v: unknown) => {
-    if (v == null) return null;
-    if (typeof v === "string" && v.trim()) {
-      try {
-        const p = JSON.parse(v);
-        return Array.isArray(p) ? p : p;
-      } catch {
-        return v;
-      }
-    }
-    return v;
-  };
-  return {
-    user_id: get("userId") != null ? Number(get("userId")) || null : null,
-    organization_id: get("organizationId") != null ? String(get("organizationId")).slice(0, 255) : null,
-    organization_name: get("organizationName") != null ? String(get("organizationName")).slice(0, 255) : null,
-    industry: get("industry") != null ? String(get("industry")).slice(0, 200) : null,
-    industry_sector: (() => {
-      const raw = get("industrySector");
-      if (raw == null) return null;
-      if (Array.isArray(raw)) return raw.map(String).filter(Boolean).join(", ").slice(0, 200);
-      const s = String(raw).trim();
-      if (!s) return null;
-      try {
-        const parsed = JSON.parse(s);
-        if (Array.isArray(parsed)) {
-          return parsed.map(String).filter(Boolean).join(", ").slice(0, 200);
-        }
-      } catch {
-        /* plain string */
-      }
-      return s.slice(0, 200);
-    })(),
-    employee_count: get("employeeCount") != null ? String(get("employeeCount")).slice(0, 100) : null,
-    geographic_regions: parseJson(get("geographicRegions") ?? get("operatingRegions")),
-    pain_point: get("businessPainPoint") != null ? String(get("businessPainPoint")) : null,
-    business_outcomes: get("expectedOutcomes") != null ? String(get("expectedOutcomes")).slice(0, 300) : null,
-    business_unit: get("owningDepartment") != null ? String(get("owningDepartment")).slice(0, 100) : null,
-    budget_range: get("budgetRange") != null ? String(get("budgetRange")).slice(0, 100) : null,
-    target_timeline: get("targetTimeline") != null ? String(get("targetTimeline")).slice(0, 100) : null,
-    critical_of_ai_solution: get("criticality") != null ? String(get("criticality")).slice(0, 100) : null,
-    vendor_name: get("vendorName") != null ? String(get("vendorName")).slice(0, 200) : null,
-    specific_product: get("productName") != null ? String(get("productName")).slice(0, 200) : null,
-    gap_requirement_product: get("requirementGaps") != null ? String(get("requirementGaps")) : null,
-    integrate_system: parseJson(get("integrationSystems")),
-    integrate_system_other: get("integrationSystemsOther") != null ? String(get("integrationSystemsOther")).slice(0, 300) : null,
-    current_tech_stack: parseJson(get("techStack")),
-    digital_maturity: get("digitalMaturityLevel") != null ? String(get("digitalMaturityLevel")).slice(0, 100) : null,
-    governance_maturity: get("dataGovernanceMaturity") != null ? String(get("dataGovernanceMaturity")).slice(0, 100) : null,
-    ai_governance_board: get("aiGovernanceBoard") != null ? String(get("aiGovernanceBoard")).slice(0, 100) : null,
-    ai_ethics_policy: get("aiEthicsPolicy") != null ? String(get("aiEthicsPolicy")).slice(0, 100) : null,
-    team_composition: parseJson(get("implementationTeamComposition")),
-    data_sensitivity_level: get("dataSensitivity") != null ? String(get("dataSensitivity")).slice(0, 100) : null,
-    regulatory_requirments: parseJson(get("regulatoryRequirements")),
-    risk_appetite: get("riskAppetite") != null ? String(get("riskAppetite")).slice(0, 100) : null,
-    statke_at_ai_decisions: get("decisionStakes") != null ? String(get("decisionStakes")).slice(0, 100) : null,
-    impact_by_ai: parseJson(get("impactedStakeholders")),
-    vendor_capabilities: get("vendorValidationApproach") != null ? String(get("vendorValidationApproach")).slice(0, 100) : null,
-    vendor_security_posture: get("vendorSecurityPosture") != null ? String(get("vendorSecurityPosture")).slice(0, 100) : null,
-    vendor_compliance_certifications: parseJson(get("vendorCertifications")),
-    phased_rollout_plan: get("pilotRolloutPlan") != null ? String(get("pilotRolloutPlan")).slice(0, 100) : null,
-    rollback_capability: get("rollbackCapability") != null ? String(get("rollbackCapability")).slice(0, 100) : null,
-    management_plan: get("changeManagementPlan") != null ? String(get("changeManagementPlan")).slice(0, 100) : null,
-    compliance_document: (() => {
-      const raw = get("vendorComplianceDocumentation") ?? get("complianceDocument");
-      return raw != null ? String(raw) : null;
-    })(),
-    vendor_usage_data: get("monitoringDataAvailable") != null ? String(get("monitoringDataAvailable")).slice(0, 100) : null,
-    audit_logs: get("auditLogsAvailable") != null ? String(get("auditLogsAvailable")).slice(0, 100) : null,
-    testing_results: get("testingResultsAvailable") != null ? String(get("testingResultsAvailable")).slice(0, 100) : null,
-    identified_risks: get("identifiedRisks") != null ? String(get("identifiedRisks")) : null,
-    risk_domain_scores: get("riskDomainScores") != null ? String(get("riskDomainScores")) : null,
-    contextual_multipliers: get("contextualMultipliers") != null ? String(get("contextualMultipliers")) : null,
-    buyer_risk_mitigation: get("riskMitigation") != null ? String(get("riskMitigation")) : null,
-    risk_mitigation_mapping_ids: parseJson(get("riskMitigationMappingIds")),
-  };
 }
 
 /** POST /buyerCotsAssessment - create or update (from draft) and set status submitted. Organization ID is taken from the authenticated user (DB). */
@@ -250,7 +204,7 @@ const submitBuyerCotsAssessment = async (req: Request, res: Response) => {
       });
       const vendorRiskReportAvailable = await persistVendorRiskReport(
         assessmentId,
-        body as Record<string, unknown>,
+        { ...(body as Record<string, unknown>), organizationId },
         String(payloadCots.vendor_name ?? ""),
         String(payloadCots.specific_product ?? ""),
       );
@@ -276,7 +230,7 @@ const submitBuyerCotsAssessment = async (req: Request, res: Response) => {
     });
     const vendorRiskReportAvailable = await persistVendorRiskReport(
       assessment.id,
-      body as Record<string, unknown>,
+      { ...(body as Record<string, unknown>), organizationId },
       String(payloadCots.vendor_name ?? ""),
       String(payloadCots.specific_product ?? ""),
     );

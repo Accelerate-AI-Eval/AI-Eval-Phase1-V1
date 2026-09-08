@@ -61,6 +61,8 @@ export interface PythonCotsVendorScoreResult {
   scoring_version?: string;
   /** Plain-text rationale for terminal display (same as Python console). */
   rationale?: string;
+  /** Step-by-step SRS math + hardcoded constants (Python console dump). */
+  formula_console?: string;
 }
 
 /** Type 3 — Buyer Implementation Risk Score (Python formula). */

@@ -108,6 +108,11 @@ const listVendorVisibleProducts = async (req: Request, res: Response): Promise<v
               market_product_material: vendorSelfAttestations.market_product_material,
               unique_solution: vendorSelfAttestations.unique_solution,
               tech_product_specifications: vendorSelfAttestations.tech_product_specifications,
+              available_usage_data: vendorSelfAttestations.available_usage_data,
+              production_model_monitoring: vendorSelfAttestations.production_model_monitoring,
+              audit_logs: vendorSelfAttestations.audit_logs,
+              training_data_document: vendorSelfAttestations.training_data_document,
+              data_subject_rights: vendorSelfAttestations.data_subject_rights,
             })
             .from(vendorSelfAttestations)
             .where(
@@ -128,6 +133,11 @@ const listVendorVisibleProducts = async (req: Request, res: Response): Promise<v
               market_product_material: vendorSelfAttestations.market_product_material,
               unique_solution: vendorSelfAttestations.unique_solution,
               tech_product_specifications: vendorSelfAttestations.tech_product_specifications,
+              available_usage_data: vendorSelfAttestations.available_usage_data,
+              production_model_monitoring: vendorSelfAttestations.production_model_monitoring,
+              audit_logs: vendorSelfAttestations.audit_logs,
+              training_data_document: vendorSelfAttestations.training_data_document,
+              data_subject_rights: vendorSelfAttestations.data_subject_rights,
             })
             .from(vendorSelfAttestations)
             .where(
@@ -219,6 +229,11 @@ const listVendorVisibleProducts = async (req: Request, res: Response): Promise<v
         /** Product-facing blurb for directory cards (attestation fields, then trust report summary). */
         productDescription: productDescription ?? undefined,
         sector: sector ?? undefined,
+        available_usage_data: r.available_usage_data ?? null,
+        production_model_monitoring: r.production_model_monitoring ?? null,
+        audit_logs: r.audit_logs ?? null,
+        training_data_document: r.training_data_document ?? null,
+        data_subject_rights: r.data_subject_rights ?? null,
       };
     });
 

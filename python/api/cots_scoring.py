@@ -92,7 +92,7 @@ async def score_cots_buyer(body: CotsBuyerScoreRequest) -> dict[str, Any]:
         return {
             **result,
             "scoring_source": "formula",
-            "scoring_version": "irs-1.1",
+            "scoring_version": "irs-1.2",
             "rationale": rationale,
         }
     except Exception as exc:

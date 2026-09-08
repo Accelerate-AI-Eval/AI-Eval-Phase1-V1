@@ -17,6 +17,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.875rem;
+  font-family: "Sora", sans-serif;
   font-size: 0.9375rem;
   font-weight: 500;
   color: var(--text-secondary, var(--light-gray-color, #64748b));

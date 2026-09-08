@@ -178,6 +178,88 @@ def test_aiq026_yes_on_monitoring_audit_testing_drops_18_integration_points():
     assert abs(delta - 18) < 0.15
 
 
+def test_type03_uses_new_cots_fields_instead_of_hardcoded():
+    from services.buyer_implementation_risk_formula import (
+        calculate_buyer_implementation_risk_score,
+    )
+
+    weak = calculate_buyer_implementation_risk_score(
+        {
+            "implementationCapacity": "No one assigned yet",
+            "currentUsageState": "Not in use - manual process today",
+            "humanReviewLevel": "No review - used directly",
+            "decisionStakes": "Life or Death - Medical decisions, safety-critical applications",
+            "riskAppetite": "Very High - Innovation-first, minimal risk concerns",
+            "unavailabilityImpact": "Work stops - no manual alternative",
+            "dataSensitivity": "Highly Sensitive - PHI, financial records, or PCI data",
+            "integrationSystems": ["EHR / EMR Systems", "ERP (SAP, Oracle, etc.)"],
+            "integrationAccessLevels": {"EHR / EMR Systems": "Admin"},
+            "pilotStatus": "Not planned",
+            "usersInScope": "5,000+",
+            "vendorEvidenceReceived": ["Nothing yet"],
+            "dataExportCapability": "No - data cannot be exported",
+            "aiGovernanceMaturity": "None (No formal AI governance policies)",
+            "dataGovernanceMaturity": "Ad-hoc (Minimal or no formal data policies)",
+            "aiSkillsAvailability": "None (No AI/ML expertise)",
+        },
+        None,
+        "V",
+        "P",
+    )
+    strong = calculate_buyer_implementation_risk_score(
+        {
+            "implementationCapacity": "Dedicated team assigned",
+            "currentUsageState": "Officially in use, expanding",
+            "humanReviewLevel": "Always - reviewed by domain experts",
+            "decisionStakes": "Low Impact - Minor inconvenience or rework required",
+            "riskAppetite": "Low - Conservative, prefer proven solutions",
+            "unavailabilityImpact": "Additive only - nothing depends on it yet",
+            "dataSensitivity": "Public - No sensitive data",
+            "integrationSystems": ["No Integrations Required"],
+            "pilotStatus": "Completed - met criteria",
+            "usersInScope": "1-10 (pilot)",
+            "vendorEvidenceReceived": [
+                "SOC 2 Type 2 report",
+                "ISO 27001 certificate",
+                "Model or safety testing results",
+            ],
+            "monitoringDataAvailable": "Yes - Comprehensive analytics and dashboards",
+            "auditLogsAvailable": "Yes - Comprehensive audit logs with retention",
+            "dataExportCapability": "Yes - full export in standard formats",
+            "aiGovernanceMaturity": "Advanced (Comprehensive AI governance with board oversight)",
+            "dataGovernanceMaturity": "Optimized (Comprehensive data governance program)",
+            "aiSkillsAvailability": "Expert (10+ person AI/ML team)",
+        },
+        None,
+        "V",
+        "P",
+    )
+    assert strong["implementationRiskScore"] > weak["implementationRiskScore"]
+    assert strong["breakdown"]["vendorTrustScore"] > 50
+    assert weak["breakdown"]["organizationalReadinessGap"] > strong["breakdown"][
+        "organizationalReadinessGap"
+    ]
+    assert weak["breakdown"]["integrationRisk"] > strong["breakdown"]["integrationRisk"]
+
+
+def test_type03_attestation_fills_rollback_instead_of_hardcoded():
+    from services.buyer_implementation_risk_formula import (
+        calculate_buyer_implementation_risk_score,
+    )
+
+    no_data = calculate_buyer_implementation_risk_score({}, None, "V", "P")
+    from_attestation = calculate_buyer_implementation_risk_score(
+        {},
+        {"rollback_capability": "No rollback capability"},
+        "V",
+        "P",
+    )
+    assert (
+        from_attestation["breakdown"]["integrationRisk"]
+        > no_data["breakdown"]["integrationRisk"]
+    )
+
+
 def test_aiq045_srs_inputs_are_not_hardcoded():
     from services.sales_risk_formula import build_sales_risk_formula_input
 

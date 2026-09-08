@@ -131,25 +131,25 @@ function isUploadField(config: { label?: string; placeholder?: string; options?:
 }
 
 const BUYER_SECTION_ORDER: (keyof typeof BUYER_COTS_FIELD_KEYS)[] = [
-  "organizationProfile",
-  "useCase",
-  "vendorEvaluation",
-  "readiness",
-  "riskProfile",
-  "vendorRisk",
-  "implementation",
-  "evidence",
+  "context",
+  "purchase",
+  "dataLegal",
+  "oversight",
+  "environment",
+  "vendorTrust",
+  "exit",
+  "provenance",
 ];
 
 const BUYER_SECTION_TITLES: Record<string, string> = {
-  organizationProfile: "Organization Profile",
-  useCase: "Use Case",
-  vendorEvaluation: "Vendor Evaluation",
-  readiness: "Readiness",
-  riskProfile: "Risk Profile",
-  vendorRisk: "Vendor Risk",
-  implementation: "Implementation",
-  evidence: "Evidence",
+  context: "Context",
+  purchase: "What we are buying",
+  dataLegal: "Data and legal",
+  oversight: "Oversight",
+  environment: "Environment",
+  vendorTrust: "Vendor trust",
+  exit: "If it goes away",
+  provenance: "Provenance",
 };
 
 function camelToLabel(key: string): string {
@@ -389,7 +389,7 @@ export default function AssessmentPreviewModalContent({
                             </div>
                           );
                         })}
-                        {sectionKey === "vendorEvaluation" &&
+                        {sectionKey === "environment" &&
                         fieldHasValue(buyerMerged.integrationSystemsOther) ? (
                           <div key="integrationSystemsOther" className="vendor_preview_row">
                             <dt className="vendor_preview_label">

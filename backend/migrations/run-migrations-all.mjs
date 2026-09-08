@@ -61,6 +61,7 @@ const sqlFiles = [
   "20260903_assessment_risks.sql",
   "20260903_dpa_url.sql",
   "20260904_cots_vendor_desk_research_fields.sql",
+  "20260907_cots_buyer_field_spec_v2.sql",
 ];
 
 const pool = new pg.Pool({ connectionString });

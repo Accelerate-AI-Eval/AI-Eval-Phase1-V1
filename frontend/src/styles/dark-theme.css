@@ -122,6 +122,16 @@ html[data-theme="dark"] .industry-sector-dependency .industry-sector-option-sele
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239a95ab' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
 }
 
+html[data-theme="dark"] .industry-sector-selected-group-label {
+  color: var(--text-secondary, #c8c4d6);
+}
+
+html[data-theme="dark"] .industry-sector-selected-chip {
+  color: var(--nav-active, #8aafff);
+  background-color: rgba(138, 175, 255, 0.16);
+  border-color: rgba(138, 175, 255, 0.45);
+}
+
 /* Role / onboarding radio tiles */
 html[data-theme="dark"] .radio-wrapper-22 .radio-icon {
   color: var(--text-secondary, #c8c4d6);
@@ -2950,6 +2960,31 @@ html[data-theme="dark"] textarea:disabled {
   background-color: var(--surface-muted, #221f2e) !important;
   color: var(--text-secondary, #c8c4d6) !important;
   border-color: var(--input-border, #4a455c) !important;
+}
+
+html[data-theme="dark"] .buyer_cots_stance_btns {
+  background: var(--input-bg, #1c1a26);
+  border-color: var(--input-border, #4a455c);
+}
+
+html[data-theme="dark"] .buyer_cots_stance_btn {
+  color: var(--text-secondary, #c8c4d6);
+  border-right-color: var(--input-border, #4a455c);
+}
+
+html[data-theme="dark"] .buyer_cots_stance_btn:hover {
+  color: var(--nav-active, #7eb6ff);
+  background: color-mix(in srgb, var(--nav-active, #7eb6ff) 12%, transparent);
+}
+
+html[data-theme="dark"] .buyer_cots_stance_btn--confirm.buyer_cots_stance_btn--active {
+  background: #15803d;
+  color: #fff;
+}
+
+html[data-theme="dark"] .buyer_cots_stance_btn--dispute.buyer_cots_stance_btn--active {
+  background: var(--vendor-error-color, #ef4444);
+  color: #fff;
 }
 
 html[data-theme="dark"] .assessment_details_no_reports {

@@ -15,7 +15,7 @@
 
 import { SCORING_VERSION } from "../lib/scoringVersion.js";
 import type { ScoreTrace, ScoreTraceComponent } from "../types/scoreTrace.js";
-import { irsFinalScoreFromParts } from "./buyerImplementationRiskScore.js";
+import { irsFinalScoreFromParts, resolveBuyerIrsInputs } from "./buyerImplementationRiskScore.js";
 
 // ── Weight constants (mirrors buyerImplementationRiskScore.ts, not re-exported) ──
 const W_VENDOR = 0.35;
@@ -50,12 +50,21 @@ function parseList(v: unknown): string[] {
   return [];
 }
 
+function isEmpty(v: unknown): boolean {
+  if (v == null) return true;
+  if (Array.isArray(v)) return v.length === 0;
+  if (typeof v === "object") return Object.keys(v as object).length === 0;
+  return String(v).trim() === "";
+}
+
 function isHighStakes(criticality: string): boolean {
   return (
     criticality.includes("life or death") ||
     criticality.includes("major financial") ||
     criticality.includes("high") ||
-    criticality.includes("critical")
+    criticality.includes("critical") ||
+    criticality.includes("work stops") ||
+    criticality.includes("mission")
   );
 }
 
@@ -65,7 +74,10 @@ function isLowOrMediumStakes(criticality: string): boolean {
     criticality.includes("minimal") ||
     criticality.includes("moderate impact") ||
     criticality.includes("medium") ||
-    criticality.includes("low")
+    criticality.includes("low") ||
+    criticality.includes("work continues") ||
+    criticality.includes("additive") ||
+    criticality.includes("work degrades")
   );
 }
 
@@ -195,7 +207,8 @@ function traceOrgReadinessGap(
   if (
     governance.includes("optimized") ||
     governance.includes("managed") ||
-    governance.includes("mature")
+    governance.includes("mature") ||
+    governance.includes("excellent")
   ) {
     risk -= 8;
     components.push(
@@ -208,7 +221,11 @@ function traceOrgReadinessGap(
         "field: dataGovernanceMaturity",
       ),
     );
-  } else if (governance.includes("basic") || governance.includes("developing")) {
+  } else if (
+    governance.includes("basic") ||
+    governance.includes("developing") ||
+    governance.includes("defined")
+  ) {
     risk += 4;
     components.push(
       component(
@@ -239,20 +256,20 @@ function traceOrgReadinessGap(
     );
   }
 
-  // AI governance board
-  if (!boolYes(buyerPayload.aiGovernanceBoard)) {
+  // AI governance board — only when an answer or onboarding proxy exists
+  if (!isEmpty(buyerPayload.aiGovernanceBoard) && !boolYes(buyerPayload.aiGovernanceBoard)) {
     risk += 8;
     components.push(
       component(
         "No AI Governance Board",
         "OrgReadiness",
         -(8 * W_ORG),
-        `AI governance board field value "${buyerPayload.aiGovernanceBoard ?? "(empty)"}" was not recognized as confirmed — increases gap risk by 8.`,
+        `AI governance board field value "${buyerPayload.aiGovernanceBoard}" was not recognized as confirmed — increases gap risk by 8.`,
         "assessment_answer",
         "field: aiGovernanceBoard",
       ),
     );
-  } else {
+  } else if (boolYes(buyerPayload.aiGovernanceBoard)) {
     components.push(
       component(
         "AI Governance Board Confirmed",
@@ -266,19 +283,19 @@ function traceOrgReadinessGap(
   }
 
   // AI ethics policy
-  if (!boolYes(buyerPayload.aiEthicsPolicy)) {
+  if (!isEmpty(buyerPayload.aiEthicsPolicy) && !boolYes(buyerPayload.aiEthicsPolicy)) {
     risk += 8;
     components.push(
       component(
         "No AI Ethics Policy",
         "OrgReadiness",
         -(8 * W_ORG),
-        `AI ethics policy field value "${buyerPayload.aiEthicsPolicy ?? "(empty)"}" was not recognized as confirmed — increases gap risk by 8.`,
+        `AI ethics policy field value "${buyerPayload.aiEthicsPolicy}" was not recognized as confirmed — increases gap risk by 8.`,
         "assessment_answer",
         "field: aiEthicsPolicy",
       ),
     );
-  } else {
+  } else if (boolYes(buyerPayload.aiEthicsPolicy)) {
     components.push(
       component(
         "AI Ethics Policy Confirmed",
@@ -291,37 +308,112 @@ function traceOrgReadinessGap(
     );
   }
 
-  // Team composition
-  const team = parseList(buyerPayload.implementationTeamComposition).filter(
-    (t) => !norm(t).includes("no team"),
-  );
-  if (team.length >= 4) {
+  const capacity = norm(buyerPayload.implementationCapacity ?? buyerPayload.implementationTeamComposition);
+  if (capacity.includes("dedicated")) {
     risk -= 6;
     components.push(
       component(
-        `Implementation Team: ${team.length} roles`,
+        "Implementation Capacity: Dedicated team",
         "OrgReadiness",
         +(6 * W_ORG),
-        `Team composition has ${team.length} roles (4+) — reduces organizational gap risk by 6.`,
+        `Implementation capacity "${buyerPayload.implementationCapacity}" — reduces organizational gap risk by 6.`,
         "assessment_answer",
-        "field: implementationTeamComposition",
+        "field: implementationCapacity",
       ),
     );
-  } else if (team.length <= 1) {
+  } else if (capacity.includes("shared")) {
+    risk += 6;
+    components.push(
+      component(
+        "Implementation Capacity: Shared workload",
+        "OrgReadiness",
+        -(6 * W_ORG),
+        `Implementation capacity "${buyerPayload.implementationCapacity}" — increases organizational gap risk by 6.`,
+        "assessment_answer",
+        "field: implementationCapacity",
+      ),
+    );
+  } else if (capacity.includes("no one assigned") || capacity.includes("no team")) {
     risk += 8;
     components.push(
       component(
-        `Implementation Team: ${team.length === 0 ? "not specified" : `${team.length} role`}`,
+        "Implementation Capacity: No owner",
         "OrgReadiness",
         -(8 * W_ORG),
-        `Team composition has ${team.length} role(s) (≤1) — increases organizational gap risk by 8.`,
+        `Implementation capacity "${buyerPayload.implementationCapacity}" — increases organizational gap risk by 8.`,
         "assessment_answer",
-        "field: implementationTeamComposition",
+        "field: implementationCapacity",
       ),
     );
   }
 
-  // Criticality × Risk appetite (aligned to Buyer COTS option labels)
+  const review = norm(buyerPayload.humanReviewLevel);
+  if (review.includes("no review")) {
+    risk += 8;
+    components.push(
+      component(
+        "Human Review: None",
+        "OrgReadiness",
+        -(8 * W_ORG),
+        `Human review "${buyerPayload.humanReviewLevel}" — increases gap risk by 8.`,
+        "assessment_answer",
+        "field: humanReviewLevel",
+      ),
+    );
+  } else if (review.includes("exception")) {
+    risk += 4;
+    components.push(
+      component(
+        "Human Review: Exception-based",
+        "OrgReadiness",
+        -(4 * W_ORG),
+        `Human review "${buyerPayload.humanReviewLevel}" — increases gap risk by 4.`,
+        "assessment_answer",
+        "field: humanReviewLevel",
+      ),
+    );
+  } else if (review.startsWith("always")) {
+    risk -= 4;
+    components.push(
+      component(
+        "Human Review: Always",
+        "OrgReadiness",
+        +(4 * W_ORG),
+        `Human review "${buyerPayload.humanReviewLevel}" — reduces gap risk by 4.`,
+        "assessment_answer",
+        "field: humanReviewLevel",
+      ),
+    );
+  }
+
+  const sensitivity = norm(buyerPayload.dataSensitivity);
+  if (sensitivity.includes("extremely") || sensitivity.includes("highly sensitive")) {
+    risk += 6;
+    components.push(
+      component(
+        "Data Sensitivity: High",
+        "OrgReadiness",
+        -(6 * W_ORG),
+        `Data sensitivity "${buyerPayload.dataSensitivity}" — increases gap risk by 6.`,
+        "assessment_answer",
+        "field: dataSensitivity",
+      ),
+    );
+  } else if (sensitivity.includes("sensitive")) {
+    risk += 3;
+    components.push(
+      component(
+        "Data Sensitivity: Sensitive",
+        "OrgReadiness",
+        -(3 * W_ORG),
+        `Data sensitivity "${buyerPayload.dataSensitivity}" — increases gap risk by 3.`,
+        "assessment_answer",
+        "field: dataSensitivity",
+      ),
+    );
+  }
+
+  // Criticality × Risk appetite (decision stakes / unavailability + appetite)
   const appetite = norm(buyerPayload.riskAppetite);
   const criticality = norm(buyerPayload.criticality);
   if (isHighStakes(criticality) && isAggressiveAppetite(appetite)) {
@@ -346,6 +438,33 @@ function traceOrgReadinessGap(
         `Criticality "${buyerPayload.criticality}" and risk appetite "${buyerPayload.riskAppetite}" — low-risk combination reduces gap risk by 2.`,
         "assessment_answer",
         "fields: criticality, riskAppetite",
+      ),
+    );
+  }
+
+  const confidence = norm(buyerPayload.answerConfidence);
+  if (confidence.startsWith("low")) {
+    risk += 4;
+    components.push(
+      component(
+        "Answer confidence: Low",
+        "OrgReadiness",
+        -(4 * W_ORG),
+        `Answer confidence "${buyerPayload.answerConfidence}" — increases gap risk by 4.`,
+        "assessment_answer",
+        "field: answerConfidence",
+      ),
+    );
+  } else if (confidence.startsWith("high")) {
+    risk -= 2;
+    components.push(
+      component(
+        "Answer confidence: High",
+        "OrgReadiness",
+        +(2 * W_ORG),
+        `Answer confidence "${buyerPayload.answerConfidence}" — reduces gap risk by 2.`,
+        "assessment_answer",
+        "field: answerConfidence",
       ),
     );
   }
@@ -402,23 +521,57 @@ function traceIntegrationRisk(
     );
   }
 
-  // Currently using product? (stored as requirementGaps; Yes/No)
-  const currentlyUsing = norm(buyerPayload.requirementGaps);
-  if (currentlyUsing.startsWith("no")) {
+  const usage = norm(buyerPayload.currentUsageState ?? buyerPayload.requirementGaps);
+  if (usage.includes("not in use") || usage.startsWith("no")) {
     risk += 12;
     components.push(
       component(
-        "Not Currently Using Product",
+        "Current usage: not in use",
         "Integration",
         -(12 * W_INT),
-        "Buyer is not currently using the product — adds 12 to integration risk.",
+        `Current usage "${buyerPayload.currentUsageState ?? buyerPayload.requirementGaps}" — adds 12 to integration risk.`,
         "assessment_answer",
-        "field: requirementGaps",
+        "field: currentUsageState",
+      ),
+    );
+  } else if (usage.includes("trial") || usage.includes("poc")) {
+    risk += 4;
+    components.push(
+      component(
+        "Current usage: trial/POC",
+        "Integration",
+        -(4 * W_INT),
+        `Current usage "${buyerPayload.currentUsageState}" — adds 4 to integration risk.`,
+        "assessment_answer",
+        "field: currentUsageState",
+      ),
+    );
+  } else if (usage.includes("unsanctioned")) {
+    risk += 8;
+    components.push(
+      component(
+        "Current usage: unsanctioned",
+        "Integration",
+        -(8 * W_INT),
+        `Current usage "${buyerPayload.currentUsageState}" — adds 8 to integration risk.`,
+        "assessment_answer",
+        "field: currentUsageState",
+      ),
+    );
+  } else if (usage.includes("officially in use") || usage.startsWith("yes")) {
+    risk -= 3;
+    components.push(
+      component(
+        "Current usage: in production",
+        "Integration",
+        +(3 * W_INT),
+        `Current usage "${buyerPayload.currentUsageState}" — reduces integration risk by 3.`,
+        "assessment_answer",
+        "field: currentUsageState",
       ),
     );
   }
 
-  // Rollback capability (aligned to Buyer COTS Instant/Rapid/Moderate/Limited/None options)
   const rollback = norm(buyerPayload.rollbackCapability);
   if (rollback.startsWith("none") || rollback.includes("no rollback") || rollback === "no") {
     risk += 12;
@@ -448,22 +601,45 @@ function traceIntegrationRisk(
         "field: rollbackCapability",
       ),
     );
-  } else {
+  } else if (rollback.length > 0) {
     risk -= 3;
     components.push(
       component(
-        rollback.length > 0
-          ? `Rollback Capability: ${buyerPayload.rollbackCapability}`
-          : "Rollback Capability: not specified (automated/instant assumed)",
+        `Rollback Capability: ${buyerPayload.rollbackCapability}`,
         "Integration",
         +(3 * W_INT),
-        rollback.length > 0
-          ? `Rollback capability "${buyerPayload.rollbackCapability}" appears automated/instant — reduces integration risk by 3.`
-          : `Rollback capability was not specified; scoring engine assumes automated/instant and reduces integration risk by 3.`,
+        `Rollback capability "${buyerPayload.rollbackCapability}" appears automated/instant — reduces integration risk by 3.`,
         "assessment_answer",
         "field: rollbackCapability",
       ),
     );
+  } else {
+    const exp = norm(buyerPayload.dataExportCapability);
+    if (exp.startsWith("no")) {
+      risk += 12;
+      components.push(
+        component(
+          "Exit/export: none",
+          "Integration",
+          -(12 * W_INT),
+          `No rollback on file; data export "${buyerPayload.dataExportCapability}" used instead — adds 12.`,
+          "assessment_answer",
+          "field: dataExportCapability",
+        ),
+      );
+    } else if (exp.startsWith("yes")) {
+      risk += 6;
+      components.push(
+        component(
+          "Exit/export: limited proxy for rollback",
+          "Integration",
+          -(6 * W_INT),
+          `No rollback on file; data export "${buyerPayload.dataExportCapability}" used instead — adds 6.`,
+          "assessment_answer",
+          "field: dataExportCapability",
+        ),
+      );
+    }
   }
 
   // Monitoring
@@ -514,6 +690,210 @@ function traceIntegrationRisk(
         "Audit logs confirmed available — no penalty applied.",
         "assessment_answer",
         "field: auditLogsAvailable",
+      ),
+    );
+  }
+
+  const access = parseList(buyerPayload.integrationAccessLevels).join(" ").toLowerCase();
+  if (access.includes("admin") || access.includes("delete")) {
+    risk += 6;
+    components.push(
+      component(
+        "Integration access: admin/delete",
+        "Integration",
+        -(6 * W_INT),
+        "Write+delete or admin access on an integration — adds 6 to integration risk.",
+        "assessment_answer",
+        "field: integrationAccessLevels",
+      ),
+    );
+  } else if (access.includes("write")) {
+    risk += 3;
+    components.push(
+      component(
+        "Integration access: write",
+        "Integration",
+        -(3 * W_INT),
+        "Read+write integration access — adds 3 to integration risk.",
+        "assessment_answer",
+        "field: integrationAccessLevels",
+      ),
+    );
+  }
+
+  const exposure = norm(buyerPayload.outputExposure);
+  if (exposure.includes("published directly")) {
+    risk += 6;
+    components.push(
+      component(
+        "Output exposure: published directly",
+        "Integration",
+        -(6 * W_INT),
+        `Output exposure "${buyerPayload.outputExposure}" — adds 6.`,
+        "assessment_answer",
+        "field: outputExposure",
+      ),
+    );
+  } else if (exposure.includes("customer-facing")) {
+    risk += 3;
+    components.push(
+      component(
+        "Output exposure: customer-facing",
+        "Integration",
+        -(3 * W_INT),
+        `Output exposure "${buyerPayload.outputExposure}" — adds 3.`,
+        "assessment_answer",
+        "field: outputExposure",
+      ),
+    );
+  }
+
+  const training = norm(buyerPayload.trainingUseOfData);
+  if (norm(buyerPayload.trainingUseOfDataStance) === "dispute" || training.startsWith("yes")) {
+    risk += 5;
+    components.push(
+      component(
+        "Training use of data",
+        "Integration",
+        -(5 * W_INT),
+        "Buyer data may train vendor models — adds 5 to integration risk.",
+        "assessment_answer",
+        "field: trainingUseOfData",
+      ),
+    );
+  } else if (training.includes("not yet")) {
+    risk += 3;
+    components.push(
+      component(
+        "Training use of data unset",
+        "Integration",
+        -(3 * W_INT),
+        "Training use of data is not yet established — adds 3.",
+        "assessment_answer",
+        "field: trainingUseOfData",
+      ),
+    );
+  }
+
+  const deployment = norm(buyerPayload.deploymentModel);
+  if (deployment.includes("on-premise") || deployment.includes("private cloud")) {
+    risk += 4;
+    components.push(
+      component(
+        "Deployment model: private/on-prem",
+        "Integration",
+        -(4 * W_INT),
+        `Deployment model "${buyerPayload.deploymentModel}" — adds 4.`,
+        "assessment_answer",
+        "field: deploymentModel",
+      ),
+    );
+  }
+
+  const pilot = norm(buyerPayload.pilotStatus);
+  if (pilot.includes("did not meet")) {
+    risk += 6;
+    components.push(
+      component(
+        "Pilot did not meet criteria",
+        "Integration",
+        -(6 * W_INT),
+        `Pilot status "${buyerPayload.pilotStatus}" — adds 6.`,
+        "assessment_answer",
+        "field: pilotStatus",
+      ),
+    );
+  } else if (pilot.includes("not planned")) {
+    risk += 4;
+    components.push(
+      component(
+        "Pilot not planned",
+        "Integration",
+        -(4 * W_INT),
+        `Pilot status "${buyerPayload.pilotStatus}" — adds 4.`,
+        "assessment_answer",
+        "field: pilotStatus",
+      ),
+    );
+  } else if (pilot.includes("met criteria")) {
+    risk -= 4;
+    components.push(
+      component(
+        "Pilot met criteria",
+        "Integration",
+        +(4 * W_INT),
+        `Pilot status "${buyerPayload.pilotStatus}" — reduces integration risk by 4.`,
+        "assessment_answer",
+        "field: pilotStatus",
+      ),
+    );
+  }
+
+  const users = norm(buyerPayload.usersInScope);
+  if (users.includes("5,000+") || users.includes("5000+")) {
+    risk += 4;
+    components.push(
+      component(
+        "Users in scope: 5,000+",
+        "Integration",
+        -(4 * W_INT),
+        `Users in scope "${buyerPayload.usersInScope}" — adds 4.`,
+        "assessment_answer",
+        "field: usersInScope",
+      ),
+    );
+  } else if (users.includes("1-10")) {
+    risk -= 2;
+    components.push(
+      component(
+        "Users in scope: pilot",
+        "Integration",
+        +(2 * W_INT),
+        `Users in scope "${buyerPayload.usersInScope}" — reduces integration risk by 2.`,
+        "assessment_answer",
+        "field: usersInScope",
+      ),
+    );
+  }
+
+  if (norm(buyerPayload.trainingEffort).includes("multi-day")) {
+    risk += 3;
+    components.push(
+      component(
+        "Training effort: multi-day",
+        "Integration",
+        -(3 * W_INT),
+        `Training effort "${buyerPayload.trainingEffort}" — adds 3.`,
+        "assessment_answer",
+        "field: trainingEffort",
+      ),
+    );
+  }
+
+  if (parseList(buyerPayload.contractsInPlace).some((c) => norm(c).includes("nothing signed"))) {
+    risk += 4;
+    components.push(
+      component(
+        "No contract signed",
+        "Integration",
+        -(4 * W_INT),
+        "Nothing signed yet with the vendor — adds 4.",
+        "assessment_answer",
+        "field: contractsInPlace",
+      ),
+    );
+  }
+
+  if (parseList(buyerPayload.useCaseTypes).some((x) => norm(x).includes("automatically"))) {
+    risk += 4;
+    components.push(
+      component(
+        "Autonomous action use case",
+        "Integration",
+        -(4 * W_INT),
+        "Use case includes taking an action automatically — adds 4.",
+        "assessment_answer",
+        "field: useCaseTypes",
       ),
     );
   }
@@ -576,6 +956,8 @@ export type IrsTraceInput = {
   productName: string;
   /** When the stored IRS was calculated (report generatedAt / irsRescoredAt / row timestamps). */
   generatedAt?: string | Date | null;
+  /** Linked vendor attestation, used when rollback/monitoring/testing live there. */
+  attestationRow?: Record<string, unknown> | null;
 };
 
 export function buildIrsScoreTrace(input: IrsTraceInput): ScoreTrace {
@@ -583,6 +965,7 @@ export function buildIrsScoreTrace(input: IrsTraceInput): ScoreTrace {
   const warnings: string[] = [];
   const missingEvidence: string[] = [];
 
+  const resolvedPayload = resolveBuyerIrsInputs(buyerPayload, input.attestationRow ?? null);
   // ── Vendor Risk component ────────────────────────────────────────────────────
   const vtScore = storedBreakdown.vendorTrustScore;
   const vRisk = storedBreakdown.vendorRisk;
@@ -619,35 +1002,35 @@ export function buildIrsScoreTrace(input: IrsTraceInput): ScoreTrace {
   }
 
   // ── Org Readiness Gap trace ──────────────────────────────────────────────────
-  const orgTrace = traceOrgReadinessGap(buyerPayload);
+  const orgTrace = traceOrgReadinessGap(resolvedPayload);
   warnings.push(...orgTrace.warnings);
 
   // ── Integration Risk trace ────────────────────────────────────────────────────
-  const intTrace = traceIntegrationRisk(buyerPayload);
+  const intTrace = traceIntegrationRisk(resolvedPayload);
   warnings.push(...intTrace.warnings);
 
   // ── Missing evidence hints ────────────────────────────────────────────────────
-  if (!boolYes(buyerPayload.aiGovernanceBoard)) {
+  if (!isEmpty(resolvedPayload.aiGovernanceBoard) && !boolYes(resolvedPayload.aiGovernanceBoard)) {
     missingEvidence.push(
       "AI Governance Board not confirmed — confirming it would reduce org readiness gap by 8 points (+2.8 IRS).",
     );
   }
-  if (!boolYes(buyerPayload.aiEthicsPolicy)) {
+  if (!isEmpty(resolvedPayload.aiEthicsPolicy) && !boolYes(resolvedPayload.aiEthicsPolicy)) {
     missingEvidence.push(
       "AI Ethics Policy not confirmed — confirming it would reduce org readiness gap by 8 points (+2.8 IRS).",
     );
   }
-  if (!boolYes(buyerPayload.auditLogsAvailable)) {
+  if (!boolYes(resolvedPayload.auditLogsAvailable)) {
     missingEvidence.push(
       "Audit logs not confirmed — confirming would reduce integration risk by 6 points (+1.8 IRS).",
     );
   }
-  if (!boolYes(buyerPayload.monitoringDataAvailable)) {
+  if (!boolYes(resolvedPayload.monitoringDataAvailable)) {
     missingEvidence.push(
       "Monitoring data not confirmed — confirming would reduce integration risk by 6 points (+1.8 IRS).",
     );
   }
-  if (!boolYes(buyerPayload.testingResultsAvailable)) {
+  if (!boolYes(resolvedPayload.testingResultsAvailable)) {
     missingEvidence.push(
       "Testing results not confirmed — confirming would reduce integration risk by 6 points (+1.8 IRS).",
     );

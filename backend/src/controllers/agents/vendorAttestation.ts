@@ -708,6 +708,33 @@ export async function generateVendorAttestationReport(
   if (formula.rationale?.trim()) {
     console.log(formula.rationale);
   }
+  const ff =
+    formula.detail && typeof formula.detail === "object"
+      ? (formula.detail.final_formula as Record<string, unknown> | undefined)
+      : undefined;
+  console.log("[type-01 VTS] formula calculation", {
+    expression: "VTS = 100 - [(PR × 0.40) + (GR × 0.30) + (OR × 0.30)]",
+    hardcoded_weights: { PR: 0.4, GR: 0.3, OR: 0.3, BASE: 100 },
+    hardcoded_defaults: {
+      likelihoodImpactStub: [3, 3, 3],
+      severityStub: [9, 9, 9],
+      assessmentPhase: "vendor_evaluation",
+      aiRiskAppetite: "moderate",
+      inherentRiskNormalize: 4,
+      mitigationCoverageWeight: 0.6,
+      mitigationQualityWeight: 0.4,
+    },
+    product_risk: formula.product_risk,
+    governance_risk: formula.governance_risk,
+    operational_risk: formula.operational_risk,
+    weighted_risk: formula.weighted_risk,
+    vendor_trust_score: formula.vendor_trust_score,
+    product_risk_contribution: ff?.product_risk_contribution,
+    governance_risk_contribution: ff?.governance_risk_contribution,
+    operational_risk_contribution: ff?.operational_risk_contribution,
+    arithmetic: `VTS = max(0, 100 - ((${formula.product_risk} × 0.40) + (${formula.governance_risk} × 0.30) + (${formula.operational_risk} × 0.30))) = ${formula.vendor_trust_score}`,
+    detail: formula.detail,
+  });
 
   const llmTrust = formula.trust_score;
   // Prefer deterministic formula VTS (explainability document methodology)

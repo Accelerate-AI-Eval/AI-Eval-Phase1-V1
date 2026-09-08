@@ -21,6 +21,7 @@ import { loadVtsScoreTraceByReportOrAttestationId } from "../../services/loadVts
 import { buildScsScoreTrace } from "../../services/scsScoreTrace.js";
 import { findAttestationForBuyerVendorProduct } from "../../services/findAttestationForBuyerVendorProduct.js";
 import { scoreCotsBuyerWithPython } from "../../services/pythonScoringClient.js";
+import { enrichBuyerCotsScoringPayload } from "../../services/enrichBuyerCotsScoringPayload.js";
 import { irsFinalScoreFromParts } from "../../services/buyerImplementationRiskScore.js";
 import {
   appendixSalesRiskBreakdown,
@@ -244,6 +245,29 @@ export async function getIrsScoreTrace(req: Request, res: Response): Promise<voi
         vendor_usage_data:                cotsBuyerAssessments.vendor_usage_data,
         audit_logs:                       cotsBuyerAssessments.audit_logs,
         testing_results:                  cotsBuyerAssessments.testing_results,
+        organization_id:                  cotsBuyerAssessments.organization_id,
+        current_usage_state:              cotsBuyerAssessments.current_usage_state,
+        implementation_capacity:          cotsBuyerAssessments.implementation_capacity,
+        human_review_level:               cotsBuyerAssessments.human_review_level,
+        decision_stakes:                  cotsBuyerAssessments.statke_at_ai_decisions,
+        unavailability_impact:            cotsBuyerAssessments.unavailability_impact,
+        data_sensitivity:                 cotsBuyerAssessments.data_sensitivity_level,
+        integration_access_levels:        cotsBuyerAssessments.integration_access_levels,
+        output_exposure:                  cotsBuyerAssessments.output_exposure,
+        training_use_of_data:             cotsBuyerAssessments.training_use_of_data,
+        training_use_of_data_stance:      cotsBuyerAssessments.training_use_of_data_stance,
+        monitoring_data_stance:           cotsBuyerAssessments.monitoring_data_stance,
+        audit_logs_stance:                cotsBuyerAssessments.audit_logs_stance,
+        data_export_capability:           cotsBuyerAssessments.data_export_capability,
+        deployment_model:                 cotsBuyerAssessments.deployment_model,
+        pilot_status:                     cotsBuyerAssessments.pilot_status,
+        users_in_scope:                   cotsBuyerAssessments.users_in_scope,
+        training_effort:                  cotsBuyerAssessments.training_effort,
+        vendor_evidence_received:         cotsBuyerAssessments.vendor_evidence_received,
+        contracts_in_place:               cotsBuyerAssessments.contracts_in_place,
+        answer_confidence:                cotsBuyerAssessments.answer_confidence,
+        use_case_types:                   cotsBuyerAssessments.use_case_types,
+        accountable_owner_name:           cotsBuyerAssessments.accountable_owner_name,
         assessment_status:                assessments.status,
         assessment_updated_at:            assessments.updated_at,
         buyer_updated_at:                 cotsBuyerAssessments.updated_at,
@@ -292,21 +316,47 @@ export async function getIrsScoreTrace(req: Request, res: Response): Promise<voi
     };
 
     // Reconstruct the buyer payload with camelCase keys (mirrors buildBuyerContextForReport)
-    const buyerPayload: Record<string, unknown> = {
-      digitalMaturityLevel:           row.digital_maturity,
-      dataGovernanceMaturity:         row.governance_maturity,
-      aiGovernanceBoard:              row.ai_governance_board,
-      aiEthicsPolicy:                 row.ai_ethics_policy,
-      implementationTeamComposition:  row.team_composition,
-      riskAppetite:                   row.risk_appetite,
-      criticality:                    row.critical_of_ai_solution,
-      integrationSystems:             row.integrate_system,
-      requirementGaps:                row.gap_requirement_product,
-      rollbackCapability:             row.rollback_capability,
-      monitoringDataAvailable:        row.vendor_usage_data,
-      auditLogsAvailable:             row.audit_logs,
-      testingResultsAvailable:        row.testing_results,
-    };
+    const buyerPayload = await enrichBuyerCotsScoringPayload(
+      {
+        digitalMaturityLevel:           row.digital_maturity,
+        dataGovernanceMaturity:         row.governance_maturity,
+        aiGovernanceBoard:              row.ai_governance_board,
+        aiEthicsPolicy:                 row.ai_ethics_policy,
+        implementationTeamComposition:  row.team_composition,
+        riskAppetite:                   row.risk_appetite,
+        criticality:                    row.critical_of_ai_solution,
+        integrationSystems:             row.integrate_system,
+        requirementGaps:                row.gap_requirement_product,
+        rollbackCapability:             row.rollback_capability,
+        monitoringDataAvailable:        row.vendor_usage_data,
+        auditLogsAvailable:             row.audit_logs,
+        testingResultsAvailable:        row.testing_results,
+        currentUsageState:              row.current_usage_state,
+        implementationCapacity:         row.implementation_capacity,
+        humanReviewLevel:               row.human_review_level,
+        decisionStakes:                 row.decision_stakes,
+        unavailabilityImpact:           row.unavailability_impact,
+        dataSensitivity:                row.data_sensitivity,
+        integrationAccessLevels:        row.integration_access_levels,
+        outputExposure:                 row.output_exposure,
+        trainingUseOfData:              row.training_use_of_data,
+        trainingUseOfDataStance:        row.training_use_of_data_stance,
+        monitoringDataStance:           row.monitoring_data_stance,
+        auditLogsStance:                row.audit_logs_stance,
+        dataExportCapability:           row.data_export_capability,
+        deploymentModel:                row.deployment_model,
+        pilotStatus:                    row.pilot_status,
+        usersInScope:                   row.users_in_scope,
+        trainingEffort:                 row.training_effort,
+        vendorEvidenceReceived:         row.vendor_evidence_received,
+        contractsInPlace:               row.contracts_in_place,
+        answerConfidence:               row.answer_confidence,
+        useCaseTypes:                   row.use_case_types,
+        accountableOwnerName:           row.accountable_owner_name,
+        organizationId:                 row.organization_id,
+      },
+      row.organization_id,
+    );
 
     const vendorName = String(row.vendor_name ?? "Vendor");
     const productName = String(row.specific_product ?? "Product");
